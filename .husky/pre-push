@@ -1,0 +1,32 @@
+#!/bin/sh
+
+# 스크립트 실패 시 즉시 중단
+set -e
+
+# pnpm이 설치되어 있으면 1, 설치되어 있지 않으면 0을 반환한다
+PNPM_INSTALLED=$(pnpm -v > /dev/null 2>&1; echo $?)
+
+if [ $PNPM_INSTALLED -ne 0 ]; then
+  echo "\033[31m❌ pnpm이 설치되어 있지 않습니다. pnpm을 설치해주세요.\033[0m"
+  exit 1
+fi
+
+# Build 검사
+echo "\033[34m🔍 push 하기 전 build 검사를 시작합니다...\033[0m"
+START_TIME=$(date +%s)
+
+echo "\033[36m⚡ Build 테스트를 실행합니다...\033[0m"
+if pnpm build; then
+  END_TIME=$(date +%s)
+  DURATION=$((END_TIME - START_TIME))
+
+  echo "\n\033[32m✨ 모든 검사가 성공적으로 완료되었습니다! (소요시간: ${DURATION}초)\033[0m"
+  exit 0
+else
+  END_TIME=$(date +%s)
+  DURATION=$((END_TIME - START_TIME))
+
+  echo "\n\033[31m❌ Build 테스트 실패! (소요시간: ${DURATION}초)\033[0m"
+  echo "\033[31m👉 빌드 오류를 수정한 후 다시 시도해주세요.\033[0m"
+  exit 1
+fi

@@ -1,0 +1,39 @@
+/// 장바구니 항목(장바구니에 담긴 상품 정보)
+model CartItem {
+  /// 1. 기본 식별자 (Primary Identifiers)
+  /// Primary Key로 CUID v2를 사용한다 (예: aetqn2jftkh2aqgdko9nf3ps)
+  id String @id @default(cuid(2)) @db.Text
+
+  /// 2. 외래 키 필드 (Foreign Keys)
+  /// 장바구니 ID
+  cartId    String @db.Text
+  /// 상품 ID
+  productId String @db.Text
+
+  /// 3. 필수 필드 (Required Fields)
+  /// 장바구니 항목에 담긴 상품의 수량(기본값 1개)
+  quantity Int @default(1) @db.Integer
+
+  /// 4. 선택적 필드 (Optional Fields)
+
+  /// 5. 타임스탬프 필드 (Timestamp Fields)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  /// 6. 관계 필드 (Relation Fields)
+  /// 장바구니 항목은 장바구니에 속한다(CartItem belongs to Cart)
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  /// 장바구니 항목에 담긴 상품(Product)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  /// 7. 역참조 필드 (Reverse Relation Fields)
+
+  /// 복합 고유 인덱스: 동일 장바구니에 동일 상품 중복 방지
+  @@unique([cartId, productId])
+  /// 성능 향상을 위해 외래 키에 인덱스 추가
+  @@index([cartId])
+  @@index([productId])
+  /// 8. 테이블명, 유니크 제약, 인덱스 설정 등
+  /// 테이블명을 명시적으로 지정(소문자, 복수형)
+  @@map("cart_items")
+}

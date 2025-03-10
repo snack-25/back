@@ -1,0 +1,52 @@
+/// 기업 예산
+model Budget {
+  /// 1. 기본 식별자 (Primary Identifiers)
+  /// Primary Key로 CUID v2를 사용한다 (예: aetqn2jftkh2aqgdko9nf3ps)
+  id String @id @default(cuid(2)) @db.Text
+
+  /// 2. 외래 키 필드 (Foreign Keys)
+  /// 이 예산을 관리하는 회사의 ID
+  companyId String @db.Text
+
+  /// 3. 필수 필드 (Required Fields)
+  /// 이 예산을 기록한 현재 년도
+  year          Int
+  /// 이 예산을 기록한 현재 월
+  month         Int    @db.SmallInt
+  /// 매달 시작 시 설정한 초기 예산
+  initialAmount Int    @default(0)
+  /// 현재 남은 예산 (수정 가능)
+  currentAmount Int    @default(0)
+  name          String @unique
+
+  /// 4. 선택적 필드 (Optional Fields)
+
+  /// 5. 타임스탬프 필드 (Timestamp Fields)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  /// 6. 관계 필드 (Relation Fields)
+  /// 이 예산을 관리하는 회사
+  company Company @relation(fields: [companyId], references: [id])
+
+  /// 7. 역참조 필드 (Reverse Relation Fields)
+  // 예산 입출금 내역
+  ledgers BudgetLedger[]
+
+  /// PostgreSQL에서 @@check 미지원
+  /// 월 범위 제약(1~12월)
+  /// @@check(month >= 1 && month <= 12)
+  /// 금액은 음수가 될 수 없음
+  /// @@check(initialAmount >= 0)
+  /// @@check(currentAmount >= 0)
+
+  // 특정 회사에서는 같은 년도/월에 중복 예산이 없도록 함 (원장을 통해 수정만 가능)
+  @@unique([companyId, year, month])
+  // year와 month 필드로 복합 인덱스 추가
+  @@index([year, month])
+  // companyId에 인덱스 추가
+  @@index([companyId])
+  /// 8. 테이블명, 유니크 제약, 인덱스 설정 등
+  /// 테이블명을 명시적으로 지정(소문자, 복수형)
+  @@map("budgets")
+}

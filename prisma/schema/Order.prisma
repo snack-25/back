@@ -1,0 +1,74 @@
+/// 주문(기업에서 주문한 내역)
+model Order {
+  /// 1. 기본 식별자 (Primary Identifiers)
+  /// Primary Key로 CUID v2를 사용한다 (예: aetqn2jftkh2aqgdko9nf3ps)
+  id String @id @default(cuid(2)) @db.Text
+
+  /// 2. 외래 키 필드 (Foreign Keys)
+  /// 한 기업당 여러 개의 주문이 가능(Company has many Orders, 1:N)
+  companyId String @db.Text
+
+  /// 주문을 생성한 관리자 ID (ADMIN 또는 SUPERADMIN)
+  createdById   String  @db.Text
+  /// 주문을 마지막으로 수정한 관리자 ID (ADMIN 또는 SUPERADMIN)
+  updatedById   String? @db.Text
+  /// 원래 주문을 요청한 일반 사용자 ID (USER)
+  requestedById String? @db.Text
+
+  /// 3. 필수 필드 (Required Fields)
+  /// [발전과제] 주문 상태 (pending, processing, delivered, cancelled, refunded 등)
+  status      OrderStatus @default(PENDING)
+  /// 주문 총액
+  totalAmount Int         @default(0)
+  /// 주문 코드 (주문 번호)
+  orderNumber String      @unique @default(cuid(2))
+
+  /// 4. 선택적 필드 (Optional Fields)
+  /// 배송 정보
+  /// 주소는 기업 주소에서 참조해서 사용하므로 불필요
+  /// shippingAddress String?
+  shippingMethod String?
+  trackingNumber String?
+  shippedAt      DateTime? @db.Timestamptz(6)
+  deliveredAt    DateTime? @db.Timestamptz(6)
+  /// 주문 처리 관련 메모 (관리자용)
+  adminNotes     String?   @db.Text
+  /// 일반 메모 (고객 요청 사항 등)
+  notes          String?   @db.Text
+
+  /// 5. 타임스탬프 필드 (Timestamp Fields)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  /// 6. 관계 필드 (Relation Fields)
+  /// 주문을 한 기업(Company owns Order)
+  company     Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /// 주문 생성/수정 사용자 관계
+  createdBy   User    @relation("CreatedOrders", fields: [createdById], references: [id])
+  updatedBy   User?   @relation("UpdatedOrders", fields: [updatedById], references: [id])
+  /// 주문을 원래 요청한 일반 사용자
+  requestedBy User?   @relation("RequestedOrders", fields: [requestedById], references: [id])
+
+  /// 7. 역참조 필드 (Reverse Relation Fields)
+  /// 주문은 여러 개의 주문 항목을 가진다(Order has many OrderItems)
+  orderItems    OrderItem[]
+  /// 이 주문의 원천이 된 주문 요청들
+  orderRequests OrderRequest[]
+
+  /// 인덱스 추가
+  @@index([companyId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([createdById])
+  @@index([requestedById])
+  /// 테이블명을 명시적으로 지정(소문자, 복수형)
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}

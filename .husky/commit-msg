@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# pnpm이 설치되어 있으면 1, 설치되어 있지 않으면 0을 반환한다
+PNPM_INSTALLED=$(pnpm -v > /dev/null 2>&1; echo $?)
+
+if [ $PNPM_INSTALLED -ne 0 ]; then
+  echo "\033[31m❌ pnpm이 설치되어 있지 않습니다. pnpm을 설치해주세요.\033[0m"
+  exit 1
+fi
+
+# CI/CD 환경에서는 commit-msg hook을 skip 하고, 아닌 경우 실행
+if [ -n "$CI" ]; then
+  exit 0
+else
+  pnpm dlx commitlint --edit $1
+fi

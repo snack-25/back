@@ -1,0 +1,41 @@
+/// 주문 항목(주문에 포함된 각 상품)
+model OrderItem {
+  /// 1. 기본 식별자 (Primary Identifiers)
+  /// Primary Key로 CUID v2를 사용한다 (예: aetqn2jftkh2aqgdko9nf3ps)
+  id String @id @default(cuid(2)) @db.Text
+
+  /// 2. 외래 키 필드 (Foreign Keys)
+  /// 주문 ID
+  orderId   String @db.Text
+  /// 주문 항목에 포함된 상품의 ID
+  productId String @db.Text
+
+  /// 3. 필수 필드 (Required Fields)
+  /// 주문 항목에 포함된 상품의 수량(기본값 1개)
+  quantity Int @default(1)
+  /// 주문 당시의 상품 가격
+  price    Int @default(0)
+
+  /// 4. 선택적 필드 (Optional Fields)
+  notes String? @db.Text
+
+  /// 5. 타임스탬프 필드 (Timestamp Fields)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  /// 6. 관계 필드 (Relation Fields)
+  /// 주문 항목은 주문에 속한다(OrderItem belongs to Order)
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  /// 주문 항목에 포함된 상품(상품 정보)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  /// 7. 역참조 필드 (Reverse Relation Fields)
+
+  /// 주문 내의 상품은 중복될 수 없도록 복합 유니크 제약 추가
+  @@unique([orderId, productId])
+  /// 인덱스 및 제약 조건
+  @@index([orderId])
+  @@index([productId])
+  /// 테이블명을 명시적으로 지정(소문자, 복수형)
+  @@map("order_items")
+}

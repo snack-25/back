@@ -1,0 +1,35 @@
+# EditorConfig 정의: https://editorconfig.org
+
+# 최상위 EditorConfig 파일임을 나타냅니다
+root = true
+
+# 모든 파일에 적용되는 기본 설정
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# TypeScript 및 JavaScript 파일에 대한 설정
+[*.{ts,js}]
+quote_type = single
+max_line_length = 100
+
+# JSON 파일에 대한 설정
+[*.json]
+indent_size = 2
+
+# Markdown 파일에 대한 설정
+[*.md]
+trim_trailing_whitespace = false
+max_line_length = off
+
+# YAML 파일에 대한 설정
+[*.{yml,yaml}]
+indent_size = 2
+
+# 특정 구성 파일에 대한 설정
+[{package.json,package-lock.json,tsconfig.json}]
+indent_size = 2

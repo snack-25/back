@@ -1,0 +1,40 @@
+/// 장바구니
+model Cart {
+  /// 1. 기본 식별자 (Primary Identifiers)
+  /// Primary Key로 CUID v2를 사용한다 (예: aetqn2jftkh2aqgdko9nf3ps)
+  id String @id @default(cuid(2)) @db.Text
+
+  /// 2. 외래 키 필드 (Foreign Keys)
+  /// 한 유저당 하나의 장바구니만 가능(User has one Cart)
+  userId String @unique @db.Text
+
+  /// 3. 필수 필드 (Required Fields)
+  /// 발전과제: 장바구니의 상태 (기본값: "active")
+  /// status    String   @default("active") @db.Text
+
+  /// 4. 선택적 필드 (Optional Fields)
+  /// 발전과제: 장바구니에 담긴 상품의 총 가격(기본값 0)
+  /// totalAmount Decimal? @default(0) @db.Decimal(10, 2)
+  /// 발전과제: 장바구니 만료 시간
+  /// expiredAt  DateTime? @db.Timestamptz(6)
+  /// 발전과제: 장바구니 삭제 시간(Soft Delete)
+  /// deletedAt  DateTime? @db.Timestamptz(6)
+
+  /// 5. 타임스탬프 필드 (Timestamp Fields)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  /// 6. 관계 필드 (Relation Fields)
+  /// 장바구니를 소유하는 유저(User owns Cart)
+  user User @relation(fields: [userId], references: [id])
+
+  /// 7. 역참조 필드 (Reverse Relation Fields)
+  /// 장바구니에는 여러 개의 장바구니 항목이 담길 수 있음(Cart has many CartItems)
+  cartItems CartItem[]
+
+  // 명시적 인덱스 추가
+  @@index([userId])
+  /// 8. 테이블명, 유니크 제약, 인덱스 설정 등
+  /// 테이블명을 명시적으로 지정(소문자, 복수형)
+  @@map("carts")
+}

@@ -1,0 +1,69 @@
+/// 유저
+model User {
+  /// 1. 기본 식별자 (Primary Identifiers)
+  /// Primary Key로 CUID v2를 사용한다 (예: aetqn2jftkh2aqgdko9nf3ps)
+  id String @id @default(cuid(2)) @db.Text
+
+  /// 2. 외래 키 필드 (Foreign Keys)
+  /// 유저가 속한 회사 ID
+  companyId String @db.Text
+
+  /// 3. 필수 필드 (Required Fields)
+  /// 이메일 중복 방지 및 최대 길이 제한(5~255자)
+  email    String   @unique @db.VarChar(255)
+  /// 해시된 비밀번호 저장(8~255자)
+  /// 24/08/21 개정된 NIST 디지털 신원 가이드라인(SP 800-63-4)에 따라
+  /// 최소 8자리, 권장 15자리 길이 이상, 최소 64자리 최대 비밀번호 길이를 허용해야 함을 권고
+  /// Ref: https://pages.nist.gov/800-63-4/sp800-63b.html#password
+  password String   @db.VarChar(255)
+  /// 유저 이름(2~255자)
+  name     String   @db.VarChar(255)
+  /// 유저 권한 설정(최고관리자, 관리자, 유저)
+  role     UserRole @default(USER)
+
+  /// 4. 선택적 필드 (Optional Fields)
+  /// JWT 리프레시 토큰(토큰 만료 확인을 위해 DB에 저장함)
+  refreshToken String? @db.Text
+
+  /// 5. 타임스탬프 필드 (Timestamp Fields)
+  /// 생성일시, 갱신일시 등 날짜 관련 필드
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  /// 6. 관계 필드 (Relation Fields)
+  /// 유저가 속한 회사(이 유저는 어느 회사에 속해 있는가?)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  /// 7. 역참조 필드 (Reverse Relation Fields)
+  /// 최고관리자는 여러 유저를 초대할 수 있음
+  /// 초대를 보낸 유저(최고관리자)
+  invitations           Invitation[]   @relation("UserInvitations")
+  /// 한 유저 당 장바구니를 하나만 가질 수 있음 (처음 가입 시에는 장바구니가 없으므로 optional하게 설정함)
+  cart                  Cart?
+  /// 유저는 여러 개의 주문 요청을 가질 수 있음
+  orderRequests         OrderRequest[] @relation("requester")
+  /// 유저가 담당자로 처리한 주문 요청
+  resolvedOrderRequests OrderRequest[] @relation("resolver")
+  /// 관리자가 생성한 주문들
+  createdOrders         Order[]        @relation("CreatedOrders")
+  /// 관리자가 수정한 주문들
+  updatedOrders         Order[]        @relation("UpdatedOrders")
+  /// 일반 유저가 요청했던 주문들
+  requestedOrders       Order[]        @relation("RequestedOrders")
+  /// [발전과제] 유저가 찜한(Wishlist) 상품들
+  /// wishlists Wishlist[]
+
+  /// 유효성 검증을 위한 제약사항 추가
+  @@index([companyId])
+  @@index([email])
+  /// 8. 테이블명, 유니크 제약, 인덱스 설정 등
+  /// 테이블명을 명시적으로 지정(소문자, 복수형)
+  @@map("users")
+}
+
+/// 유저 권한
+enum UserRole {
+  SUPERADMIN /// 최고관리자
+  ADMIN /// 관리자
+  USER /// 유저
+}
