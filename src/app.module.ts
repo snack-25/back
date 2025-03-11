@@ -20,7 +20,7 @@ import { InvitationsModule } from './invitations/invitations.module';
       // 전역적으로 환경변수 설정
       isGlobal: true,
       // NODE_ENV 값에 따라 환경변수 파일을 로드
-      envFilePath: process.env.NODE_ENV ? `.env.${process.env.NODE_ENV}` : '.env',
+      envFilePath: `.env.${process.env.NODE_ENV || 'local'}`,
     }),
     PrismaModule,
     UsersModule,
