@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
+import { PrismaModule } from './shared/prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { CompaniesModule } from './companies/companies.module';
@@ -21,6 +22,7 @@ import { InvitationsModule } from './invitations/invitations.module';
       // NODE_ENV 값에 따라 환경변수 파일을 로드
       envFilePath: process.env.NODE_ENV ? `.env.${process.env.NODE_ENV}` : '.env',
     }),
+    PrismaModule,
     UsersModule,
     AuthModule,
     CompaniesModule,
