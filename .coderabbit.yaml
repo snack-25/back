@@ -1,115 +1,80 @@
-# yaml-language-server: https://www.coderabbit.ai/integrations/schema.v2.json
-title: 'Snack25 Code Review'
-description: 'Code review guidelines for Nest.js projects'
 language: 'ko-KR'
-early_access: false
-tone_instructions: 'You are an expert code reviewer in Nest.js, TypeScript, JavaScript, PostgreSQL, Prisma and NodeJS. You work in an enterprise software developer team, providing concise and clear code review advice. You only elaborate or provide detailed explanations when requested.'
-version: 1
 
-review:
-  enabled: true
-  auto_review: true
-  auto_merge: false
-  review_level: strict
-  max_lines_per_pr: 300 # PR 크기 제한 추가
+tone_instructions: 'Nest.js 및 Typescript 관련 기술에 대해 빠르고 명확한 코드 리뷰를 제공하며, 건설적인 개선 제안을 합니다.'
+
+early_access: false
+enable_free_tier: true
+
+reviews:
+  profile: 'chill'
+  high_level_summary: true
+  poem: false
+  path_filters:
+    - '!dist/**'
+    - '!node_modules/**'
+  path_instructions:
+    - path: '**/*.ts'
+      instructions: |
+        TypeScript 코드 검토 시 타입 안전성과 최신 문법 사용에 중점을 두세요. 그리고 아래의 규칙들을 준수하는지 확인하세요.
+        1. Security Best Practices
+        - 'Ensure no hardcoded secrets or credentials'
+        - 'Check for proper password hashing (Argon2 사용 여부 확인)'
+        - 'Verify secure API authentication methods (JWT, OAuth 적용 확인)'
+        - 'Ensure CORS settings are properly configured'
+        - 'Check for proper validation with class-validator'
+        - 'Verify protection against common web vulnerabilities (XSS, CSRF)'
+        - 'Check for proper rate limiting on sensitive endpoints'
+        2. Database & Prisma Best Practices
+        - 'Ensure Prisma schema follows best practices (indexing, constraints)'
+        - 'Check for efficient database queries (avoid N+1 problems)'
+        - 'Verify relation constraints and cascading rules'
+        - 'Ensure database migrations are properly documented'
+        - 'Check for transaction usage where multiple operations are performed'
+        - 'Ensure proper error handling for database operations'
+        3. Code Structure & NestJS Best Practices
+        - 'Ensure modules follow a modular and scalable structure'
+        - 'Check for proper use of services instead of direct DB calls'
+        - 'Verify usage of DTOs for request validation'
+        - 'Ensure error handling follows global exception filter patterns'
+        - 'Check for proper dependency injection practices'
+        - 'Verify use of interfaces for better type safety and abstraction'
+        4. Performance Optimization
+        - 'Ensure API endpoints use pagination where applicable'
+        - 'Check for caching strategies on frequently queried data'
+        - 'Verify background jobs are used for time-consuming tasks'
+        - 'Check for efficient memory usage patterns'
+        - 'Verify proper use of async/await patterns'
+        5. Testing Best Practices
+        - 'Ensure unit tests for core business logic'
+        - 'Check for integration tests for API endpoints'
+        - 'Verify proper mocking of external dependencies'
+        - 'Ensure test coverage meets minimum thresholds (80%+)'
+        - 'Check for proper test isolation'
+        6. Documentation
+        - 'Verify OpenAPI/Swagger annotations for API endpoints'
+        - 'Check for meaningful JSDoc comments on complex functions'
+        - 'Ensure README and contribution guidelines are up-to-date'
+        - 'Verify API versioning is properly documented'
+        7. Code Style & Quality
+        - 'Verify adherence to TypeScript best practices'
+        - 'Check for proper error handling and null checks'
+        - 'Ensure consistent naming conventions'
+        - 'Verify code complexity is kept to a minimum'
+        - 'Check for proper use of TypeScript features (types, interfaces, etc.)'
+    - path: 'src/**/*.service.ts'
+      instructions: '서비스 코드는 비즈니스 로직과 의존성 주입이 적절한지 확인하세요.'
   ignore:
     - '**/*.spec.ts'
     - '**/test/**'
     - '**/dist/**'
     - '**/node_modules/**'
-
-rules:
-  - name: 'Security Best Practices'
-    description: 'NestJS 보안 및 인증 관련 코드 리뷰'
-    checks:
-      - 'Ensure no hardcoded secrets or credentials'
-      - 'Check for proper password hashing (Argon2 사용 여부 확인)'
-      - 'Verify secure API authentication methods (JWT, OAuth 적용 확인)'
-      - 'Ensure CORS settings are properly configured'
-      - 'Check for proper validation with class-validator'
-      - 'Verify protection against common web vulnerabilities (XSS, CSRF)'
-      - 'Check for proper rate limiting on sensitive endpoints'
-
-  - name: 'Database & Prisma Best Practices'
-    description: 'Prisma 및 PostgreSQL 관련 코드 검토'
-    checks:
-      - 'Ensure Prisma schema follows best practices (indexing, constraints)'
-      - 'Check for efficient database queries (avoid N+1 problems)'
-      - 'Verify relation constraints and cascading rules'
-      - 'Ensure database migrations are properly documented'
-      - 'Check for transaction usage where multiple operations are performed'
-      - 'Ensure proper error handling for database operations'
-
-  - name: 'Code Structure & NestJS Best Practices'
-    description: 'NestJS 프로젝트 구조 및 모범 사례 검토'
-    checks:
-      - 'Ensure modules follow a modular and scalable structure'
-      - 'Check for proper use of services instead of direct DB calls'
-      - 'Verify usage of DTOs for request validation'
-      - 'Ensure error handling follows global exception filter patterns'
-      - 'Check for proper dependency injection practices'
-      - 'Verify use of interfaces for better type safety and abstraction'
-
-  - name: 'Performance Optimization'
-    description: '백엔드 성능 최적화 리뷰'
-    checks:
-      - 'Ensure API endpoints use pagination where applicable'
-      - 'Check for caching strategies on frequently queried data'
-      - 'Verify background jobs are used for time-consuming tasks'
-      - 'Check for efficient memory usage patterns'
-      - 'Verify proper use of async/await patterns'
-
-  - name: 'Testing Best Practices'
-    description: '테스트 코드 품질 검토'
-    checks:
-      - 'Ensure unit tests for core business logic'
-      - 'Check for integration tests for API endpoints'
-      - 'Verify proper mocking of external dependencies'
-      - 'Ensure test coverage meets minimum thresholds (80%+)'
-      - 'Check for proper test isolation'
-
-  - name: 'Documentation'
-    description: 'API 및 코드 문서화 검토'
-    checks:
-      - 'Verify OpenAPI/Swagger annotations for API endpoints'
-      - 'Check for meaningful JSDoc comments on complex functions'
-      - 'Ensure README and contribution guidelines are up-to-date'
-      - 'Verify API versioning is properly documented'
-
-  - name: 'Code Style & Quality'
-    description: '코드 스타일 및 품질 검토'
-    checks:
-      - 'Verify adherence to TypeScript best practices'
-      - 'Check for proper error handling and null checks'
-      - 'Ensure consistent naming conventions'
-      - 'Verify code complexity is kept to a minimum'
-      - 'Check for proper use of TypeScript features (types, interfaces, etc.)'
-
-commit_conventions:
-  enabled: true
-  patterns:
-    - "^feat(\\(.+\\))?: .+"
-    - "^fix(\\(.+\\))?: .+"
-    - "^docs(\\(.+\\))?: .+"
-    - "^style(\\(.+\\))?: .+"
-    - "^refactor(\\(.+\\))?: .+"
-    - "^perf(\\(.+\\))?: .+"
-    - "^test(\\(.+\\))?: .+"
-    - "^chore(\\(.+\\))?: .+"
-
-notifications:
-  enabled: true
-  notify_on:
-    - 'review_requested'
-    - 'auto_review_completed'
-    - 'changes_requested'
-    - 'approved'
-    - 'merged'
-
-github:
-  require_reviewers: 1 # 최소 1명의 리뷰어 필요
-  require_approval: true # 최소 1명의 리뷰어 승인 필요
-  allow_self_review: false # 자기 자신에게 리뷰를 요청할 수 없음
-  label_approved_prs: 'approved ✅'
-  label_changes_requested: 'changes requested ⚠️'
-  label_work_in_progress: 'WIP 🚧'
+  auto_review:
+    enabled: true
+    ignore_title_keywords:
+      - 'WIP'
+      - 'Draft'
+      - 'DO NOT MERGE'
+      - 'WIP'
+code_generation:
+  docstrings:
+    language: 'ko-KR'
