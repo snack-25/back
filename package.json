@@ -55,6 +55,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "cookie-parser": "^1.4.7",
+    "cross-env": "7.0.3",
     "multer": "1.4.5-lts.1",
     "multer-s3": "^3.0.1",
     "passport": "^0.7.0",
@@ -97,7 +98,7 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "5.8.2",
-    "typescript-eslint": "^8.26.0"
+    "typescript-eslint": "^8.26.1"
   },
   "jest": {
     "moduleFileExtensions": [
