@@ -1,15 +1,9 @@
 import { INestApplication, Injectable, OnModuleInit, Logger } from '@nestjs/common';
-import { Prisma, PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class PrismaService
-  extends PrismaClient<
-    Prisma.PrismaClientOptions,
-    'query' | 'info' | 'warn' | 'error' | 'beforeExit'
-  >
-  implements OnModuleInit
-{
+export class PrismaService extends PrismaClient implements OnModuleInit {
   private readonly logger = new Logger(PrismaService.name);
 
   // ConfigService를 생성자에 주입 (DI 활용)
@@ -19,7 +13,7 @@ export class PrismaService
         db: {
           url: config.get<string>('DATABASE_URL'),
         },
-      } as Prisma.Datasources,
+      },
       // 로깅 옵션 추가
       log: [
         { emit: 'event', level: 'query' },
@@ -29,8 +23,11 @@ export class PrismaService
       ],
     });
 
-    // 쿼리 로깅 설정 (개발 환경에서만 활성화 추천)
-    if (config.get<string>('NODE_ENV') === 'development') {
+    // 쿼리 로깅 설정 (로컬/개발 환경에서만 활성화 추천)
+    if (
+      config.get<string>('NODE_ENV') === 'local' ||
+      config.get<string>('NODE_ENV') === 'development'
+    ) {
       this.$on('query', e => {
         this.logger.debug(`Query: ${e.query}`);
         this.logger.debug(`Params: ${e.params}`);
@@ -39,7 +36,7 @@ export class PrismaService
     }
 
     // 에러 로깅 설정
-    this.$on('error', e => {
+    this.$on('error', (e: Error) => {
       this.logger.error(`Database error: ${e.message}`);
     });
   }
@@ -74,7 +71,9 @@ export class PrismaService
 
         void app
           .close()
-          .then(() => this.$disconnect())
+          .then(() => {
+            return this.$disconnect() as Promise<void>;
+          })
           .then(() => {
             clearTimeout(shutdownTimeout);
             this.logger.log('애플리케이션이 안전하게 종료되었습니다.');
