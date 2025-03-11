@@ -1,0 +1,80 @@
+language: 'ko-KR'
+
+tone_instructions: 'Nest.js 및 Typescript 관련 기술에 대해 빠르고 명확한 코드 리뷰를 제공하며, 건설적인 개선 제안을 합니다.'
+
+early_access: false
+enable_free_tier: true
+
+reviews:
+  profile: 'chill'
+  high_level_summary: true
+  poem: false
+  path_filters:
+    - '!dist/**'
+    - '!node_modules/**'
+  path_instructions:
+    - path: '**/*.ts'
+      instructions: |
+        TypeScript 코드 검토 시 타입 안전성과 최신 문법 사용에 중점을 두세요. 그리고 아래의 규칙들을 준수하는지 확인하세요.
+        1. Security Best Practices
+        - 'Ensure no hardcoded secrets or credentials'
+        - 'Check for proper password hashing (Argon2 사용 여부 확인)'
+        - 'Verify secure API authentication methods (JWT, OAuth 적용 확인)'
+        - 'Ensure CORS settings are properly configured'
+        - 'Check for proper validation with class-validator'
+        - 'Verify protection against common web vulnerabilities (XSS, CSRF)'
+        - 'Check for proper rate limiting on sensitive endpoints'
+        2. Database & Prisma Best Practices
+        - 'Ensure Prisma schema follows best practices (indexing, constraints)'
+        - 'Check for efficient database queries (avoid N+1 problems)'
+        - 'Verify relation constraints and cascading rules'
+        - 'Ensure database migrations are properly documented'
+        - 'Check for transaction usage where multiple operations are performed'
+        - 'Ensure proper error handling for database operations'
+        3. Code Structure & NestJS Best Practices
+        - 'Ensure modules follow a modular and scalable structure'
+        - 'Check for proper use of services instead of direct DB calls'
+        - 'Verify usage of DTOs for request validation'
+        - 'Ensure error handling follows global exception filter patterns'
+        - 'Check for proper dependency injection practices'
+        - 'Verify use of interfaces for better type safety and abstraction'
+        4. Performance Optimization
+        - 'Ensure API endpoints use pagination where applicable'
+        - 'Check for caching strategies on frequently queried data'
+        - 'Verify background jobs are used for time-consuming tasks'
+        - 'Check for efficient memory usage patterns'
+        - 'Verify proper use of async/await patterns'
+        5. Testing Best Practices
+        - 'Ensure unit tests for core business logic'
+        - 'Check for integration tests for API endpoints'
+        - 'Verify proper mocking of external dependencies'
+        - 'Ensure test coverage meets minimum thresholds (80%+)'
+        - 'Check for proper test isolation'
+        6. Documentation
+        - 'Verify OpenAPI/Swagger annotations for API endpoints'
+        - 'Check for meaningful JSDoc comments on complex functions'
+        - 'Ensure README and contribution guidelines are up-to-date'
+        - 'Verify API versioning is properly documented'
+        7. Code Style & Quality
+        - 'Verify adherence to TypeScript best practices'
+        - 'Check for proper error handling and null checks'
+        - 'Ensure consistent naming conventions'
+        - 'Verify code complexity is kept to a minimum'
+        - 'Check for proper use of TypeScript features (types, interfaces, etc.)'
+    - path: 'src/**/*.service.ts'
+      instructions: '서비스 코드는 비즈니스 로직과 의존성 주입이 적절한지 확인하세요.'
+  ignore:
+    - '**/*.spec.ts'
+    - '**/test/**'
+    - '**/dist/**'
+    - '**/node_modules/**'
+  auto_review:
+    enabled: true
+    ignore_title_keywords:
+      - 'WIP'
+      - 'Draft'
+      - 'DO NOT MERGE'
+      - 'WIP'
+code_generation:
+  docstrings:
+    language: 'ko-KR'
