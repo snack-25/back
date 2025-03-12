@@ -21,6 +21,14 @@ export class CartsService {
       throw new ForbiddenException('잘못된 장바구니 접근입니다.');
     }
 
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      throw new NotFoundException('존재하지 않는 상품입니다.');
+    }
+
     let item = (await this.prisma.cartItem.findUnique({
       where: { cartId_productId: { cartId, productId } },
     })) as CartItem;

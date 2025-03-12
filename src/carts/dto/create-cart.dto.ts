@@ -1,6 +1,9 @@
-import { IsString } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateCartDto {
-  @IsString()
-  public readonly productId: string;
+  @ApiProperty({ description: '상품 ID' })
+  @IsNotEmpty({ message: '상품 ID는 필수입니다.' })
+  @IsString({ message: '상품 ID는 문자열이어야 합니다.' })
+  public productId: string;
 }
