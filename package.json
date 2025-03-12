@@ -33,7 +33,8 @@
     "prepare": "husky",
     "postinstall": "sh .husky/check-pnpm.sh",
     "prisma:generate": "cross-env NODE_ENV=local prisma generate",
-    "prisma:deploy": "cross-env NODE_ENV=local prisma migrate deploy"
+    "prisma:deploy": "cross-env NODE_ENV=local prisma migrate deploy",
+    "db:seed": "ts-node prisma/seed.ts"
   },
   "lint-staged": {
     "*.{ts,js}": [
