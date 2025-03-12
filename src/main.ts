@@ -17,7 +17,7 @@ async function bootstrap(): Promise<void> {
   SwaggerModule.setup('api', app, document, customOption);
   // CORS 설정
   app.enableCors({
-    origin: ['http://localhost:3000', 'https://chobo.dev', 'https://www.chobo.dev'],
+    origin: ['http://localhost:3000', 'https://ocs.navy', 'https://www.ocs.navy'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
     preflightContinue: false,
