@@ -1,9 +1,12 @@
 import { PrismaClient } from '@prisma/client';
-import dotenv from 'dotenv';
-
-dotenv.config({ path: '.env.local' });
+import { ConfigModule } from '@nestjs/config';
 
 const prisma = new PrismaClient();
+
+ConfigModule.forRoot({
+  envFilePath: `.env.${process.env.NODE_ENV || 'local'}`,
+  isGlobal: true,
+});
 
 async function main() {
   console.log(' Seeding database...');
