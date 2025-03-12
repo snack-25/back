@@ -3,7 +3,6 @@ import { CreateCartDto } from './dto/create-cart.dto';
 import { CartsService } from './carts.service';
 import { DeleteCartItemsDto, UpdateCartItemDto } from './dto/update-cart.dto';
 import { CartItem } from '@prisma/client';
-import { ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
 
 @Controller('carts')
 export class CartsController {
@@ -35,7 +34,7 @@ export class CartsController {
   }
   // TODO: /carts/{cartId}/items (DELETE) 장바구니 항목 삭제
   @Delete(':cartId/items')
-  public async removeCartItems(
+  public async deleteCartItems(
     @Param('cartId') cartId: string,
     @Body() deleteDto: DeleteCartItemsDto,
   ): Promise<{ message: string }> {
