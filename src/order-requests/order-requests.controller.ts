@@ -29,7 +29,7 @@ export class OrderRequestsController {
     const user = req.user as { id: string; role: UserRole; companyId: string }; // 타입 캐스팅
 
     if (!user) {
-      throw new Error('Unauthorized');
+      throw new UnauthorizedException('인증되지 않은 사용자입니다.');
     }
 
     // ✅ 일반 사용자: 본인의 `userId`를 기준으로 구매 요청 내역 조회
