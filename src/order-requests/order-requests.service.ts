@@ -1,5 +1,4 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { CreateAuthDto } from '@src/auth/dto/create-auth.dto';
 import { OrderRequest, OrderRequestStatus, PrismaClient } from '@prisma/client';
 import { CreateOrderRequestDto } from './dto/create-order-request.dto';
 import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
