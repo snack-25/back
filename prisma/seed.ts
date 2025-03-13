@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { ConfigModule } from '@nestjs/config';
+import { products } from './const/products';
 
 const prisma = new PrismaClient();
 
@@ -147,6 +148,12 @@ async function main() {
         updatedAt: new Date(),
       },
     });
+
+    // 6.상품 추가
+    await tx.product.createMany({
+      data: products,
+      skipDuplicates: true,
+    })
 
     console.log('✅ Seeding complete!');
   });
