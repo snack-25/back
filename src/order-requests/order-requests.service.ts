@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateAuthDto } from '@src/auth/dto/create-auth.dto';
 import { OrderRequest, OrderRequestStatus, PrismaClient } from '@prisma/client';
 import { CreateOrderRequestDto } from './dto/create-order-request.dto';
@@ -158,6 +158,25 @@ export class OrderRequestsService {
 
   // ✅ 주문 요청 승인
   async approveOrderRequest(orderRequestId: string, dto: ApproveOrderRequestDto) {
+    // 1️⃣ 주문 요청 상태 확인
+    const orderRequest = await this.prisma.orderRequest.findUnique({
+      where: { id: orderRequestId },
+      select: { status: true }, // status만 조회
+    });
+
+    if (!orderRequest) {
+      throw new BadRequestException('주문 요청을 찾을 수 없습니다.');
+    }
+
+    // 2️⃣ 이미 승인되었거나 거절된 경우 예외 처리
+    if (
+      orderRequest.status === OrderRequestStatus.APPROVED ||
+      orderRequest.status === OrderRequestStatus.REJECTED
+    ) {
+      throw new BadRequestException('이미 처리된 주문 요청은 승인할 수 없습니다.');
+    }
+
+    // 3️⃣ 승인 처리 (상태 변경)
     return this.prisma.orderRequest.update({
       where: { id: orderRequestId },
       data: {
@@ -171,6 +190,25 @@ export class OrderRequestsService {
 
   // ✅ 주문 요청 거절
   async rejectOrderRequest(orderRequestId: string, dto: RejectOrderRequestDto) {
+    // 1️⃣ 주문 요청 상태 확인
+    const orderRequest = await this.prisma.orderRequest.findUnique({
+      where: { id: orderRequestId },
+      select: { status: true }, // status만 조회
+    });
+
+    if (!orderRequest) {
+      throw new BadRequestException('주문 요청을 찾을 수 없습니다.');
+    }
+
+    // 2️⃣ 이미 승인되었거나 거절된 경우 예외 처리
+    if (
+      orderRequest.status === OrderRequestStatus.APPROVED ||
+      orderRequest.status === OrderRequestStatus.REJECTED
+    ) {
+      throw new BadRequestException('이미 처리된 주문 요청은 거절할 수 없습니다.');
+    }
+
+    // 3️⃣ 거절 처리 (상태 변경)
     return this.prisma.orderRequest.update({
       where: { id: orderRequestId },
       data: {
