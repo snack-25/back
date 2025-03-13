@@ -30,8 +30,9 @@ export class OrderRequestsController {
       return this.orderRequestsService.getCompanyOrderRequests(user.companyId);
     }
 
-    throw new Error('Unauthorized');
+    throw new UnauthorizedException('인증되지 않은 사용자입니다.');
   }
+  
   //TODO: /order-requests (POST) 주문 요청 생성
   @Post()
   async createOrderRequest(@Req() req: Request, @Body() dto: CreateOrderRequestDto) {
