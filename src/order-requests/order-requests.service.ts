@@ -99,7 +99,54 @@ export class OrderRequestsService {
   }
 
   // ✅ 주문 요청 상세 조회
+  async getOrderRequestDetail(orderRequestId: string) {
+    const orderRequest = await this.prisma.orderRequest.findUnique({
+      where: { id: orderRequestId },
+      include: {
+        orderRequestItems: {  // orderRequestItem 테이블과 연관된 데이터를 가져옴
+          include: {
+            product: {  // product 테이블에서 상품 정보 조회
+              select: { name: true, price: true },
+            },
+          },
+        },
+      },
+    });
 
+    if (!orderRequest) {
+      throw new NotFoundException('해당 주문 요청을 찾을 수 없습니다.');
+    }
+
+    // 요청한 사람의 이름 조회
+    const requester = await this.prisma.user.findUnique({
+      where: { id: orderRequest.requesterId },
+      select: { name: true },
+    });
+
+    // 요청을 처리한 사람의 이름 조회 (resolverId가 있을 때만)
+    const resolver = orderRequest.resolverId
+      ? await this.prisma.user.findUnique({
+          where: { id: orderRequest.resolverId },
+          select: { name: true },
+        })
+      : null;
+
+    return {
+      requestId: orderRequest.id,
+      status: orderRequest.status,
+      requestedAt: orderRequest.createdAt, // 요청일
+      resolvedAt: orderRequest.resolvedAt, // 처리일
+      resolverMessage: orderRequest.notes, // 처리 메시지
+      requesterName: requester?.name || '알 수 없음', // 요청한 사람의 이름
+      resolverName: resolver?.name || null, // 처리한 사람의 이름
+      items: orderRequest.orderRequestItems.map((item) => ({
+        productName: item.product?.name || '상품 정보 없음',
+        quantity: item.quantity,
+        price: item.product?.price || 0,
+        notes: item.notes || null, // 주문 요청 시 입력한 메모
+      })),
+    };
+  }
   // ✅ 주문 요청 ID로 상세 조회
   async getOrderRequestById(orderRequestId: string): Promise<OrderRequest | null> {
     return this.prisma.orderRequest.findUnique({

@@ -17,7 +17,7 @@ class OrderRequestItemDto {
   @ApiProperty({ description: '상품 가격', example: 10000 })
   price?: number;  // 필수값이 아니라 DB에서 자동으로 채워짐
 
-  @ApiProperty({ description: '요청 메시지 (사용자가 입력하는 메모)', example: '빠른 배송 부탁드립니다.' })
+  @ApiProperty({ description: '요청 메시지 (사용자가 입력하는 메모)', example: '구매 부탁드립니다.' })
   @IsString()
   notes?: string;
 }

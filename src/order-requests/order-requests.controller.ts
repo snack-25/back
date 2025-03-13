@@ -55,7 +55,9 @@ export class OrderRequestsController {
   
   //TODO: /order-requests/{orderRequestId} (GET) 주문 요청 상세 조회
   @Get(':orderRequestId')
-  async getOrderRequestDetail(@Req() req: Request) {}
+  async getOrderRequestDetail(@Param('orderRequestId') orderRequestId: string) {
+    return this.orderRequestsService.getOrderRequestDetail(orderRequestId);
+  }
 
   //TODO: /order-requests/{orderRequestId}/accept (POST) 주문 요청 승인
   @Post(':orderRequestId/accept')
