@@ -6,7 +6,10 @@ const prisma = new PrismaClient();
 @Injectable()
 export class ProductsService {
   async findAll() {
-    const products = await prisma.product.findMany();
+    const products = await prisma.product.findMany({
+      skip: 0,
+      take: 8,
+    });
     return products;
   }
 }

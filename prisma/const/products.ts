@@ -5,7 +5,7 @@ export const products = [
     name: '허니버터칩',
     price: 1500,
     description: '달콤한 허니버터 맛이 일품인 과자',
-    imageUrl: 'https://placehold.co/600x400?text=honeybutter',
+    imageUrl: 'https://images.pexels.com/photos/3537844/pexels-photo-3537844.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
   },
   {
     id: 'product_02',
@@ -13,7 +13,7 @@ export const products = [
     name: '콜라',
     price: 2000,
     description: '시원한 탄산음료',
-    imageUrl: 'https://placehold.co/600x400?text=cola'
+    imageUrl: 'https://images.pexels.com/photos/50593/coca-cola-cold-drink-soft-drink-coke-50593.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
   },
   {
     id: 'product_03',
@@ -29,7 +29,7 @@ export const products = [
     name: '신라면 컵',
     price: 1300,
     description: '매콤한 국물이 일품인 컵라면',
-    imageUrl: 'https://placehold.co/600x400?text=cupnoodle'
+    imageUrl: 'https://placehold.co/600x400?text=cup+noodle'
   },
   {
     id: 'product_05',
@@ -45,7 +45,7 @@ export const products = [
     name: '에티오피아 예가체프',
     price: 25000,
     description: '꽃향이 풍부한 에티오피아 원두',
-    imageUrl: 'https://placehold.co/600x400?text=coffee+bean'
+    imageUrl: 'https://images.pexels.com/photos/302899/pexels-photo-302899.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
   },
   {
     id: 'product_07',
@@ -61,7 +61,7 @@ export const products = [
     name: '제주 감귤 1kg',
     price: 8900,
     description: '새콤달콤한 제주 감귤',
-    imageUrl: 'https://placehold.co/600x400?text=tangerine'
+    imageUrl: 'https://images.pexels.com/photos/2771926/pexels-photo-2771926.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
   },
   {
     id: 'product_09',
@@ -69,7 +69,7 @@ export const products = [
     name: '다크초콜릿 70%',
     price: 4500,
     description: '카카오 함량 70%의 프리미엄 다크초콜릿',
-    imageUrl: 'https://placehold.co/600x400?text=chocolate'
+    imageUrl: 'https://images.pexels.com/photos/2072158/pexels-photo-2072158.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
   },
   {
     id: 'product_10',
@@ -77,6 +77,6 @@ export const products = [
     name: '캐모마일 티백 20개입',
     price: 5500,
     description: '릴렉싱에 도움을 주는 캐모마일차',
-    imageUrl: 'https://placehold.co/600x400?text=chamomile'
+    imageUrl: 'https://images.pexels.com/photos/1638280/pexels-photo-1638280.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
   }
 ];
