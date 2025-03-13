@@ -32,7 +32,7 @@ export class OrderRequestsController {
 
     throw new UnauthorizedException('인증되지 않은 사용자입니다.');
   }
-  
+
   //TODO: /order-requests (POST) 주문 요청 생성
   @Post()
   async createOrderRequest(@Req() req: Request, @Body() dto: CreateOrderRequestDto) {
@@ -125,13 +125,13 @@ export class OrderRequestsController {
     throw new UnauthorizedException('인증되지 않은 사용자입니다.');
   }
 
-  if (user.role !== UserRole.USER) {
-    throw new ForbiddenException('관리자는 주문 요청을 삭제할 수 없습니다.');
-  }
-
   const orderRequest = await this.orderRequestsService.getOrderRequestById(orderRequestId);
   if (!orderRequest) {
     throw new NotFoundException('주문 요청을 찾을 수 없습니다.');
+  }
+
+  if (orderRequest.requesterId !== user.userId) {
+    throw new ForbiddenException('본인이 생성한 주문 요청만 삭제할 수 있습니다.');
   }
 
   if (orderRequest.status !== OrderRequestStatus.PENDING) {
