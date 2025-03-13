@@ -152,6 +152,7 @@ async function main() {
     // 6.상품 추가
     await tx.product.createMany({
       data: products,
+      skipDuplicates: true,
     })
 
     console.log('✅ Seeding complete!');
