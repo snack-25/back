@@ -130,7 +130,7 @@ export class OrderRequestsController {
     throw new NotFoundException('주문 요청을 찾을 수 없습니다.');
   }
 
-  if (orderRequest.requesterId !== user.userId) {
+  if (orderRequest.requesterId !== user.id) {
     throw new ForbiddenException('본인이 생성한 주문 요청만 삭제할 수 있습니다.');
   }
 
