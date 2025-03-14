@@ -10,7 +10,7 @@ ConfigModule.forRoot({
 });
 
 async function main() {
-  console.log(' Seeding database...');
+  console.log('🚀 Seeding database...');
 
   await prisma.$transaction(async tx => {
     // 1. Company 데이터 추가
@@ -28,99 +28,7 @@ async function main() {
       },
     });
 
-    // 2. 메인 카테고리 추가
-    const mainCategories = ['스낵', '음료', '생수', '간편식', '신선식품', '원두커피', '비품'];
-
-    for (const category of mainCategories) {
-      await tx.category.upsert({
-        where: { id: `cat-${category}` },
-        update: {},
-        create: {
-          id: `cat-${category}`,
-          companyId: company.id,
-          name: category,
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      });
-    }
-
-    // 3. 서브카테고리 추가
-    const subCategories = {
-      스낵: [
-        '과자',
-        '쿠키',
-        '파이',
-        '초콜릿류',
-        '캔디류',
-        '껌류',
-        '비스켓류',
-        '씨리얼바',
-        '젤리류',
-        '견과류',
-        '워터젤리',
-      ],
-      음료: [
-        '청량/탄산음료',
-        '과즙음료',
-        '에너지음료',
-        '이온음료',
-        '유산균음료',
-        '건강음료',
-        '차류',
-        '두유/우유',
-        '커피',
-      ],
-      생수: ['생수', '스파클링'],
-      간편식: [
-        '봉지라면',
-        '과일',
-        '컵라면',
-        '핫도그 및 소시지',
-        '계란',
-        '죽/스프류',
-        '컵밥류',
-        '시리얼',
-        '반찬류',
-        '면류',
-        '요거트류',
-        '가공안주류',
-        '유제품',
-      ],
-      신선식품: ['샐러드', '빵', '햄버거/샌드위치', '주먹밥/김밥', '도시락'],
-      원두커피: ['드립커피', '원두', '캡슐커피'],
-      비품: ['커피/차류', '생활용품', '일회용품', '사무용품', '카페용품', '일회용품(친환경)'],
-    };
-
-    for (const [mainCategory, subCategoryList] of Object.entries(subCategories)) {
-      const parentCategory = await tx.category.findUnique({
-        where: { id: `cat-${mainCategory}` },
-      });
-
-      if (!parentCategory) {
-        console.error(`❌ 메인 카테고리를 찾을 수 없습니다: ${mainCategory}`);
-        continue;
-      }
-
-      for (const subCategory of subCategoryList) {
-        await tx.category.upsert({
-          where: { id: `sub-${subCategory}` },
-          update: {},
-          create: {
-            id: `sub-${subCategory}`,
-            parentId: parentCategory.id,
-            companyId: company.id,
-            name: subCategory,
-            isActive: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-        });
-      }
-    }
-
-    // 4. User ID 11 추가
+    // 2. User ID 11 추가
     const user11 = await tx.user.upsert({
       where: { id: '11' },
       update: {},
@@ -137,7 +45,7 @@ async function main() {
       },
     });
 
-    // 5. 장바구니 추가 (User ID 11)
+    // 3. 장바구니 추가 (User ID 11)
     await tx.cart.upsert({
       where: { id: 'cart-11' },
       update: {},
@@ -149,13 +57,94 @@ async function main() {
       },
     });
 
-    // 6.상품 추가
+    // 4. 상품 추가
     await tx.product.createMany({
       data: products,
       skipDuplicates: true,
-    })
+    });
 
-    console.log('✅ Seeding complete!');
+    // 5. 주문 요청 추가 (Mock Data)
+    const existingProducts = await tx.product.findMany({
+      take: 3, // 상위 3개 상품만 사용
+      select: { id: true },
+    });
+
+    if (existingProducts.length < 3) {
+      throw new Error('❌ 충분한 상품 데이터가 없습니다.');
+    }
+
+    // 주문 요청 생성
+    const orderRequests = await tx.orderRequest.createMany({
+      data: [
+        {
+          id: 'order-1',
+          requesterId: user11.id,
+          companyId: company.id,
+          status: 'PENDING',
+          totalAmount: 5, // 주문 요청한 물품 총 수량
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: 'order-2',
+          requesterId: user11.id,
+          companyId: company.id,
+          status: 'PENDING',
+          totalAmount: 4,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ],
+      skipDuplicates: true,
+    });
+
+    console.log('✅ 주문 요청 데이터 추가 완료!');
+
+    // 6. 주문 요청 아이템 추가
+    await tx.orderRequestItem.createMany({
+      data: [
+        {
+          id: 'item-1',
+          orderRequestId: 'order-1',
+          productId: existingProducts[0].id,
+          quantity: 2, // 해당 상품 주문 수량
+          price: 1000, // 예제 가격
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: 'item-2',
+          orderRequestId: 'order-1',
+          productId: existingProducts[1].id,
+          quantity: 3,
+          price: 2000,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: 'item-3',
+          orderRequestId: 'order-2',
+          productId: existingProducts[1].id,
+          quantity: 1,
+          price: 2000,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: 'item-4',
+          orderRequestId: 'order-2',
+          productId: existingProducts[2].id,
+          quantity: 3,
+          price: 3000,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ],
+      skipDuplicates: true,
+    });
+
+    console.log('✅ 주문 요청 아이템 추가 완료!');
+    console.log('🎉 Seeding complete!');
   });
 }
 
