@@ -60,44 +60,66 @@ async function main() {
     });
 
     // 5. 주문 요청 추가 (Mock Data)
-    await tx.orderRequest.createMany({
-      data: [
-        {
-          id: 'order-1',
-          requesterId: user11.id,
-          companyId: company.id,
-          status: 'PENDING',
-          totalAmount: 5, // 예시로 주문 요청한 물품 총 수량
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: 'order-2',
-          requesterId: user11.id,
-          companyId: company.id,
-          status: 'PENDING',
-          totalAmount: 8,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: 'order-3',
-          requesterId: user11.id,
-          companyId: company.id,
-          status: 'PENDING',
-          totalAmount: 2,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ],
-      skipDuplicates: true,
-    });
+await tx.orderRequest.createMany({
+  data: [
+    {
+      id: 'order-1',
+      requesterId: user11.id,
+      companyId: company.id,
+      status: 'PENDING',
+      totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      id: 'order-2',
+      requesterId: user11.id,
+      companyId: company.id,
+      status: 'PENDING',
+      totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      id: 'order-3',
+      requesterId: user11.id,
+      companyId: company.id,
+      status: 'PENDING',
+      totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+  ],
+  skipDuplicates: true,
+});
 
-    // 6. 주문 요청 아이템 추가 (orderRequestItems.ts에서 import한 데이터 사용)
-    await tx.orderRequestItem.createMany({
-      data: orderRequestItems,
-      skipDuplicates: true,
-    });
+// 6. 주문 요청 아이템 추가 (orderRequestItems.ts에서 import한 데이터 사용)
+await tx.orderRequestItem.createMany({
+  data: orderRequestItems,
+  skipDuplicates: true,
+});
+
+// 7. 각 주문 요청에 대해 totalAmount 계산 후 업데이트
+const orderRequestIds = ['order-1', 'order-2', 'order-3'];
+
+for (const orderRequestId of orderRequestIds) {
+  // 해당 주문 요청의 아이템 조회
+  const items = await tx.orderRequestItem.findMany({
+    where: { orderRequestId },
+  });
+
+  // totalAmount 계산 (각 아이템의 price * quantity 합산)
+  const totalAmount = items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+
+  // 주문 요청의 totalAmount 업데이트
+  await tx.orderRequest.update({
+    where: { id: orderRequestId },
+    data: { totalAmount },
+  });
+}
 
     console.log('🎉 Seeding complete!');
   });
