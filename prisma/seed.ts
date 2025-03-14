@@ -74,14 +74,14 @@ async function main() {
     }
 
     // 주문 요청 생성
-    const orderRequests = await tx.orderRequest.createMany({
+    await tx.orderRequest.createMany({
       data: [
         {
           id: 'order-1',
           requesterId: user11.id,
           companyId: company.id,
           status: 'PENDING',
-          totalAmount: 5, // 주문 요청한 물품 총 수량
+          totalAmount: 5, 
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -90,15 +90,13 @@ async function main() {
           requesterId: user11.id,
           companyId: company.id,
           status: 'PENDING',
-          totalAmount: 4,
+          totalAmount: 8,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
       ],
       skipDuplicates: true,
     });
-
-    console.log('✅ 주문 요청 데이터 추가 완료!');
 
     // 6. 주문 요청 아이템 추가
     await tx.orderRequestItem.createMany({
