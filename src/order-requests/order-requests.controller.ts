@@ -1,15 +1,15 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Delete, 
-  Req, 
-  Body, 
-  Param, 
-  NotFoundException, 
-  ForbiddenException, 
-  BadRequestException, 
-  UnauthorizedException 
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Req,
+  Body,
+  Param,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { OrderRequestsService } from './order-requests.service';
 import { Request } from 'express';
@@ -17,7 +17,6 @@ import { OrderRequestStatus, UserRole } from '@prisma/client';
 import { CreateOrderRequestDto } from './dto/create-order-request.dto';
 import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
 import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
-
 
 @Controller('order-requests')
 export class OrderRequestsController {
@@ -65,7 +64,7 @@ export class OrderRequestsController {
 
     return this.orderRequestsService.createOrderRequest(dto);
   }
-  
+
   //TODO: /order-requests/{orderRequestId} (GET) 주문 요청 상세 조회
   @Get(':orderRequestId')
   async getOrderRequestDetail(@Param('orderRequestId') orderRequestId: string) {
@@ -77,7 +76,7 @@ export class OrderRequestsController {
   async approveOrderRequest(
     @Req() req: Request,
     @Param('orderRequestId') orderRequestId: string,
-    @Body() dto: ApproveOrderRequestDto
+    @Body() dto: ApproveOrderRequestDto,
   ) {
     const user = req.user as { id: string; role: UserRole; companyId: string };
 
@@ -127,7 +126,7 @@ export class OrderRequestsController {
       resolverId: user.id,
     });
   }
-  
+
   //TODO: /order-requests/{orderRequestId} (DELETE) 주문 요청 취소
   @Delete(':orderRequestId')
   async deleteOrderRequest(@Req() req, @Param('orderRequestId') orderRequestId: string) {
@@ -150,9 +149,8 @@ export class OrderRequestsController {
       throw new BadRequestException('이미 처리된 주문 요청은 삭제할 수 없습니다.');
     }
 
-    await this.orderRequestsService.deleteRequestAndItemsInTransaction(orderRequestId);
+    this.orderRequestsService.deleteRequestAndItemsInTransaction(orderRequestId);
 
     return { message: '주문 요청이 삭제되었습니다.' };
   }
-
 }

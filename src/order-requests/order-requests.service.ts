@@ -6,9 +6,6 @@ import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
 
 @Injectable()
 export class OrderRequestsService {
-  deleteRequestAndItemsInTransaction(orderRequestId: string) {
-    throw new Error('Method not implemented.');
-  }
   private prisma: PrismaClient;
   constructor() {
     this.prisma = new PrismaClient();
@@ -64,11 +61,11 @@ export class OrderRequestsService {
         where: { id: { in: dto.items.map(item => item.productId) } }, // 요청된 모든 상품 ID 조회
         select: { id: true, price: true },
       });
-  
+
       if (products.length !== dto.items.length) {
         throw new NotFoundException('존재하지 않는 상품이 포함되어 있습니다.');
       }
-  
+
       // 2. 주문 요청 아이템 생성 (가격과 수량 계산)
       const orderRequestItems = dto.items.map(item => {
         const product = products.find(p => p.id === item.productId);
@@ -82,10 +79,13 @@ export class OrderRequestsService {
           notes: item.notes,
         };
       });
-  
+
       // 3. 총액 계산
-      const totalAmount = orderRequestItems.reduce((sum, item) => sum + item.quantity * item.price, 0);
-  
+      const totalAmount = orderRequestItems.reduce(
+        (sum, item) => sum + item.quantity * item.price,
+        0,
+      );
+
       // 4. 주문 요청 생성 (트랜잭션 내에서 수행)
       return tx.orderRequest.create({
         data: {
@@ -101,32 +101,34 @@ export class OrderRequestsService {
       });
     });
   }
-  
+
   // ✅ 주문 요청 상세 조회
   async getOrderRequestDetail(orderRequestId: string) {
     const orderRequest = await this.prisma.orderRequest.findUnique({
       where: { id: orderRequestId },
       include: {
-        orderRequestItems: {  
+        orderRequestItems: {
           include: {
-            product: {  
+            product: {
               select: { name: true, price: true },
             },
           },
         },
-        requester: {  // 요청한 사람 정보 가져오기
+        requester: {
+          // 요청한 사람 정보 가져오기
           select: { name: true },
         },
-        resolver: {  // 요청을 처리한 사람 정보 가져오기 (null 가능)
+        resolver: {
+          // 요청을 처리한 사람 정보 가져오기 (null 가능)
           select: { name: true },
         },
       },
     });
-  
+
     if (!orderRequest) {
       throw new NotFoundException('해당 주문 요청을 찾을 수 없습니다.');
     }
-  
+
     return {
       requestId: orderRequest.id,
       status: orderRequest.status,
@@ -135,7 +137,7 @@ export class OrderRequestsService {
       resolverMessage: orderRequest.notes, // 처리 메시지
       requesterName: orderRequest.requester?.name || '알 수 없음', // 요청한 사람의 이름
       resolverName: orderRequest.resolver?.name || null, // 처리한 사람의 이름
-      items: orderRequest.orderRequestItems.map((item) => ({
+      items: orderRequest.orderRequestItems.map(item => ({
         productName: item.product?.name || '상품 정보 없음',
         quantity: item.quantity,
         price: item.product?.price || 0,
@@ -143,7 +145,7 @@ export class OrderRequestsService {
       })),
     };
   }
-  
+
   // ✅ 주문 요청 승인
   async approveOrderRequest(orderRequestId: string, dto: ApproveOrderRequestDto) {
     // 1️⃣ 주문 요청 상태 확인
