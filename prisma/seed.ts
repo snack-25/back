@@ -1,13 +1,9 @@
+// seed.ts
 import { PrismaClient } from '@prisma/client';
-import { ConfigModule } from '@nestjs/config';
+import { orderRequestItems } from './const/orderRequestItems'; // orderRequestItems.ts 파일에서 데이터 임포트
 import { products } from './const/products';
 
 const prisma = new PrismaClient();
-
-ConfigModule.forRoot({
-  envFilePath: `.env.${process.env.NODE_ENV || 'local'}`,
-  isGlobal: true,
-});
 
 async function main() {
   console.log('🚀 Seeding database...');
@@ -57,31 +53,21 @@ async function main() {
       },
     });
 
-    // 4. 상품 추가
+    // 4. 상품 추가 (이미 products 배열에 있음)
     await tx.product.createMany({
       data: products,
       skipDuplicates: true,
     });
 
     // 5. 주문 요청 추가 (Mock Data)
-    const existingProducts = await tx.product.findMany({
-      take: 3, // 상위 3개 상품만 사용
-      select: { id: true },
-    });
-
-    if (existingProducts.length < 3) {
-      throw new Error('❌ 충분한 상품 데이터가 없습니다.');
-    }
-
-    // 주문 요청 생성
-    const orderRequests = await tx.orderRequest.createMany({
+    await tx.orderRequest.createMany({
       data: [
         {
           id: 'order-1',
           requesterId: user11.id,
           companyId: company.id,
           status: 'PENDING',
-          totalAmount: 5, // 주문 요청한 물품 총 수량
+          totalAmount: 5, // 예시로 주문 요청한 물품 총 수량
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -94,55 +80,25 @@ async function main() {
           createdAt: new Date(),
           updatedAt: new Date(),
         },
+        {
+          id: 'order-3',
+          requesterId: user11.id,
+          companyId: company.id,
+          status: 'PENDING',
+          totalAmount: 2,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
       ],
       skipDuplicates: true,
     });
 
-
-    // 6. 주문 요청 아이템 추가
+    // 6. 주문 요청 아이템 추가 (orderRequestItems.ts에서 import한 데이터 사용)
     await tx.orderRequestItem.createMany({
-      data: [
-        {
-          id: 'item-1',
-          orderRequestId: 'order-1',
-          productId: existingProducts[0].id,
-          quantity: 2, // 해당 상품 주문 수량
-          price: 1000, // 예제 가격
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: 'item-2',
-          orderRequestId: 'order-1',
-          productId: existingProducts[1].id,
-          quantity: 3,
-          price: 2000,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: 'item-3',
-          orderRequestId: 'order-2',
-          productId: existingProducts[1].id,
-          quantity: 1,
-          price: 2000,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: 'item-4',
-          orderRequestId: 'order-2',
-          productId: existingProducts[2].id,
-          quantity: 3,
-          price: 3000,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ],
+      data: orderRequestItems,
       skipDuplicates: true,
     });
 
-    console.log('✅ 주문 요청 아이템 추가 완료!');
     console.log('🎉 Seeding complete!');
   });
 }
