@@ -83,7 +83,7 @@ export class OrderRequestsService {
         };
       });
   
-      // 3. 총 수량 계산
+      // 3. 총액 계산
       const totalAmount = orderRequestItems.reduce((sum, item) => sum + item.quantity * item.price, 0);
   
       // 4. 주문 요청 생성 (트랜잭션 내에서 수행)
