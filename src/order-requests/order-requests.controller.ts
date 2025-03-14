@@ -131,28 +131,32 @@ export class OrderRequestsController {
   //TODO: /order-requests/{orderRequestId} (DELETE) 주문 요청 취소
   @Delete(':orderRequestId')
   async deleteOrderRequest(@Req() req, @Param('orderRequestId') orderRequestId: string) {
-  const user = req.user; // 요청한 사용자 정보 가져오기
+    const user = req.user; // 요청한 사용자 정보 가져오기
 
-  if (!user) {
-    throw new UnauthorizedException('인증되지 않은 사용자입니다.');
+    if (!user) {
+      throw new UnauthorizedException('인증되지 않은 사용자입니다.');
+    }
+
+    const orderRequest = await this.orderRequestsService.getOrderRequestById(orderRequestId);
+    if (!orderRequest) {
+      throw new NotFoundException('주문 요청을 찾을 수 없습니다.');
+    }
+
+    if (orderRequest.requesterId !== user.id) {
+      throw new ForbiddenException('본인이 생성한 주문 요청만 삭제할 수 있습니다.');
+    }
+
+    if (orderRequest.status !== OrderRequestStatus.PENDING) {
+      throw new BadRequestException('이미 처리된 주문 요청은 삭제할 수 없습니다.');
+    }
+
+    // 주문 요청 아이템 먼저 삭제
+    await this.orderRequestsService.deleteOrderRequestItems(orderRequestId);
+
+    // 주문 요청 삭제
+    await this.orderRequestsService.deleteOrderRequest(orderRequestId);
+
+    return { message: '주문 요청이 삭제되었습니다.' };
   }
-
-  const orderRequest = await this.orderRequestsService.getOrderRequestById(orderRequestId);
-  if (!orderRequest) {
-    throw new NotFoundException('주문 요청을 찾을 수 없습니다.');
-  }
-
-  if (orderRequest.requesterId !== user.id) {
-    throw new ForbiddenException('본인이 생성한 주문 요청만 삭제할 수 있습니다.');
-  }
-
-  if (orderRequest.status !== OrderRequestStatus.PENDING) {
-    throw new BadRequestException('이미 처리된 주문 요청은 삭제할 수 없습니다.');
-  }
-
-  await this.orderRequestsService.deleteOrderRequest(orderRequestId);
-
-  return { message: '주문 요청이 삭제되었습니다.' };
-}
 
 }

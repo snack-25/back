@@ -141,16 +141,6 @@ export class OrderRequestsService {
     };
   }
   
-
-  // ✅ 주문 요청 ID로 상세 조회
-  async getOrderRequestById(orderRequestId: string): Promise<OrderRequest | null> {
-    return this.prisma.orderRequest.findUnique({
-      where: { id: orderRequestId },
-      include: { orderRequestItems: true }, // 필요한 관계 추가
-    });
-  }
-  
-
   // ✅ 주문 요청 승인
   async approveOrderRequest(orderRequestId: string, dto: ApproveOrderRequestDto) {
     // 1️⃣ 주문 요청 상태 확인
@@ -219,6 +209,23 @@ export class OrderRequestsService {
   async deleteOrderRequest(orderRequestId: string): Promise<void> {
     await this.prisma.orderRequest.delete({
       where: { id: orderRequestId },
+    });
+  }
+
+  // ✅ 주문 요청 ID로 상세 조회
+  async getOrderRequestById(orderRequestId: string): Promise<OrderRequest | null> {
+    return this.prisma.orderRequest.findUnique({
+      where: { id: orderRequestId },
+      include: { orderRequestItems: true }, // 필요한 관계 추가
+    });
+  }
+
+  // 주문 요청 아이템 삭제
+  async deleteOrderRequestItems(orderRequestId: string) {
+    return this.prisma.orderRequestItem.deleteMany({
+      where: {
+        orderRequestId: orderRequestId, // 해당 주문 요청 ID에 해당하는 아이템 삭제
+      },
     });
   }
 }
