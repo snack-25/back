@@ -7,7 +7,7 @@ import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
 @Injectable()
 export class OrderRequestsService {
   private prisma: PrismaClient;
-  constructor(){
+  constructor() {
     this.prisma = new PrismaClient();
   }
 
@@ -55,7 +55,7 @@ export class OrderRequestsService {
 
   // ✅ 주문 요청 생성
   async createOrderRequest(dto: CreateOrderRequestDto) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async tx => {
       // 1. 상품 정보 조회 (DB에서 가격 가져오기)
       const products = await tx.product.findMany({
         where: { id: { in: dto.items.map(item => item.productId) } }, // 요청된 모든 상품 ID 조회
