@@ -7,6 +7,7 @@ import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
 @Injectable()
 export class OrderRequestsService {
   private prisma: PrismaClient;
+  deleteRequestAndItemsInTransaction: any;
   constructor() {
     this.prisma = new PrismaClient();
   }
