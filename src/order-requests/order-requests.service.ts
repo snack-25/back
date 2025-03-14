@@ -55,47 +55,50 @@ export class OrderRequestsService {
 
   // ✅ 주문 요청 생성
   async createOrderRequest(dto: CreateOrderRequestDto) {
-    // 1. 상품 정보 조회 (DB에서 가격 가져오기)
-    const products = await this.prisma.product.findMany({
-      where: { id: { in: dto.items.map(item => item.productId) } }, // 요청된 모든 상품 ID 조회
-      select: { id: true, price: true },
-    });
-
-    if (products.length !== dto.items.length) {
-      throw new NotFoundException('존재하지 않는 상품이 포함되어 있습니다.');
-    }
-
-    // 2. 주문 요청 아이템 생성 (가격과 수량 계산)
-    const orderRequestItems = dto.items.map(item => {
-      const product = products.find(p => p.id === item.productId);
-      if (!product) {
-        throw new NotFoundException(`상품 ${item.productId}을 찾을 수 없습니다.`);
+    return this.prisma.$transaction(async (tx) => {
+      // 1. 상품 정보 조회 (DB에서 가격 가져오기)
+      const products = await tx.product.findMany({
+        where: { id: { in: dto.items.map(item => item.productId) } }, // 요청된 모든 상품 ID 조회
+        select: { id: true, price: true },
+      });
+  
+      if (products.length !== dto.items.length) {
+        throw new NotFoundException('존재하지 않는 상품이 포함되어 있습니다.');
       }
-      return {
-        productId: product.id,
-        quantity: item.quantity,
-        price: product.price, // 상품 가격 (DB에서 조회된 값)
-        notes: item.notes,
-      };
-    });
-
-    // 3. 총 금액 계산
-    const totalAmount = orderRequestItems.reduce((sum, item) => sum + item.quantity * item.price, 0);
-
-    // 4. 주문 요청 생성
-    return this.prisma.orderRequest.create({
-      data: {
-        requesterId: dto.requesterId,
-        companyId: dto.companyId,
-        status: OrderRequestStatus.PENDING, // 기본값 PENDING
-        totalAmount,
-        orderRequestItems: {
-          create: orderRequestItems, // 주문 요청 아이템 생성
+  
+      // 2. 주문 요청 아이템 생성 (가격과 수량 계산)
+      const orderRequestItems = dto.items.map(item => {
+        const product = products.find(p => p.id === item.productId);
+        if (!product) {
+          throw new NotFoundException(`상품 ${item.productId}을 찾을 수 없습니다.`);
+        }
+        return {
+          productId: product.id,
+          quantity: item.quantity,
+          price: product.price, // 상품 가격 (DB에서 조회된 값)
+          notes: item.notes,
+        };
+      });
+  
+      // 3. 총 금액 계산
+      const totalAmount = orderRequestItems.reduce((sum, item) => sum + item.quantity * item.price, 0);
+  
+      // 4. 주문 요청 생성 (트랜잭션 내에서 수행)
+      return tx.orderRequest.create({
+        data: {
+          requesterId: dto.requesterId,
+          companyId: dto.companyId,
+          status: OrderRequestStatus.PENDING, // 기본값 PENDING
+          totalAmount,
+          orderRequestItems: {
+            create: orderRequestItems, // 주문 요청 아이템 생성
+          },
         },
-      },
-      include: { orderRequestItems: true },
+        include: { orderRequestItems: true },
+      });
     });
   }
+  
 
   // ✅ 주문 요청 상세 조회
   async getOrderRequestDetail(orderRequestId: string) {
