@@ -150,11 +150,7 @@ export class OrderRequestsController {
       throw new BadRequestException('이미 처리된 주문 요청은 삭제할 수 없습니다.');
     }
 
-    // 주문 요청 아이템 먼저 삭제
-    await this.orderRequestsService.deleteOrderRequestItems(orderRequestId);
-
-    // 주문 요청 삭제
-    await this.orderRequestsService.deleteOrderRequest(orderRequestId);
+    await this.orderRequestsService.deleteRequestAndItemsInTransaction(orderRequestId);
 
     return { message: '주문 요청이 삭제되었습니다.' };
   }

@@ -6,6 +6,9 @@ import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
 
 @Injectable()
 export class OrderRequestsService {
+  deleteRequestAndItemsInTransaction(orderRequestId: string) {
+    throw new Error('Method not implemented.');
+  }
   private prisma: PrismaClient;
   constructor() {
     this.prisma = new PrismaClient();
@@ -80,7 +83,7 @@ export class OrderRequestsService {
         };
       });
   
-      // 3. 총 수량 계산 (가격 X)
+      // 3. 총 수량 계산
       const totalAmount = orderRequestItems.reduce((sum, item) => sum + item.quantity, 0);
   
       // 4. 주문 요청 생성 (트랜잭션 내에서 수행)
