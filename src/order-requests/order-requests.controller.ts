@@ -67,7 +67,9 @@ export class OrderRequestsController {
 
   //TODO: /order-requests/{orderRequestId} (GET) 주문 요청 상세 조회
   @Get(':orderRequestId')
-  public async getOrderRequestDetail(@Param('orderRequestId') orderRequestId: string) {
+  public async getOrderRequestDetail(
+    @Param('orderRequestId') orderRequestId: string,
+  ): Promise<unknown> {
     return this.orderRequestsService.getOrderRequestDetail(orderRequestId);
   }
 
@@ -77,7 +79,7 @@ export class OrderRequestsController {
     @Req() req: Request,
     @Param('orderRequestId') orderRequestId: string,
     @Body() dto: ApproveOrderRequestDto,
-  ) {
+  ): Promise<unknown> {
     const user = req.user as { id: string; role: UserRole; companyId: string };
 
     if (!user) {
@@ -105,7 +107,7 @@ export class OrderRequestsController {
     @Req() req: Request,
     @Param('orderRequestId') orderRequestId: string,
     @Body() dto: RejectOrderRequestDto,
-  ) {
+  ): Promise<unknown> {
     const user = req.user as { id: string; role: UserRole; companyId: string }; // 요청 보낸 사용자 정보
 
     if (!user) {
@@ -129,8 +131,11 @@ export class OrderRequestsController {
 
   //TODO: /order-requests/{orderRequestId} (DELETE) 주문 요청 취소
   @Delete(':orderRequestId')
-  public async deleteOrderRequest(@Req() req, @Param('orderRequestId') orderRequestId: string) {
-    const user = req.user; // 요청한 사용자 정보 가져오기
+  public async deleteOrderRequest(
+    @Req() req: Request,
+    @Param('orderRequestId') orderRequestId: string,
+  ): Promise<{ message: string }> {
+    const user = req.user as { id: string; role: UserRole; companyId: string }; // 요청한 사용자 정보 가져오기
 
     if (!user) {
       throw new UnauthorizedException('인증되지 않은 사용자입니다.');
