@@ -38,7 +38,7 @@ jobs:
             ${{ runner.os }}-pnpm- # 캐시 키 복원
 
       - name: Install Dependencies # 의존성 설치
-        run: pnpm install --frozen-lockfiles --prod # 프로덕션 의존성만 설치
+        run: pnpm install --frozen-lockfile --prod # 프로덕션 의존성만 설치
         env:
           CI: ${{ secrets.CI }} # CI 환경 변수 설정
 
