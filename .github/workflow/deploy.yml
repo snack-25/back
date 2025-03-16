@@ -1,0 +1,172 @@
+name: 'Snack25 Backend Deploy' # 워크플로우 이름
+
+on:
+  push:
+    branches:
+      - main # 메인 브랜치에 push가 되면 deploy jobs 트리거(실행)
+
+jobs:
+  deploy-to-ec2-whenever-push-to-main:
+    name: 'main 브랜치에 push가 되면 EC2로 배포하는 작업'
+    runs-on: ubuntu-latest # 우분투(24.04.2) 환경에서 deploy jobs 실행
+
+    steps:
+      - name: Checkout Repository # 1. 레포지토리를 체크아웃
+        uses: actions/checkout@v4 # actions/checkout 레포지토리의 v4 버전 사용
+
+      - name: Setup Node.js # 2. Node.js 설정
+        uses: actions/setup-node@v4 # actions/setup-node 레포지토리의 v4 버전 사용
+        with:
+          node-version: '22' # Node.js 버전 22 사용
+          run_install: false # 이미 설치되어 있으므로 설치하지 않음
+
+      - name: Setup pnpm # pnpm 설정
+        uses: pnpm/action-setup@v4 # pnpm/action-setup 레포지토리의 v4 버전 사용
+        with:
+          version: '10' # pnpm 버전 10 사용
+          run_install: false # 이미 설치되어 있으므로 설치하지 않음
+
+      - name: Cache dependencies # 의존성 캐싱
+        uses: actions/cache@v4 # actions/cache 레포지토리의 v4 버전 사용
+        with:
+          path: |
+            ~/.pnpm-store
+            node_modules
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }} # 캐시 키 설정
+          restore-keys: |
+            ${{ runner.os }}-pnpm- # 캐시 키 복원
+
+      - name: Install Dependencies # 의존성 설치
+        run: pnpm install --frozen-lockfiles --prod # 프로덕션 의존성만 설치
+        env:
+          CI: ${{ secrets.CI }} # CI 환경 변수 설정
+
+      - name: Generate Prisma Client # Prisma 클라이언트 생성
+        run: pnpm prisma generate # pnpm을 사용하여 Prisma 클라이언트 생성
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }} # 데이터베이스 URL
+
+      - name: Build Project # NestJS 빌드
+        run: pnpm build # pnpm을 사용하여 빌드
+        env:
+          NODE_ENV: ${{ secrets.NODE_ENV }} # 환경 변수 설정
+          CI: ${{ secrets.CI }} # CI 환경 변수 설정
+
+      - name: Upload Build Artifact # 빌드 결과물 업로드
+        uses: actions/upload-artifact@v4 # actions/upload-artifact 레포지토리의 v4 버전 사용
+        with:
+          name: build # 업로드할 파일 이름
+          path: |
+            dist
+            package.json
+            pnpm-lock.yaml
+            prisma
+            node_modules/.prisma/client
+
+      - name: Configure SSH # SSH 설정
+        run: |
+          mkdir -p ~/.ssh/
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }}
+          chmod 600 ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }}
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Create env file # 환경 변수 암호화
+        run: |
+          echo "DATABASE_URL=${DATABASE_URL}" | gpg --symmetric --batch --passphrase "${{ secrets.GPG_PASSPHRASE }}" > .env.production.gpg
+          scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} .env.production.gpg ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
+
+      - name: Setup PM2 Config
+        run: |
+          echo "module.exports = {
+            apps: [{
+              name: 'snack25-be',
+              script: 'dist/main.js',
+              instances: 'max',
+              autorestart: true,
+              watch: false,
+              max_memory_restart: '1G',
+              env: {
+                NODE_ENV: 'production'
+              }
+            }]
+          };" | gpg --symmetric --batch --passphrase "${{ secrets.GPG_PASSPHRASE }}" > ecosystem.config.js.gpg
+
+      - name: Validate Environment Variables
+        run: |
+          if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+            echo "DATABASE_URL is not set"
+            exit 1
+          fi
+          # 다른 필수 환경 변수들도 검증
+
+      - name: Deploy to EC2
+        # 타임아웃 설정 추가
+        timeout-minutes: 10
+        env:
+          HOST: ${{ secrets.EC2_HOST }} # EC2 호스트 주소
+          USERNAME: ${{ secrets.EC2_USERNAME }} # EC2 유저 이름
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }} # EC2 SSH 개인 키
+          KEY_PAIR_TYPE: ${{ secrets.EC2_KEY_PAIR_TYPE }} # 키 페어 타입
+          DATABASE_URL: ${{ secrets.DATABASE_URL }} # 데이터베이스 URL
+          DEPLOY_VERIFY_KEY: ${{ secrets.DEPLOY_VERIFY_KEY }} # 배포 검증 키
+          GIT_COMMIT_SHA: ${{ github.sha }} # GitHub 커밋 SHA
+        run: |
+          ssh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "df -h"
+          pm2 delete snack25-be || true
+          echo "DATABASE_URL=${DATABASE_URL}" >> .env.production
+          scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} -r dist package.json pnpm-lock.yaml prisma ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
+          scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} .env.production ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
+          scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ecosystem.config.js.gpg ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
+          ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "cd ~/backend && \
+            # Node.js 프로세스 종료
+            pm2 delete all || true && \
+            # pnpm는 이미 설치되어 있으므로 설치하지 않음
+            # 의존성 설치
+            pnpm install --prod && \
+            # Prisma 마이그레이션
+            pnpm prisma generate && \
+            pnpm prisma migrate deploy && \
+            # PM2로 애플리케이션 시작
+            pm2 start ecosystem.config.js --env production" # PM2로 애플리케이션 시작
+
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          ssh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "cd ~/backend && \
+          pm2 delete snack25-be || true && \
+          tar -xzf backup-*.tar.gz && \
+          pm2 start ecosystem.config.js --env production"
+
+      - name: Verify Deployment
+        run: |
+          for i in {1..5}; do
+            response=$(curl -s -w "%{http_code}" -H "X-Deploy-Key: ${{ secrets.DEPLOY_VERIFY_KEY }}" http://${{ secrets.EC2_HOST }}:4000/health)
+            status_code=${response: -3}
+            body=${response:0:${#response}-3}
+
+            if [ "$status_code" = "200" ] && [ "$(echo $body | jq -r '.version')" = "${{ github.sha }}" ]; then
+              echo "배포가 성공적으로 완료되었습니다."
+              exit 0
+            fi
+            echo "재시도 중... ($i/5)"
+            sleep 10
+          done
+          echo "배포 검증 실패"
+          exit 1
+
+      - name: Backup current deployment # 현재 배포 백업
+        run: |
+          ssh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "cd ~/backend && \
+          tar -czf backup-$(date +%Y%m%d_%H%M%S).tar.gz dist node_modules"
+
+      - name: Health Check
+        run: |
+          curl -f http://${{ secrets.EC2_HOST }}:4000/health || exit 1
+
+permissions:
+  contents: read # 레포지토리 내용: 읽기
+  deployments: write # 배포: 쓰기
+
+concurrency:
+  group: production_environment # 동시성 그룹 설정
+  cancel-in-progress: false # 진행 중인 작업 취소 여부
