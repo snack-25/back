@@ -32,6 +32,7 @@ jobs:
           path: |
             ~/.pnpm-store
             node_modules
+            .pnpm-store  # pnpm store 디렉토리 추가
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }} # 캐시 키 설정
           restore-keys: |
             ${{ runner.os }}-pnpm- # 캐시 키 복원
@@ -99,6 +100,10 @@ jobs:
           fi
           if [ -z "${{ secrets.GPG_PASSPHRASE }}" ]; then
             echo "GPG_PASSPHRASE is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.NODE_ENV }}" ]; then
+            echo "NODE_ENV is not set"
             exit 1
           fi
 
@@ -203,7 +208,9 @@ jobs:
 
       - name: Verify Deployment
         run: |
-          for i in {1..5}; do
+          max_retries=10  # 재시도 횟수 증가
+          retry_interval=20  # 간격 증가
+          for i in $(seq 1 $max_retries); do
             response=$(curl -s -w "%{http_code}" -H "X-Deploy-Key: ${{ secrets.DEPLOY_VERIFY_KEY }}" http://${{ secrets.EC2_HOST }}:4000/health)
             status_code=${response: -3}
             body=${response:0:${#response}-3}
@@ -212,8 +219,8 @@ jobs:
               echo "배포가 성공적으로 완료되었습니다."
               exit 0
             fi
-            echo "재시도 중... ($i/5)"
-            sleep 10
+            echo "재시도 중... ($i/$max_retries)"
+            sleep $retry_interval
           done
           echo "배포 검증 실패"
           exit 1
@@ -223,8 +230,9 @@ jobs:
           curl -f http://${{ secrets.EC2_HOST }}:4000/health || exit 1
 
 permissions:
-  contents: read # 레포지토리 내용: 읽기
-  deployments: write # 배포: 쓰기
+  contents: read # 레포지토리 내용 읽기 권한
+  deployments: write # 배포 권한
+  id-token: write # OIDC 인증을 위해 추가 필요
 
 concurrency:
   group: production_environment # 동시성 그룹 설정
