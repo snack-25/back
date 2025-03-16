@@ -1,22 +1,22 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Delete,
-  Req,
-  Body,
-  Param,
-  NotFoundException,
-  ForbiddenException,
   BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  ForbiddenException,
+  Get,
+  NotFoundException,
+  Param,
+  Post,
+  Req,
   UnauthorizedException,
 } from '@nestjs/common';
-import { OrderRequestsService } from './order-requests.service';
-import { Request } from 'express';
 import { OrderRequestStatus, UserRole } from '@prisma/client';
-import { CreateOrderRequestDto } from './dto/create-order-request.dto';
+import type { Request } from 'express';
 import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
+import { CreateOrderRequestDto } from './dto/create-order-request.dto';
 import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
+import { OrderRequestsService } from './order-requests.service';
 
 @Controller('order-requests')
 export class OrderRequestsController {
@@ -24,7 +24,7 @@ export class OrderRequestsController {
 
   //TODO: /order-requests (GET) 주문 요청 목록 조회
   @Get()
-  async getOrderRequests(@Req() req: Request) {
+  public async getOrderRequests(@Req() req: Request) {
     const user = req.user as { id: string; role: UserRole; companyId: string }; // 타입 캐스팅
 
     if (!user) {
@@ -46,7 +46,7 @@ export class OrderRequestsController {
 
   //TODO: /order-requests (POST) 주문 요청 생성
   @Post()
-  async createOrderRequest(@Req() req: Request, @Body() dto: CreateOrderRequestDto) {
+  public async createOrderRequest(@Req() req: Request, @Body() dto: CreateOrderRequestDto) {
     const user = req.user as { id: string; role: UserRole; companyId: string };
 
     if (!user) {
@@ -67,17 +67,19 @@ export class OrderRequestsController {
 
   //TODO: /order-requests/{orderRequestId} (GET) 주문 요청 상세 조회
   @Get(':orderRequestId')
-  async getOrderRequestDetail(@Param('orderRequestId') orderRequestId: string) {
+  public async getOrderRequestDetail(
+    @Param('orderRequestId') orderRequestId: string,
+  ): Promise<unknown> {
     return this.orderRequestsService.getOrderRequestDetail(orderRequestId);
   }
 
   //TODO: /order-requests/{orderRequestId}/accept (POST) 주문 요청 승인
   @Post(':orderRequestId/accept')
-  async approveOrderRequest(
+  public async approveOrderRequest(
     @Req() req: Request,
     @Param('orderRequestId') orderRequestId: string,
     @Body() dto: ApproveOrderRequestDto,
-  ) {
+  ): Promise<unknown> {
     const user = req.user as { id: string; role: UserRole; companyId: string };
 
     if (!user) {
@@ -101,11 +103,11 @@ export class OrderRequestsController {
 
   //TODO: /order-requests/{orderRequestId}/reject (POST) 주문 요청 반려
   @Post(':orderRequestId/reject')
-  async rejectOrderRequest(
+  public async rejectOrderRequest(
     @Req() req: Request,
     @Param('orderRequestId') orderRequestId: string,
     @Body() dto: RejectOrderRequestDto,
-  ) {
+  ): Promise<unknown> {
     const user = req.user as { id: string; role: UserRole; companyId: string }; // 요청 보낸 사용자 정보
 
     if (!user) {
@@ -129,8 +131,11 @@ export class OrderRequestsController {
 
   //TODO: /order-requests/{orderRequestId} (DELETE) 주문 요청 취소
   @Delete(':orderRequestId')
-  async deleteOrderRequest(@Req() req, @Param('orderRequestId') orderRequestId: string) {
-    const user = req.user; // 요청한 사용자 정보 가져오기
+  public async deleteOrderRequest(
+    @Req() req: Request,
+    @Param('orderRequestId') orderRequestId: string,
+  ): Promise<{ message: string }> {
+    const user = req.user as { id: string; role: UserRole; companyId: string }; // 요청한 사용자 정보 가져오기
 
     if (!user) {
       throw new UnauthorizedException('인증되지 않은 사용자입니다.');
