@@ -70,10 +70,55 @@ jobs:
           chmod 600 ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }}
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
+      - name: Validate Environment Variables
+        run: |
+          if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+            echo "DATABASE_URL is not set"
+            exit 1
+          fi
+          # 다른 필수 환경 변수들도 검증
+          if [ -z "${{ secrets.EC2_HOST }}" ]; then
+            echo "EC2_HOST is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.EC2_SSH_KEY }}" ]; then
+            echo "EC2_SSH_KEY is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.DEPLOY_VERIFY_KEY }}" ]; then
+            echo "DEPLOY_VERIFY_KEY is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.EC2_USERNAME }}" ]; then
+            echo "EC2_USERNAME is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.EC2_KEY_PAIR_TYPE }}" ]; then
+            echo "EC2_KEY_PAIR_TYPE is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.GPG_PASSPHRASE }}" ]; then
+            echo "GPG_PASSPHRASE is not set"
+            exit 1
+          fi
+
+      - name: Mask Sensitive Variables
+        run: |
+          echo "::add-mask::${{ secrets.DATABASE_URL }}"
+          echo "::add-mask::${{ secrets.EC2_HOST }}"
+          echo "::add-mask::${{ secrets.EC2_SSH_KEY }}"
+          echo "::add-mask::${{ secrets.DEPLOY_VERIFY_KEY }}"
+          echo "::add-mask::${{ secrets.EC2_USERNAME }}"
+          echo "::add-mask::${{ secrets.EC2_KEY_PAIR_TYPE }}"
+          echo "::add-mask::${{ secrets.GPG_PASSPHRASE }}"
+          echo "::add-mask::${{ github.sha }}"
+
       - name: Create env file # 환경 변수 암호화
         run: |
+          echo "::add-mask::$(echo DATABASE_URL=${DATABASE_URL})"
           echo "DATABASE_URL=${DATABASE_URL}" | gpg --symmetric --batch --passphrase "${{ secrets.GPG_PASSPHRASE }}" > .env.production.gpg
           scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} .env.production.gpg ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
+          echo "::add-mask::$(cat .env.production)"
 
       - name: Setup PM2 Config
         run: |
@@ -91,17 +136,27 @@ jobs:
             }]
           };" | gpg --symmetric --batch --passphrase "${{ secrets.GPG_PASSPHRASE }}" > ecosystem.config.js.gpg
 
-      - name: Validate Environment Variables
+      - name: Configure Environment
         run: |
-          if [ -z "${{ secrets.DATABASE_URL }}" ]; then
-            echo "DATABASE_URL is not set"
-            exit 1
-          fi
-          # 다른 필수 환경 변수들도 검증
+          # 환경 변수 파일 생성 시 마스킹
+          echo "::add-mask::$(echo DATABASE_URL=${DATABASE_URL})"
+          echo "DATABASE_URL=${DATABASE_URL}" >> .env.production
 
-      - name: Deploy to EC2
-        # 타임아웃 설정 추가
-        timeout-minutes: 10
+          # SSH 키 마스킹
+          echo "::add-mask::$(cat ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }})"
+
+          # 배포 경로 마스킹
+          echo "::add-mask::~/backend"
+
+      - name: Backup current deployment # 새 배포 전 현재 배포 백업
+        run: |
+          backup_file="backup-$(date +%Y%m%d_%H%M%S).tar.gz"
+          echo "::add-mask::$backup_file"
+          ssh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "cd ~/backend && \
+          tar -czf $backup_file dist node_modules"
+
+      - name: Deploy to EC2 # EC2로 배포
+        timeout-minutes: 10 # 타임아웃 시간 10분
         env:
           HOST: ${{ secrets.EC2_HOST }} # EC2 호스트 주소
           USERNAME: ${{ secrets.EC2_USERNAME }} # EC2 유저 이름
@@ -111,9 +166,11 @@ jobs:
           DEPLOY_VERIFY_KEY: ${{ secrets.DEPLOY_VERIFY_KEY }} # 배포 검증 키
           GIT_COMMIT_SHA: ${{ github.sha }} # GitHub 커밋 SHA
         run: |
+          echo "Deploying to $HOST"
           ssh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "df -h"
-          pm2 delete snack25-be || true
-          echo "DATABASE_URL=${DATABASE_URL}" >> .env.production
+          echo "Starting deployment to EC2..."
+          echo "Creating .env.production file..."
+          echo "DATABASE_URL=${DATABASE_URL}" > .env.production
           scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} -r dist package.json pnpm-lock.yaml prisma ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
           scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} .env.production ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
           scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ecosystem.config.js.gpg ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
@@ -128,14 +185,21 @@ jobs:
             pnpm prisma migrate deploy && \
             # PM2로 애플리케이션 시작
             pm2 start ecosystem.config.js --env production" # PM2로 애플리케이션 시작
+          echo "::add-mask::$(pm2 list)"  # PM2 프로세스 목록 마스킹
 
-      - name: Rollback on Failure
+      - name: Rollback on Failure # 배포 실패 시 롤백
         if: failure()
         run: |
           ssh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "cd ~/backend && \
+          if ls backup-*.tar.gz 1> /dev/null 2>&1; then
+            echo "Backup found, restoring..."
           pm2 delete snack25-be || true && \
-          tar -xzf backup-*.tar.gz && \
-          pm2 start ecosystem.config.js --env production"
+            tar -xzf backup-*.tar.gz && \
+            pm2 start ecosystem.config.js --env production
+            echo "Rollback complete."
+          else
+            echo "No backup found, cannot rollback."
+          fi"
 
       - name: Verify Deployment
         run: |
@@ -153,11 +217,6 @@ jobs:
           done
           echo "배포 검증 실패"
           exit 1
-
-      - name: Backup current deployment # 현재 배포 백업
-        run: |
-          ssh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "cd ~/backend && \
-          tar -czf backup-$(date +%Y%m%d_%H%M%S).tar.gz dist node_modules"
 
       - name: Health Check
         run: |
