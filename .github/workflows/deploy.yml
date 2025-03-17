@@ -127,8 +127,7 @@ jobs:
 
       - name: Setup PM2 Config # PM2 설정
         run: |
-          cat << 'EOL' | gpg --symmetric --batch --passphrase "${{ secrets.GPG_PASSPHRASE }}" > ecosystem.config.js.gpg
-          module.exports = {
+          echo "module.exports = {
             apps: [{
               name: 'snack25-be',
               script: 'dist/main.js',
@@ -140,8 +139,8 @@ jobs:
                 NODE_ENV: 'production'
               }
             }]
-          };
-          EOL
+          }" > ecosystem.config.js
+          scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ecosystem.config.js ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
 
       - name: Configure Environment
         run: |
@@ -188,11 +187,10 @@ jobs:
             echo "DATABASE_URL=${DATABASE_URL}" > .env.production
             scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} -r dist package.json pnpm-lock.yaml prisma ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
             scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} .env.production ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
-            scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ecosystem.config.js.gpg ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
+            scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ecosystem.config.js ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
             ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && \
               source ~/.nvm/nvm.sh && nvm use 22 && corepack enable && \
               pm2 stop snack25-be && pm2 delete snack25-be && \
-              echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --passphrase-fd 0 --output ecosystem.config.js --decrypt ecosystem.config.js.gpg && \
               pnpm install --prod --ignore-scripts && \
               pnpm prisma generate && \
               pnpm prisma migrate deploy && \
@@ -217,22 +215,6 @@ jobs:
               echo "No backup found, cannot rollback."
             fi
           }'
-
-      - name: Verify Deployment # 배포 확인
-        run: |
-          max_retries=10
-          retry_interval=20
-          for i in $(seq 1 $max_retries); do
-            echo "건강 검사 시도 중... ($i/$max_retries)"
-            if curl -s --connect-timeout 10 --max-time 15 -H "X-Deploy-Key: ${{ secrets.DEPLOY_VERIFY_KEY }}" http://${{ secrets.EC2_HOST }}:4000/health; then
-              echo "서버가 정상적으로 응답합니다."
-              exit 0
-            fi
-            echo "재시도하기 전 ${retry_interval}초 대기..."
-            sleep $retry_interval
-          done
-          echo "건강 검사 실패 - 서버 응답 없음"
-          exit 1
 
       - name: Health Check
         run: |
