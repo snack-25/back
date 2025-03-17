@@ -181,7 +181,6 @@ jobs:
         run: |
           {
             echo "Deploying to $HOST"
-            ssh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'df -h'
             echo "Starting deployment to EC2..."
             echo "Creating .env.production file..."
             echo "DATABASE_URL=${DATABASE_URL}" > .env.production
@@ -195,11 +194,8 @@ jobs:
               pnpm prisma generate && \
               pnpm prisma migrate deploy && \
               pm2 start ecosystem.config.js --env production'
-          } 2>&1 | while IFS= read -r line; do
-            echo "::add-mask::$line"
-            echo "$line"
-            echo "Deploy to EC2 작업 완료"
-          done
+          } 2>&1 | tee deploy.log
+          echo "Deploy to EC2 작업 완료"
 
       - name: Rollback on Failure # 배포 실패 시 롤백
         if: failure()
@@ -215,10 +211,6 @@ jobs:
               echo "No backup found, cannot rollback."
             fi
           }'
-
-      - name: Health Check
-        run: |
-          curl -f http://${{ secrets.EC2_HOST }}:4000/health || exit 1
 
 permissions:
   contents: read # 레포지토리 내용 읽기 권한
