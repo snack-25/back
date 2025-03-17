@@ -11,15 +11,15 @@ detect_by_npm_execpath() {
   if [ -n "$npm_execpath" ]; then
     case "$npm_execpath" in
       *pnpm*)
-        echo "pnpm"
+        printf "pnpm"
         return 0
         ;;
       *yarn*)
-        echo "yarn"
+        printf "yarn"
         return 0
         ;;
       *npm*)
-        echo "npm"
+        printf "npm"
         return 0
         ;;
     esac
@@ -32,15 +32,15 @@ detect_by_user_agent() {
   if [ -n "$npm_config_user_agent" ]; then
     case "$npm_config_user_agent" in
       *pnpm*)
-        echo "pnpm"
+        printf "pnpm"
         return 0
         ;;
       *yarn*)
-        echo "yarn"
+        printf "yarn"
         return 0
         ;;
       *npm*)
-        echo "npm"
+        printf "npm"
         return 0
         ;;
     esac
@@ -51,13 +51,13 @@ detect_by_user_agent() {
 # 방법 3: 락파일 확인
 detect_by_lockfile() {
   if [ -f "pnpm-lock.yaml" ]; then
-    echo "pnpm"
+    printf "pnpm"
     return 0
   elif [ -f "yarn.lock" ]; then
-    echo "yarn"
+    printf "yarn"
     return 0
   elif [ -f "package-lock.json" ]; then
-    echo "npm"
+    printf "npm"
     return 0
   fi
   return 1
@@ -68,19 +68,19 @@ detect_by_process() {
   # 현재 프로세스의 부모 프로세스 체인을 확인
   ppid=$$
   while [ "$ppid" -ne 1 ] && [ -e "/proc/$ppid" ]; do
-    cmd=$(cat /proc/$ppid/cmdline 2>/dev/null | tr '\0' ' ' | grep -E 'npm|yarn|pnpm')
+    cmd=$(cat "/proc/$ppid/cmdline" 2>/dev/null | tr '\0' ' ' | grep -E 'npm|yarn|pnpm')
     if [ -n "$cmd" ]; then
       case "$cmd" in
         *pnpm*)
-          echo "pnpm"
+          printf "pnpm"
           return 0
           ;;
         *yarn*)
-          echo "yarn"
+          printf "yarn"
           return 0
           ;;
         *npm*)
-          echo "npm"
+          printf "npm"
           return 0
           ;;
       esac
@@ -94,7 +94,7 @@ detect_by_process() {
 detect_package_manager() {
   # CI 환경에서는 pnpm 반환
   if is_ci_environment; then
-    echo "pnpm"
+    printf "pnpm"
     return 0
   fi
 
@@ -102,15 +102,15 @@ detect_package_manager() {
   if [ -n "$npm_execpath" ]; then
     case "$npm_execpath" in
       *pnpm*)
-        echo "pnpm"
+        printf "pnpm"
         return 0
         ;;
       *yarn*)
-        echo "yarn"
+        printf "yarn"
         return 0
         ;;
       *npm*)
-        echo "npm"
+        printf "npm"
         return 0
         ;;
     esac
@@ -118,13 +118,13 @@ detect_package_manager() {
 
   # 방법 2: 락파일 확인
   if [ -f "pnpm-lock.yaml" ]; then
-    echo "pnpm"
+    printf "pnpm"
     return 0
   elif [ -f "yarn.lock" ]; then
-    echo "yarn"
+    printf "yarn"
     return 0
   elif [ -f "package-lock.json" ]; then
-    echo "npm"
+    printf "npm"
     return 0
   fi
 
@@ -132,19 +132,19 @@ detect_package_manager() {
   if [ -d "/proc" ] && ! is_ci_environment; then
     ppid=$$
     while [ "$ppid" -ne 1 ] && [ -e "/proc/$ppid" ]; do
-      cmd=$(cat /proc/$ppid/cmdline 2>/dev/null | tr '\0' ' ' | grep -E 'npm|yarn|pnpm')
+      cmd=$(cat "/proc/$ppid/cmdline" 2>/dev/null | tr '\0' ' ' | grep -E 'npm|yarn|pnpm')
       if [ -n "$cmd" ]; then
         case "$cmd" in
           *pnpm*)
-            echo "pnpm"
+            printf "pnpm"
             return 0
             ;;
           *yarn*)
-            echo "yarn"
+            printf "yarn"
             return 0
             ;;
           *npm*)
-            echo "npm"
+            printf "npm"
             return 0
             ;;
         esac
@@ -154,17 +154,17 @@ detect_package_manager() {
   fi
 
   # 기본값
-  echo "unknown"
+  printf "unknown"
   return 1
 }
 
 # 스크립트를 직접 실행하는 경우에만 결과 출력
 if [ "$(basename "$0")" = "detect-package-manager.sh" ] && ! is_ci_environment; then
   pkg_manager=$(detect_package_manager)
-  echo "Detected package manager: $pkg_manager"
+  printf "Detected package manager: %s\n" "$pkg_manager"
 
   # 추가 디버깅 정보 (CI 환경이 아닌 경우에만 출력)
-  echo "Debug info:"
-  echo "npm_execpath: $npm_execpath"
-  echo "npm_config_user_agent: $npm_config_user_agent"
+  printf "Debug info:\n"
+  printf "npm_execpath: %s\n" "$npm_execpath"
+  printf "npm_config_user_agent: %s\n" "$npm_config_user_agent"
 fi

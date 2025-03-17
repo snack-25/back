@@ -13,9 +13,9 @@ fi
 # pnpm이 설치되어 있으면 1, 설치되어 있지 않으면 0을 반환한다
 PNPM_INSTALLED=$(pnpm -v > /dev/null 2>&1; echo $?)
 
-if [ $PNPM_INSTALLED -ne 0 ]; then
-  echo "\033[31m❌ pnpm이 설치되어 있지 않습니다. pnpm을 설치해주세요.\033[0m"
+if [ "$PNPM_INSTALLED" -ne 0 ]; then
+  printf "\033[31m❌ pnpm이 설치되어 있지 않습니다. pnpm을 설치해주세요.\033[0m\n"
   exit 1
 fi
 
-pnpm dlx commitlint --edit $1
+pnpm dlx commitlint --edit "$1"
