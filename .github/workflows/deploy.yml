@@ -195,10 +195,9 @@ jobs:
               # GPG 파일 복호화
               echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --passphrase-fd 0 --output ecosystem.config.js --decrypt ecosystem.config.js.gpg && \
               pnpm install --prod --ignore-scripts && \
-              pnpm prisma generate && \
-              pnpm prisma migrate deploy && \
+              npx prisma generate && \
+              npx prisma migrate deploy && \
               pm2 start ecosystem.config.js --env production && \
-              # 애플리케이션 시작 확인
               echo "애플리케이션 시작 로그 확인 중..." && \
               sleep 10 && \
               pm2 logs --lines 20 --nostream && \
