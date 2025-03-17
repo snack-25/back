@@ -47,78 +47,84 @@ export class OrdersService {
 
   //관리자, 최고관리자 주문하기
   public async createOrder(userId: string, orderData: OrderRequestDto): Promise<Order> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: { company: true },
-    });
+    return await this.prisma.$transaction(async prisma => {
+      // 유저 정보 조회
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { company: true },
+      });
 
-    if (!user || !user.company) {
-      throw new Error('유효하지 않은 사용자 또는 소속된 회사 없음.');
-    }
-
-    //직접 주문은 관리자, 최고관리자만 사용한다.
-    if (user.role !== 'ADMIN' && user.role !== 'SUPERADMIN') {
-      throw new ForbiddenException('주문 권한이 없습니다.');
-    }
-
-    const productIds = orderData.items.map(item => item.productId);
-    const products = await this.prisma.product.findMany({
-      where: { id: { in: productIds } },
-      select: { id: true, price: true },
-    });
-
-    //상품의 id를 받으면 product모델에서 가격을 받아온다.
-    const productPriceMap = new Map(products.map(p => [p.id, p.price]));
-
-    let totalAmount = 0;
-    const orderItems = orderData.items.map(item => {
-      const productPrice = productPriceMap.get(item.productId);
-      if (productPrice === undefined) {
-        throw new NotFoundException(`상품을 찾을 수 없습니다. (productId: ${item.productId})`);
+      if (!user || !user.company) {
+        throw new Error('유효하지 않은 사용자 또는 소속된 회사 없음.');
       }
-      const itemTotal = productPrice * item.quantity;
-      totalAmount += itemTotal;
 
-      return {
-        productId: item.productId,
-        quantity: item.quantity,
-        price: productPrice,
-      };
+      // 관리자 또는 최고관리자 권한 확인
+      if (user.role !== 'ADMIN' && user.role !== 'SUPERADMIN') {
+        throw new ForbiddenException('주문 권한이 없습니다.');
+      }
+
+      // 주문 상품 정보 조회 (가격 포함)
+      const productIds = orderData.items.map(item => item.productId);
+      const products = await prisma.product.findMany({
+        where: { id: { in: productIds } },
+        select: { id: true, price: true },
+      });
+
+      // 상품 ID → 가격 매핑
+      const productPriceMap = new Map(products.map(p => [p.id, p.price]));
+
+      let totalAmount = 0;
+      const orderItems = orderData.items.map(item => {
+        const productPrice = productPriceMap.get(item.productId);
+        if (productPrice === undefined) {
+          throw new NotFoundException(`상품을 찾을 수 없습니다. (productId: ${item.productId})`);
+        }
+        const itemTotal = productPrice * item.quantity;
+        totalAmount += itemTotal;
+
+        return {
+          productId: item.productId,
+          quantity: item.quantity,
+          price: productPrice,
+        };
+      });
+
+      // 배송비 추가 (5만원 미만 주문 시)
+      const shippingFee = totalAmount < 50000 ? 3000 : 0;
+      totalAmount += shippingFee;
+
+      // 주문 생성
+      const order = await prisma.order.create({
+        data: {
+          companyId: user.company.id,
+          createdById: userId,
+          updatedById: userId,
+          requestedById: userId,
+          status: 'PROCESSING',
+          totalAmount,
+          shippingMethod: '택배',
+          notes: '관리자가 주문한 상품입니다.',
+          adminNotes: '관리자가 주문한 상품입니다.',
+        },
+      });
+
+      // 주문 항목(OrderItem) 생성
+      await prisma.orderItem.createMany({
+        data: orderItems.map(item => ({
+          orderId: order.id,
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+      });
+
+      // 장바구니 초기화 (해당 유저의 장바구니 삭제)
+      await prisma.cartItem.deleteMany({
+        where: { cart: { userId } },
+      });
+
+      return order;
     });
-
-    //상품 총 가격 5만원 이하일경우 배송비3천원 추가
-    const shippingFee = totalAmount < 50000 ? 3000 : 0;
-    totalAmount += shippingFee;
-
-    const order = await this.prisma.order.create({
-      data: {
-        companyId: user.company.id,
-        createdById: userId,
-        updatedById: userId,
-        requestedById: userId,
-        status: 'PROCESSING',
-        totalAmount,
-        shippingMethod: '택배',
-        notes: '관리자가 주문한 상품입니다.', //관리자, 최고관리자가 구매할경우 메시지가 자동으로 등록
-        adminNotes: '관리자가 주문한 상품입니다.', //관리자, 최고관리자가 구매할경우 메시지가 자동으로 등록
-      },
-    });
-
-    await this.prisma.orderItem.createMany({
-      data: orderItems.map(item => ({
-        orderId: order.id,
-        productId: item.productId,
-        quantity: item.quantity,
-        price: item.price,
-      })),
-    });
-
-    //주문이 완료되면 해당유저의 장바구니 초기화
-    await this.prisma.cartItem.deleteMany({
-      where: { cart: { userId } },
-    });
-
-    return order;
   }
 
   //상품 상세조회
