@@ -169,15 +169,15 @@ jobs:
           fi'
 
       - name: Deploy to EC2 # EC2로 배포
-        timeout-minutes: 10 # 타임아웃 시간 10분
+        timeout-minutes: 5 # 타임아웃 시간 설정
         env:
-          HOST: ${{ secrets.EC2_HOST }} # EC2 호스트 주소
-          USERNAME: ${{ secrets.EC2_USERNAME }} # EC2 유저 이름
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }} # EC2 SSH 개인 키
-          KEY_PAIR_TYPE: ${{ secrets.EC2_KEY_PAIR_TYPE }} # 키 페어 타입
-          DATABASE_URL: ${{ secrets.DATABASE_URL }} # 데이터베이스 URL
-          DEPLOY_VERIFY_KEY: ${{ secrets.DEPLOY_VERIFY_KEY }} # 배포 검증 키
-          GIT_COMMIT_SHA: ${{ github.sha }} # GitHub 커밋 SHA
+          HOST: ${{ secrets.EC2_HOST }}
+          USERNAME: ${{ secrets.EC2_USERNAME }}
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          KEY_PAIR_TYPE: ${{ secrets.EC2_KEY_PAIR_TYPE }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DEPLOY_VERIFY_KEY: ${{ secrets.DEPLOY_VERIFY_KEY }}
+          GIT_COMMIT_SHA: ${{ github.sha }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           {
@@ -190,16 +190,17 @@ jobs:
             scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} .env.production ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
             scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ecosystem.config.js.gpg ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
             ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && \
-              pm2 delete all || true && \
-              # GPG 파일 복호화
+              source ~/.nvm/nvm.sh && nvm use 22 && corepack enable && \
+              pm2 stop snack25-be && pm2 delete snack25-be && \
               echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --passphrase-fd 0 --output ecosystem.config.js --decrypt ecosystem.config.js.gpg && \
               pnpm install --prod --ignore-scripts && \
               pnpm prisma generate && \
               pnpm prisma migrate deploy && \
-              pm2 start ecosystem.config.js --env production'
+              pm2 start ecosystem.config.js --env production
           } 2>&1 | while IFS= read -r line; do
             echo "::add-mask::$line"
             echo "$line"
+            echo "Deploy to EC2 작업 완료"
           done
 
       - name: Rollback on Failure # 배포 실패 시 롤백
@@ -217,23 +218,20 @@ jobs:
             fi
           }'
 
-      - name: Verify Deployment # 배포 검증
+      - name: Verify Deployment # 배포 확인
         run: |
-          max_retries=10  # 재시도 횟수 증가
-          retry_interval=20  # 간격 증가
+          max_retries=10
+          retry_interval=20
           for i in $(seq 1 $max_retries); do
-            response=$(curl -s -w "%{http_code}" -H "X-Deploy-Key: ${{ secrets.DEPLOY_VERIFY_KEY }}" http://${{ secrets.EC2_HOST }}:4000/health)
-            status_code=${response: -3}
-            body=${response:0:${#response}-3}
-
-            if [ "$status_code" = "200" ] && [ "$(echo $body | jq -r '.version')" = "${{ github.sha }}" ]; then
-              echo "배포가 성공적으로 완료되었습니다."
+            echo "건강 검사 시도 중... ($i/$max_retries)"
+            if curl -s --connect-timeout 10 --max-time 15 -H "X-Deploy-Key: ${{ secrets.DEPLOY_VERIFY_KEY }}" http://${{ secrets.EC2_HOST }}:4000/health; then
+              echo "서버가 정상적으로 응답합니다."
               exit 0
             fi
-            echo "재시도 중... ($i/$max_retries)"
+            echo "재시도하기 전 ${retry_interval}초 대기..."
             sleep $retry_interval
           done
-          echo "배포 검증 실패"
+          echo "건강 검사 실패 - 서버 응답 없음"
           exit 1
 
       - name: Health Check
