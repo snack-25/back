@@ -19,10 +19,10 @@ PACKAGE_MANAGER=$(detect_package_manager)
 
 # 패키지 매니저에 따른 처리
 if [ "$PACKAGE_MANAGER" = "pnpm" ]; then
-  echo "\033[1;32m🚀 [PNPM] 패키지 설치 완료!\033[0m"
+  printf "\033[1;32m🚀 [PNPM] 패키지 설치 완료!\033[0m\n"
   exit 0
 else
-  echo "\033[1;33m⚠️ 경고:\033[0m 현재 \033[1;31m$PACKAGE_MANAGER\033[0m 을(를) 사용하고 있습니다. \033[1;32mpnpm\033[0m을 사용하세요."
+  printf "\033[1;33m⚠️ 경고:\033[0m 현재 \033[1;31m%s\033[0m 을(를) 사용하고 있습니다. \033[1;32mpnpm\033[0m을 사용하세요.\n" "$PACKAGE_MANAGER"
   # 오류 종료 코드
   exit 1
 fi

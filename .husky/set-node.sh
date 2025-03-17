@@ -44,13 +44,13 @@ readonly YELLOW='\033[33m'
 readonly NC='\033[0m' # No Color
 
 # 유틸리티 함수
-log_error() { echo "${RED}❌ $1${NC}"; }
-log_success() { echo "${GREEN}✅ $1${NC}"; }
-log_warning() { echo "${YELLOW}👉 $1${NC}"; }
+log_error() { printf "${RED}❌ %s${NC}\n" "$1"; }
+log_success() { printf "${GREEN}✅ %s${NC}\n" "$1"; }
+log_warning() { printf "${YELLOW}👉 %s${NC}\n" "$1"; }
 
 # 설치 상태 확인 함수
 check_installed() {
-  command -v "$1" >/dev/null 2>&1 && echo $INSTALLED || echo $NOT_INSTALLED
+  command -v "$1" >/dev/null 2>&1 && printf "%s" "$INSTALLED" || printf "%s" "$NOT_INSTALLED"
 }
 
 # 시스템 체크
@@ -63,16 +63,15 @@ readonly IS_VOLTA_INSTALLED=$(check_installed "volta")
 readonly IS_ASDF_INSTALLED=$(check_installed "asdf")
 readonly IS_PNPM_INSTALLED=$(check_installed "pnpm")
 
-
 # 운영체제 출력(Windows, macOS, Linux)
 get_os() {
   # GitHub Actions 환경 확인
   if [ -n "$CI" ]; then
     case "$RUNNER_OS" in
-      "Windows") echo "Windows" ;;
-      "macOS")   echo "macOS" ;;
-      "Linux")   echo "Linux" ;;
-      *)         echo "Linux" ;; # 기본값으로 Linux 설정
+      "Windows") printf "Windows" ;;
+      "macOS")   printf "macOS" ;;
+      "Linux")   printf "Linux" ;;
+      *)         printf "Linux" ;; # 기본값으로 Linux 설정
     esac
     return
   fi
@@ -80,10 +79,10 @@ get_os() {
   # 로컬 환경 확인
   os="$(uname -s | tr '[:upper:]' '[:lower:]')"
   case "$os" in
-    *mingw*|*msys*|*cygwin*)  echo "Windows" ;;
-    *darwin*)                 echo "macOS" ;;
-    *linux*)                  echo "Linux" ;;
-    *)                        echo "Linux" ;; # 기본값으로 Linux 설정
+    *mingw*|*msys*|*cygwin*)  printf "Windows" ;;
+    *darwin*)                 printf "macOS" ;;
+    *linux*)                  printf "Linux" ;;
+    *)                        printf "Linux" ;; # 기본값으로 Linux 설정
   esac
 }
 
@@ -113,12 +112,12 @@ get_lts_version() {
 
 # LTS SEMVER에서 주버전만 추출(homebrew 등 패키지매니저 설치 시 필요함)
 get_lts_major_version() {
-  echo $(get_lts_version) | sed 's/^v//' | cut -d. -f1
+  printf "%s" "$(get_lts_version)" | sed 's/^v//' | cut -d. -f1
 }
 
 # 패키지 매니저 설치
 install_package_manager() {
-  local os=$1
+  local os="$1"
   case "$os" in
     "Windows")
       if [ "$IS_FNM_INSTALLED" -eq "$NOT_INSTALLED" ] && [ "$IS_WINGET_AVAILABLE" -eq "$INSTALLED" ]; then
@@ -135,9 +134,10 @@ install_package_manager() {
 
 # Node.js 설치/업데이트
 install_or_update_node() {
-  local os=$1
-  local version=$2
-  local package_manager=$(get_package_manager)
+  local os="$1"
+  local version="$2"
+  local package_manager
+  package_manager=$(get_package_manager)
 
   log_warning "패키지 매니저 $package_manager 로 Node.js $version 설치/업데이트 중..."
 
@@ -149,13 +149,13 @@ install_or_update_node() {
       fnm install "$version"
       ;;
     "volta")
-      volta install node@"$version"
+      volta install "node@$version"
       ;;
     "asdf")
       asdf install nodejs "$version"
       ;;
     "homebrew")
-      brew install node@"$(get_lts_major_version)"
+      brew install "node@$(get_lts_major_version)"
       ;;
     *)
       log_error "지원하지 않는 패키지 매니저입니다."
@@ -171,79 +171,71 @@ setup_pnpm() {
   if [ "$IS_PNPM_INSTALLED" -eq "$NOT_INSTALLED" ]; then
     log_warning "pnpm을 설치합니다"
     npm install -g pnpm
-    exec $SHELL
+    exec "$SHELL"
   fi
 
-  if [[ "$npm_execpath" != *"pnpm"* ]]; then
+  if [ -n "$npm_execpath" ] && ! printf "%s" "$npm_execpath" | grep -q "pnpm"; then
     rm -rf node_modules package-lock.json pnpm-lock.yaml
     log_error "pnpm 패키지 매니저가 아닙니다!"
     log_warning "pnpm을 사용하세요: > pnpm install <"
-    exec $SHELL
+    exec "$SHELL"
     exit 1
   fi
 }
 
 # 사용자에게 패키지 매니저를 선택하도록 하는 함수
 select_package_manager() {
-  local available_managers=()
+  local available_managers=""
   local count=0
 
   # 사용 가능한 패키지 매니저 목록 만들기
   if [ "$IS_NVM_INSTALLED" -eq "$INSTALLED" ]; then
     count=$((count+1))
-    available_managers+=("$count. nvm")
+    available_managers="$available_managers$count. nvm\n"
   fi
   if [ "$IS_FNM_INSTALLED" -eq "$INSTALLED" ]; then
     count=$((count+1))
-    available_managers+=("$count. fnm")
+    available_managers="$available_managers$count. fnm\n"
   fi
   if [ "$IS_VOLTA_INSTALLED" -eq "$INSTALLED" ]; then
     count=$((count+1))
-    available_managers+=("$count. volta")
+    available_managers="$available_managers$count. volta\n"
   fi
   if [ "$IS_ASDF_INSTALLED" -eq "$INSTALLED" ]; then
     count=$((count+1))
-    available_managers+=("$count. asdf")
+    available_managers="$available_managers$count. asdf\n"
   fi
   if [ "$IS_HOMEBREW_AVAILABLE" -eq "$INSTALLED" ]; then
     count=$((count+1))
-    available_managers+=("$count. homebrew")
+    available_managers="$available_managers$count. homebrew\n"
   fi
 
   # 패키지 매니저가 하나만 있는 경우 바로 반환
-  if [ $count -eq 1 ]; then
-    echo "${available_managers[0]#*. }"
+  if [ "$count" -eq 1 ]; then
+    printf "%s" "$available_managers" | head -n 1 | cut -d. -f2- | tr -d ' '
     return
   fi
 
   # 사용자에게 선택권 제공
-  log_warning "${YELLOW}여러 패키지 매니저가 설치되어 있습니다. 사용할 패키지 매니저를 선택하세요:${NC}" >&2
-  for manager in "${available_managers[@]}"; do
-    echo "$manager" >&2
-  done
+  log_warning "여러 패키지 매니저가 설치되어 있습니다. 사용할 패키지 매니저를 선택하세요:"
+  printf "%s" "$available_managers"
 
-  log_warning "${YELLOW}번호를 입력하세요 (1-$count):${NC} " >&2
-  read -r selection < /dev/tty
+  log_warning "번호를 입력하세요 (1-$count): "
+  read -r selection
 
   # 입력 검증
-  if ! [[ "$selection" =~ ^[0-9]+$ ]] || [ "$selection" -lt 1 ] || [ "$selection" -gt $count ]; then
-    log_error "잘못된 선택입니다. 기본값으로 첫 번째 패키지 매니저(${available_managers[0]#*. })를 사용합니다."
+  if ! printf "%s" "$selection" | grep -q '^[0-9]\+$' || [ "$selection" -lt 1 ] || [ "$selection" -gt "$count" ]; then
+    log_error "잘못된 선택입니다. 기본값으로 첫 번째 패키지 매니저를 사용합니다."
+    printf "%s" "$available_managers" | head -n 1 | cut -d. -f2- | tr -d ' '
     return
   fi
 
   # 선택된 패키지 매니저 반환
-  local selected_index=$(($selection - 1))
-  if [ $selected_index -ge 0 ] && [ $selected_index -lt $count ]; then
-    echo "${available_managers[$selected_index]#*. }"
-    return
-  fi
-
-  # 기본값 반환
-  echo "${available_managers[0]#*. }"
+  printf "%s" "$available_managers" | sed -n "${selection}p" | cut -d. -f2- | tr -d ' '
 }
 
-# 현재 사용중인 패키지매니저 확인 (수정된 함수)
-function get_package_manager() {
+# 현재 사용중인 패키지매니저 확인
+get_package_manager() {
   local available_count=0
 
   # 사용 가능한 패키지 매니저 개수 확인
@@ -254,26 +246,28 @@ function get_package_manager() {
   [ "$IS_HOMEBREW_AVAILABLE" -eq "$INSTALLED" ] && available_count=$((available_count+1))
 
   # 패키지 매니저가 없는 경우
-  if [ $available_count -eq 0 ]; then
-    echo "Node 패키지매니저가 설치되어 있지 않습니다. 직접 설치하세요."
-    echo "https://nodejs.org/ko/"
+  if [ "$available_count" -eq 0 ]; then
+    printf "Node 패키지매니저가 설치되어 있지 않습니다. 직접 설치하세요.\n"
+    printf "https://nodejs.org/ko/\n"
     exit 1
   fi
 
   # 패키지 매니저가 하나인 경우 바로 반환
-  if [ $available_count -eq 1 ]; then
+  if [ "$available_count" -eq 1 ]; then
     if [ "$IS_NVM_INSTALLED" -eq "$INSTALLED" ]; then
-      echo "nvm"
+      printf "nvm"
     elif [ "$IS_FNM_INSTALLED" -eq "$INSTALLED" ]; then
-      echo "fnm"
+      printf "fnm"
     elif [ "$IS_VOLTA_INSTALLED" -eq "$INSTALLED" ]; then
-      echo "volta"
+      printf "volta"
     elif [ "$IS_ASDF_INSTALLED" -eq "$INSTALLED" ]; then
-      echo "asdf"
+      printf "asdf"
     elif [ "$IS_HOMEBREW_AVAILABLE" -eq "$INSTALLED" ]; then
-      echo "homebrew"
+      printf "homebrew"
     fi
+    return
   fi
+
   # 여러 패키지 매니저가 있는 경우 사용자에게 선택권 제공
   select_package_manager
 }
@@ -285,13 +279,13 @@ check_latest_pnpm_installed() {
     # $2: 두 번째 버전
 
     # 각 버전의 메이저, 마이너, 패치 버전을 추출
-    v1_major=$(echo "$1" | cut -d. -f1)
-    v1_minor=$(echo "$1" | cut -d. -f2)
-    v1_patch=$(echo "$1" | cut -d. -f3)
+    v1_major=$(printf "%s" "$1" | cut -d. -f1)
+    v1_minor=$(printf "%s" "$1" | cut -d. -f2)
+    v1_patch=$(printf "%s" "$1" | cut -d. -f3)
 
-    v2_major=$(echo "$2" | cut -d. -f1)
-    v2_minor=$(echo "$2" | cut -d. -f2)
-    v2_patch=$(echo "$2" | cut -d. -f3)
+    v2_major=$(printf "%s" "$2" | cut -d. -f1)
+    v2_minor=$(printf "%s" "$2" | cut -d. -f2)
+    v2_patch=$(printf "%s" "$2" | cut -d. -f3)
 
     # 값이 없는 경우 0으로 설정
     : "${v1_major:=0}" "${v1_minor:=0}" "${v1_patch:=0}"
@@ -299,36 +293,36 @@ check_latest_pnpm_installed() {
 
     # 메이저 버전 비교
     if [ "$v1_major" -lt "$v2_major" ]; then
-      echo "-1"
+      printf "-1"
       return
     elif [ "$v1_major" -gt "$v2_major" ]; then
-      echo "1"
+      printf "1"
       return
     fi
 
     # 마이너 버전 비교
     if [ "$v1_minor" -lt "$v2_minor" ]; then
-      echo "-1"
+      printf "-1"
       return
     elif [ "$v1_minor" -gt "$v2_minor" ]; then
-      echo "1"
+      printf "1"
       return
     fi
 
     # 패치 버전 비교
     if [ "$v1_patch" -lt "$v2_patch" ]; then
-      echo "-1"
+      printf "-1"
       return
     elif [ "$v1_patch" -gt "$v2_patch" ]; then
-      echo "1"
+      printf "1"
       return
     fi
 
     # 버전이 동일한 경우
-    echo "0"
+    printf "0"
   }
 
-  # 최신 버전 확인 (sort_versions 함수 제거하고 단순화)
+  # 최신 버전 확인
   LATEST_VERSION=$(curl \
     --silent \
     --fail \
@@ -337,19 +331,19 @@ check_latest_pnpm_installed() {
     --header 'Accept: application/vnd.npm.install-v1+json' \
     https://registry.npmjs.org/pnpm | \
     grep -Eo '"version":"[^"]+"' | \
-    cut -d\" -f4 | \
+    cut -d'"' -f4 | \
     sort -V | \
     tail -n 1)
 
   # 현재 pnpm이 최신 버전인지 확인
   CURRENT_VERSION=$(pnpm -v)
 
-  if [ $(version_compare "$CURRENT_VERSION" "$LATEST_VERSION") -eq -1 ]; then
+  if [ "$(version_compare "$CURRENT_VERSION" "$LATEST_VERSION")" -eq -1 ]; then
     rm -rf package-lock.json pnpm-lock.yaml
-    echo '\033[31m❌ pnpm이 최신 버전이 아닙니다!\033[0m'
-    echo '\033[33m👉 현재 버전: '"$CURRENT_VERSION"'\033[0m'
-    echo '\033[33m👉 최신 버전: '"$LATEST_VERSION"'\033[0m'
-    echo '\033[33m👉 pnpm을 업데이트합니다: > npm i -g pnpm < \033[0m'
+    printf "\033[31m❌ pnpm이 최신 버전이 아닙니다!\033[0m\n"
+    printf "\033[33m👉 현재 버전: %s\033[0m\n" "$CURRENT_VERSION"
+    printf "\033[33m👉 최신 버전: %s\033[0m\n" "$LATEST_VERSION"
+    printf "\033[33m👉 pnpm을 업데이트합니다: > npm i -g pnpm < \033[0m\n"
 
     # 만약 homebrew를 사용하고 있다면, brew를 통해 업데이트
     if command -v brew >/dev/null 2>&1; then
@@ -361,39 +355,38 @@ check_latest_pnpm_installed() {
     else
       npm i -g pnpm
     fi
-    echo '\033[32m✅ pnpm이 최신 버전(v'"$LATEST_VERSION"')으로 업데이트되었습니다!\033[0m'
-    exec $SHELL
+    printf "\033[32m✅ pnpm이 최신 버전(v%s)으로 업데이트되었습니다!\033[0m\n" "$LATEST_VERSION"
+    exec "$SHELL"
     exit 1
   fi
-
 }
 
 # 메인 실행
 main() {
-  echo "\n📦 노드 버전 검사 중..."
+  printf "\n📦 노드 버전 검사 중...\n"
 
-  local os=$(get_os)
-  local current_version=$(get_current_node_version)
-  local lts_version=$(get_lts_version)
-  echo "\033[32m✅ Node 최신 LTS 버전: $(get_lts_major_version)"
-
+  local os
+  local current_version
+  local lts_version
+  os=$(get_os)
+  current_version=$(get_current_node_version)
+  lts_version=$(get_lts_version)
+  printf "\033[32m✅ Node 최신 LTS 버전: %s\033[0m\n" "$(get_lts_major_version)"
 
   # node 명령어가 존재하는지 확인, 없으면 설치로 넘어감
   if [ "$IS_NODE_INSTALLED" -eq "$NOT_INSTALLED" ]; then
-    echo '\033[31m❌ node가 설치되어 있지 않습니다! node를 설치하세요\033[0m'
+    printf "\033[31m❌ node가 설치되어 있지 않습니다! node를 설치하세요\033[0m\n"
     install_package_manager "$os"
     install_or_update_node "$os" "$lts_version"
     exit 1
   else
     # node 명령어가 존재하는 경우, npm 명령어도 존재할 것이므로 npm 업데이트 후 셸 재시작
     npm up -g --silent
-    # exec $SHELL
     # NodeJS 버전과 NPM 버전, 현재 패키지매니저 출력
-    echo '\033[32m✅ [NodeJS] '"$(node -v)"' / [NPM] '"$(npm -v)"'\033[0m'
+    printf "\033[32m✅ [NodeJS] %s / [NPM] %s\033[0m\n" "$(node -v)" "$(npm -v)"
     # package manager가 하나면 바로 반환, 아니면 사용자 입력을 받아 패키지매니저 선택
     PACKAGE_MANAGER=$(get_package_manager)
-    echo '\033[32m✅ [패키지매니저] '"$PACKAGE_MANAGER"'을 사용합니다 \033[0m'
-
+    printf "\033[32m✅ [패키지매니저] %s을 사용합니다 \033[0m\n" "$PACKAGE_MANAGER"
   fi
 
   # Node.js 버전 체크 및 업데이트
@@ -409,11 +402,9 @@ main() {
   # PNPM 설정
   setup_pnpm
 
-  # pnpm 설정
-  # pnpm이 설치되어 있지 않은 경우 설치
   # 성공적으로 완료
   if [ $? -eq 0 ]; then
-    exec $SHELL  # 셸 재시작
+    exec "$SHELL"  # 셸 재시작
     exit 0       # 정상 종료
   else
     exit 1      # 에러 발생 시 종료
@@ -421,7 +412,6 @@ main() {
 }
 
 main
-
 
 LTS_VERSION=$(
   # 먼저 jq 명령어가 존재하는지 확인 후, LTS 버전 확인
@@ -438,7 +428,7 @@ LTS_VERSION=$(
 
 # node LTS 버전을 찾지 못한 경우 에러 처리
 if [ -z "$LTS_VERSION" ]; then
-  echo '\033[31m❌ LTS 버전을 찾을 수 없습니다!\033[0m'
+  printf "\033[31m❌ LTS 버전을 찾을 수 없습니다!\033[0m\n"
   exit 1
 fi
 
@@ -447,26 +437,26 @@ NVM_NODE_VERSION="$(nvm version)"
 # 만약 nvm을 사용하고 있다면, nvm을 통해 노드 버전을 업데이트
 if command -v nvm >/dev/null 2>&1; then
   # nvm이 설치되어 있고 현재 사용중인 nvm 버전이 있는지 확인한다
-  if [ "$NVM_NODE_VERSION" != "$(cat $PROJECT_ROOT/.nvmrc)" ]; then
-    echo '\033[31m❌ 프로젝트에 설정된 노드 버전이 아닙니다!\033[0m'
-    echo '\033[33m👉 프로젝트 루트 디렉토리에 .nvmrc 파일을 확인하세요. \033[0m'
-    echo '\033[33m👉 nvm use $(cat .nvmrc) 명령어를 사용해주세요. \033[0m'
+  if [ "$NVM_NODE_VERSION" != "$(cat "$PROJECT_ROOT/.nvmrc")" ]; then
+    printf "\033[31m❌ 프로젝트에 설정된 노드 버전이 아닙니다!\033[0m\n"
+    printf "\033[33m👉 프로젝트 루트 디렉토리에 .nvmrc 파일을 확인하세요. \033[0m\n"
+    printf "\033[33m👉 nvm use $(cat .nvmrc) 명령어를 사용해주세요. \033[0m\n"
     exit 1
   fi
-  nvm use $(cat $PROJECT_ROOT/.nvmrc)
+  nvm use "$(cat "$PROJECT_ROOT/.nvmrc")"
 else
-  echo '\033[31m❌ nvm이 설치되어 있지 않습니다!\033[0m'
-  echo '\033[33m👉 nvm을 설치합니다. \033[0m'
+  printf "\033[31m❌ nvm이 설치되어 있지 않습니다!\033[0m\n"
+  printf "\033[33m👉 nvm을 설치합니다. \033[0m\n"
   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash && \
-  exec $SHELL
+  exec "$SHELL"
   exit 1
 fi
 
 # 현재 사용 중인 패키지 매니저 확인
-if [[ "$npm_execpath" != *"pnpm"* ]]; then
+if [ -n "$npm_execpath" ] && ! printf "%s" "$npm_execpath" | grep -q "pnpm"; then
   rm -rf node_modules package-lock.json pnpm-lock.yaml
-  echo '\033[31m❌ pnpm 패키지 매니저가 아닙니다!\033[0m'
-  echo '\033[33m👉 pnpm을 사용하세요: > pnpm install < \033[0m'
-  exec $SHELL
+  printf "\033[31m❌ pnpm 패키지 매니저가 아닙니다!\033[0m\n"
+  printf "\033[33m👉 pnpm을 사용하세요: > pnpm install < \033[0m\n"
+  exec "$SHELL"
   exit 1
 fi
