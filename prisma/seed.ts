@@ -154,7 +154,7 @@ async function main() {
     await tx.product.createMany({
       data: products,
       skipDuplicates: true,
-    })
+    });
 
     // 7. 주문 요청 추가 (User ID 11)
     await tx.orderRequest.createMany({
@@ -206,17 +206,14 @@ async function main() {
       });
 
       // totalAmount 계산 (각 아이템의 price * quantity 합산)
-      const totalAmount = items.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0
-      );
+      const totalAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
       // 주문 요청의 totalAmount 업데이트
       await tx.orderRequest.update({
         where: { id: orderRequestId },
         data: { totalAmount },
       });
-  }
+    }
 
     console.log('🎉 Seeding complete!');
   });
