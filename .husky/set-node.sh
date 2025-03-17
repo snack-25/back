@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# CI 환경 체크
+is_ci_environment() {
+  [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ]
+}
+
+# CI 환경에서는 스크립트 스킵
+if is_ci_environment; then
+  exit 0
+fi
+
 # 노드 패키지 매니저 버전 조사 결과
 # Windows: nvm 3표, 직접설치 1표
 # macOS: nvm 2표, homebrew 1표, asdf 1표
