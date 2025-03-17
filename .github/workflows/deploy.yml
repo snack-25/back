@@ -37,10 +37,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm- # 캐시 키 복원
 
-      - name: Install Dependencies # 의존성 설치
-        run: pnpm install --frozen-lockfile --prod # 프로덕션 의존성만 설치
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile --prod --ignore-scripts # husky prepare 스크립트 건너뛰기
         env:
-          CI: ${{ secrets.CI }} # CI 환경 변수 설정
+          CI: ${{ secrets.CI }}
 
       - name: Generate Prisma Client # Prisma 클라이언트 생성
         run: pnpm prisma generate # pnpm을 사용하여 Prisma 클라이언트 생성
