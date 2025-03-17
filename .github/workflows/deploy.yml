@@ -38,7 +38,7 @@ jobs:
             ${{ runner.os }}-pnpm- # 캐시 키 복원
 
       - name: Install Dependencies
-        run: pnpm install --frozen-lockfile --prod --ignore-scripts # husky prepare 스크립트 건너뛰기
+        run: pnpm install --frozen-lockfile --ignore-scripts # 빌드에 필요한 devDependencies도 설치
         env:
           CI: ${{ secrets.CI }}
 
