@@ -1,6 +1,6 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
-import { CartItem, Cart } from './dto/cart.interface';
+import { Cart, CartItem } from './dto/cart.interface';
 
 @Injectable()
 export class CartsService {

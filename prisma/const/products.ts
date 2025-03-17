@@ -13,7 +13,7 @@ export const products = [
     name: '콜라',
     price: 2000,
     description: '시원한 탄산음료',
-    imageUrl: 'https://placehold.co/600x400?text=cola'
+    imageUrl: 'https://placehold.co/600x400?text=cola',
   },
   {
     id: 'product_03',
@@ -21,7 +21,7 @@ export const products = [
     name: '삼다수 2L',
     price: 1200,
     description: '제주 화산암반수로 만든 생수',
-    imageUrl: 'https://placehold.co/600x400?text=water'
+    imageUrl: 'https://placehold.co/600x400?text=water',
   },
   {
     id: 'product_04',
@@ -29,7 +29,7 @@ export const products = [
     name: '신라면 컵',
     price: 1300,
     description: '매콤한 국물이 일품인 컵라면',
-    imageUrl: 'https://placehold.co/600x400?text=cupnoodle'
+    imageUrl: 'https://placehold.co/600x400?text=cupnoodle',
   },
   {
     id: 'product_05',
@@ -37,7 +37,7 @@ export const products = [
     name: '닭가슴살 샐러드',
     price: 6500,
     description: '신선한 채소와 닭가슴살이 들어간 건강한 샐러드',
-    imageUrl: 'https://placehold.co/600x400?text=salad'
+    imageUrl: 'https://placehold.co/600x400?text=salad',
   },
   {
     id: 'product_06',
@@ -45,7 +45,7 @@ export const products = [
     name: '에티오피아 예가체프',
     price: 25000,
     description: '꽃향이 풍부한 에티오피아 원두',
-    imageUrl: 'https://placehold.co/600x400?text=coffee+bean'
+    imageUrl: 'https://placehold.co/600x400?text=coffee+bean',
   },
   {
     id: 'product_07',
@@ -53,7 +53,7 @@ export const products = [
     name: '종이컵 6.5oz (50개입)',
     price: 3000,
     description: '무형광 친환경 종이컵',
-    imageUrl: 'https://placehold.co/600x400?text=paper+cup'
+    imageUrl: 'https://placehold.co/600x400?text=paper+cup',
   },
   {
     id: 'product_08',
@@ -61,7 +61,7 @@ export const products = [
     name: '제주 감귤 1kg',
     price: 8900,
     description: '새콤달콤한 제주 감귤',
-    imageUrl: 'https://placehold.co/600x400?text=tangerine'
+    imageUrl: 'https://placehold.co/600x400?text=tangerine',
   },
   {
     id: 'product_09',
@@ -69,7 +69,7 @@ export const products = [
     name: '다크초콜릿 70%',
     price: 4500,
     description: '카카오 함량 70%의 프리미엄 다크초콜릿',
-    imageUrl: 'https://placehold.co/600x400?text=chocolate'
+    imageUrl: 'https://placehold.co/600x400?text=chocolate',
   },
   {
     id: 'product_10',
@@ -77,6 +77,6 @@ export const products = [
     name: '캐모마일 티백 20개입',
     price: 5500,
     description: '릴렉싱에 도움을 주는 캐모마일차',
-    imageUrl: 'https://placehold.co/600x400?text=chamomile'
-  }
+    imageUrl: 'https://placehold.co/600x400?text=chamomile',
+  },
 ];

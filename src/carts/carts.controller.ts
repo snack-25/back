@@ -1,20 +1,33 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiParam, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { CreateCartDto } from './dto/create-cart.dto';
 import { CartsService } from './carts.service';
 import { DeleteCartItemsDto, UpdateCartItemDto } from './dto/update-cart.dto';
 import { CartItem } from '@prisma/client';
 
+@ApiTags('Carts')
 @Controller('carts')
 export class CartsController {
   public constructor(private readonly cartsService: CartsService) {}
 
-  // TODO: /carts/{cartId}/items (GET) 장바구니 항목 조회
+  @ApiOperation({
+    summary: '장바구니 조회',
+    description: '특정 장바구니의 상품 목록을 조회합니다.',
+  })
+  @ApiParam({ name: 'cartId', required: true, description: '조회할 장바구니 ID' })
+  @ApiResponse({ status: 200, description: '장바구니 조회 성공' })
   @Get(':cartId/items')
   public async getCartItems(@Param('cartId') cartId: string): Promise<CartItem[]> {
     return await this.cartsService.getCartItems(cartId);
   }
 
-  // TODO: /carts/{cartId}/items (POST) 장바구니 항목 추가
+  @ApiOperation({
+    summary: '장바구니 상품 추가',
+    description: '특정 장바구니에 상품을 추가합니다.',
+  })
+  @ApiParam({ name: 'cartId', required: true, description: '상품을 추가할 장바구니 ID' })
+  @ApiBody({ type: CreateCartDto, description: '추가할 상품의 ID' })
+  @ApiResponse({ status: 201, description: '상품 추가 성공' })
   @Post(':cartId/items')
   public async addToCart(
     @Param('cartId') cartId: string,
@@ -23,7 +36,14 @@ export class CartsController {
     return await this.cartsService.addToCart(cartId, createDto.productId);
   }
 
-  // TODO: /carts/{cartId}/items/{itemId} (PUT/PATCH) 장바구니 항목 수정
+  @ApiOperation({
+    summary: '장바구니 상품 수량 변경',
+    description: '특정 장바구니 상품의 수량을 변경합니다.',
+  })
+  @ApiParam({ name: 'cartId', required: true, description: '장바구니 ID' })
+  @ApiParam({ name: 'itemId', required: true, description: '수량을 변경할 장바구니 상품 ID' })
+  @ApiBody({ type: UpdateCartItemDto, description: '변경할 상품 수량' })
+  @ApiResponse({ status: 200, description: '상품 수량 변경 성공' })
   @Patch(':cartId/items/:itemId')
   public async updateCartItem(
     @Param('cartId') cartId: string,
@@ -32,7 +52,14 @@ export class CartsController {
   ): Promise<CartItem> {
     return await this.cartsService.updateCartItem(cartId, itemId, updateCartItemDto.quantity);
   }
-  // TODO: /carts/{cartId}/items (DELETE) 장바구니 항목 삭제
+
+  @ApiOperation({
+    summary: '장바구니 상품 삭제',
+    description: '특정 장바구니에서 선택한 상품들을 삭제합니다.',
+  })
+  @ApiParam({ name: 'cartId', required: true, description: '상품을 삭제할 장바구니 ID' })
+  @ApiBody({ type: DeleteCartItemsDto, description: '삭제할 상품의 ID 목록' })
+  @ApiResponse({ status: 200, description: '상품 삭제 성공' })
   @Delete(':cartId/items')
   public async deleteCartItems(
     @Param('cartId') cartId: string,
