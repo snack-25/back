@@ -279,29 +279,52 @@ function get_package_manager() {
 }
 
 check_latest_pnpm_installed() {
-  # 버전 비교 함수
+  # 버전 비교 함수 (POSIX sh 호환)
   version_compare() {
-    local v1="$1"
-    local v2="$2"
+    # $1: 첫 번째 버전
+    # $2: 두 번째 버전
 
-    # 버전 문자열을 배열로 분리
-    local IFS=.
-    local v1_parts=($v1)
-    local v2_parts=($v2)
+    # 각 버전의 메이저, 마이너, 패치 버전을 추출
+    v1_major=$(echo "$1" | cut -d. -f1)
+    v1_minor=$(echo "$1" | cut -d. -f2)
+    v1_patch=$(echo "$1" | cut -d. -f3)
 
-    # 각 부분을 순차적으로 비교
-    for i in 0 1 2; do
-      local v1_part="${v1_parts[$i]:-0}"
-      local v2_part="${v2_parts[$i]:-0}"
+    v2_major=$(echo "$2" | cut -d. -f1)
+    v2_minor=$(echo "$2" | cut -d. -f2)
+    v2_patch=$(echo "$2" | cut -d. -f3)
 
-      if [ "$v1_part" -lt "$v2_part" ]; then
-        echo "-1"
-        return
-      elif [ "$v1_part" -gt "$v2_part" ]; then
-        echo "1"
-        return
-      fi
-    done
+    # 값이 없는 경우 0으로 설정
+    : "${v1_major:=0}" "${v1_minor:=0}" "${v1_patch:=0}"
+    : "${v2_major:=0}" "${v2_minor:=0}" "${v2_patch:=0}"
+
+    # 메이저 버전 비교
+    if [ "$v1_major" -lt "$v2_major" ]; then
+      echo "-1"
+      return
+    elif [ "$v1_major" -gt "$v2_major" ]; then
+      echo "1"
+      return
+    fi
+
+    # 마이너 버전 비교
+    if [ "$v1_minor" -lt "$v2_minor" ]; then
+      echo "-1"
+      return
+    elif [ "$v1_minor" -gt "$v2_minor" ]; then
+      echo "1"
+      return
+    fi
+
+    # 패치 버전 비교
+    if [ "$v1_patch" -lt "$v2_patch" ]; then
+      echo "-1"
+      return
+    elif [ "$v1_patch" -gt "$v2_patch" ]; then
+      echo "1"
+      return
+    fi
+
+    # 버전이 동일한 경우
     echo "0"
   }
 
