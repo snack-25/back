@@ -146,6 +146,8 @@ jobs:
       - name: Configure Environment
         run: |
           # 환경 변수 파일 생성 시 마스킹
+          echo "::add-mask::$(echo NODE_ENV=${NODE_ENV})"
+          echo "NODE_ENV=${NODE_ENV}" >> .env.production
           echo "::add-mask::$(echo DATABASE_URL=${DATABASE_URL})"
           echo "DATABASE_URL=${DATABASE_URL}" >> .env.production
 
