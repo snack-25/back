@@ -54,10 +54,10 @@
     "@nestjs/swagger": "^11.0.6",
     "@paralleldrive/cuid2": "2.2.2",
     "argon2": "0.41.1",
+    "bcrypt": "5.1.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
-    "cookie-parser": "^1.4.7",
-    "cross-env": "7.0.3",
+    "cookie-parser": "1.4.7",
     "multer": "1.4.5-lts.1",
     "multer-s3": "^3.0.1",
     "passport": "^0.7.0",
@@ -85,6 +85,7 @@
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^6.0.2",
     "commitlint-config-gitmoji": "2.3.1",
+    "cross-env": "7.0.3",
     "eslint": "^9.22.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.2",
@@ -131,5 +132,6 @@
       "esbuild",
       "prisma"
     ]
-  }
+  },
+  "packageManager": "pnpm@10.5.2+sha512.da9dc28cd3ff40d0592188235ab25d3202add8a207afbedc682220e4a0029ffbff4562102b9e6e46b4e3f9e8bd53e6d05de48544b0c57d4b0179e22c76d1199b"
 }

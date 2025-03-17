@@ -3,6 +3,7 @@ import cookieParser from 'cookie-parser';
 import { SwaggerModule, SwaggerCustomOptions, OpenAPIObject } from '@nestjs/swagger';
 import docsOptions from '@shared/swagger/SwaggerOptions';
 import { AppModule } from './app.module';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -25,6 +26,7 @@ async function bootstrap(): Promise<void> {
   });
   // Cookie Parser 사용
   app.use(cookieParser());
+  app.useGlobalPipes(new ValidationPipe({ transform: true }));
   // 4000번 포트에서 서버 실행
   await app.listen(process.env.PORT ?? 4000, process.env.HOST ?? '0.0.0.0');
 }
