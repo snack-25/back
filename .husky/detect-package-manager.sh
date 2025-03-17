@@ -1,6 +1,11 @@
 #!/bin/sh
 # 현재 사용 중인 패키지 매니저 감지 스크립트
 
+# CI 환경 체크
+is_ci_environment() {
+  [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ]
+}
+
 # 방법 1: npm_execpath 환경 변수 활용 (가장 신뢰성 높음)
 detect_by_npm_execpath() {
   if [ -n "$npm_execpath" ]; then
@@ -87,32 +92,65 @@ detect_by_process() {
 
 # 주 함수: 모든 방법 시도
 detect_package_manager() {
-  # 방법 1-3 시도
-  result=$(detect_by_npm_execpath)
-  if [ $? -eq 0 ]; then
-    echo "$result"
+  # CI 환경에서는 pnpm 반환
+  if is_ci_environment; then
+    echo "pnpm"
     return 0
   fi
 
-  result=$(detect_by_user_agent)
-  if [ $? -eq 0 ]; then
-    echo "$result"
+  # 방법 1: npm_execpath 환경 변수 활용 (가장 신뢰성 높음)
+  if [ -n "$npm_execpath" ]; then
+    case "$npm_execpath" in
+      *pnpm*)
+        echo "pnpm"
+        return 0
+        ;;
+      *yarn*)
+        echo "yarn"
+        return 0
+        ;;
+      *npm*)
+        echo "npm"
+        return 0
+        ;;
+    esac
+  fi
+
+  # 방법 2: 락파일 확인
+  if [ -f "pnpm-lock.yaml" ]; then
+    echo "pnpm"
+    return 0
+  elif [ -f "yarn.lock" ]; then
+    echo "yarn"
+    return 0
+  elif [ -f "package-lock.json" ]; then
+    echo "npm"
     return 0
   fi
 
-  result=$(detect_by_lockfile)
-  if [ $? -eq 0 ]; then
-    echo "$result"
-    return 0
-  fi
-
-  # Linux/macOS에서만 작동
-  if [ -d "/proc" ]; then
-    result=$(detect_by_process)
-    if [ $? -eq 0 ]; then
-      echo "$result"
-      return 0
-    fi
+  # Linux/macOS에서만 작동하고 CI가 아닌 경우에만 프로세스 체크
+  if [ -d "/proc" ] && ! is_ci_environment; then
+    ppid=$$
+    while [ "$ppid" -ne 1 ] && [ -e "/proc/$ppid" ]; do
+      cmd=$(cat /proc/$ppid/cmdline 2>/dev/null | tr '\0' ' ' | grep -E 'npm|yarn|pnpm')
+      if [ -n "$cmd" ]; then
+        case "$cmd" in
+          *pnpm*)
+            echo "pnpm"
+            return 0
+            ;;
+          *yarn*)
+            echo "yarn"
+            return 0
+            ;;
+          *npm*)
+            echo "npm"
+            return 0
+            ;;
+        esac
+      fi
+      ppid=$(ps -o ppid= -p "$ppid" 2>/dev/null | tr -d ' ')
+    done
   fi
 
   # 기본값
@@ -121,11 +159,11 @@ detect_package_manager() {
 }
 
 # 스크립트를 직접 실행하는 경우에만 결과 출력
-if [ "$(basename "$0")" = "detect-package-manager.sh" ]; then
+if [ "$(basename "$0")" = "detect-package-manager.sh" ] && ! is_ci_environment; then
   pkg_manager=$(detect_package_manager)
   echo "Detected package manager: $pkg_manager"
 
-  # 추가 디버깅 정보
+  # 추가 디버깅 정보 (CI 환경이 아닌 경우에만 출력)
   echo "Debug info:"
   echo "npm_execpath: $npm_execpath"
   echo "npm_config_user_agent: $npm_config_user_agent"

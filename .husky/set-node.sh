@@ -65,14 +65,25 @@ readonly IS_PNPM_INSTALLED=$(check_installed "pnpm")
 
 
 # 운영체제 출력(Windows, macOS, Linux)
-function get_os() {
-  local os
+get_os() {
+  # GitHub Actions 환경 확인
+  if [ -n "$CI" ]; then
+    case "$RUNNER_OS" in
+      "Windows") echo "Windows" ;;
+      "macOS")   echo "macOS" ;;
+      "Linux")   echo "Linux" ;;
+      *)         echo "Linux" ;; # 기본값으로 Linux 설정
+    esac
+    return
+  fi
+
+  # 로컬 환경 확인
   os="$(uname -s | tr '[:upper:]' '[:lower:]')"
-  case "$os" in  # 소문자로 변환하여 비교
+  case "$os" in
     *mingw*|*msys*|*cygwin*)  echo "Windows" ;;
     *darwin*)                 echo "macOS" ;;
     *linux*)                  echo "Linux" ;;
-    *)                        echo "운영체제를 확인할 수 없습니다." && exit 1 ;;
+    *)                        echo "Linux" ;; # 기본값으로 Linux 설정
   esac
 }
 
@@ -270,30 +281,31 @@ function get_package_manager() {
 check_latest_pnpm_installed() {
   # 버전 비교 함수
   version_compare() {
-    echo "$1" "$2" | awk '{
-      split($1,a,".");
-      split($2,b,".");
-      for(i=1;i<=3;i++) {
-        if(a[i]<b[i]) {print "-1"; exit}
-        if(a[i]>b[i]) {print "1"; exit}
-      }
-      print "0"
-    }'
+    local v1="$1"
+    local v2="$2"
+
+    # 버전 문자열을 배열로 분리
+    local IFS=.
+    local v1_parts=($v1)
+    local v2_parts=($v2)
+
+    # 각 부분을 순차적으로 비교
+    for i in 0 1 2; do
+      local v1_part="${v1_parts[$i]:-0}"
+      local v2_part="${v2_parts[$i]:-0}"
+
+      if [ "$v1_part" -lt "$v2_part" ]; then
+        echo "-1"
+        return
+      elif [ "$v1_part" -gt "$v2_part" ]; then
+        echo "1"
+        return
+      fi
+    done
+    echo "0"
   }
 
-  # 버전 정렬 함수(curl로 받아온 버전 문자열을 최신순으로 정렬)
-  function sort_versions() {
-    awk '{
-      split($0,v,/[+-]|\./);  # 버전 문자열을 배열로 분리
-      # 정렬을 위한 키와 원본 버전을 함께 저장
-      printf("%012d%012d%012d %s\n", v[1], v[2], v[3], $0);
-    }' |
-    sort -r |  # 역순 정렬로 최신 버전이 먼저 오도록 함
-    head -n 1 |  # 가장 최신 버전 선택
-    awk '{print $2}'  # 원본 버전 문자열 출력
-  }
-
-  # 최신 버전 확인
+  # 최신 버전 확인 (sort_versions 함수 제거하고 단순화)
   LATEST_VERSION=$(curl \
     --silent \
     --fail \
@@ -303,7 +315,8 @@ check_latest_pnpm_installed() {
     https://registry.npmjs.org/pnpm | \
     grep -Eo '"version":"[^"]+"' | \
     cut -d\" -f4 | \
-    sort_versions)
+    sort -V | \
+    tail -n 1)
 
   # 현재 pnpm이 최신 버전인지 확인
   CURRENT_VERSION=$(pnpm -v)
