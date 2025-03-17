@@ -194,7 +194,7 @@ jobs:
               pnpm install --prod --ignore-scripts && \
               pnpm prisma generate && \
               pnpm prisma migrate deploy && \
-              pm2 start ecosystem.config.js --env production
+              pm2 start ecosystem.config.js --env production'
           } 2>&1 | while IFS= read -r line; do
             echo "::add-mask::$line"
             echo "$line"
