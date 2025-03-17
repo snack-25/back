@@ -191,7 +191,7 @@ jobs:
               pm2 delete all || true && \
               # GPG 파일 복호화
               echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --passphrase-fd 0 --output ecosystem.config.js --decrypt ecosystem.config.js.gpg && \
-              pnpm install --prod && \
+              pnpm install --prod --frozen-lockfile --ignore-scripts && \
               pnpm prisma generate && \
               pnpm prisma migrate deploy && \
               pm2 start ecosystem.config.js --env production'
