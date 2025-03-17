@@ -192,19 +192,15 @@ jobs:
             ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && \
               source ~/.nvm/nvm.sh && nvm use 22 && corepack enable && \
               pm2 stop snack25-be && pm2 delete snack25-be && \
-              # GPG 파일 복호화
               echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --passphrase-fd 0 --output ecosystem.config.js --decrypt ecosystem.config.js.gpg && \
               pnpm install --prod --ignore-scripts && \
-              npx prisma generate && \
-              npx prisma migrate deploy && \
-              pm2 start ecosystem.config.js --env production && \
-              echo "애플리케이션 시작 로그 확인 중..." && \
-              sleep 10 && \
-              pm2 logs --lines 20 --nostream && \
-              pm2 status'
+              pnpm prisma generate && \
+              pnpm prisma migrate deploy && \
+              pm2 start ecosystem.config.js --env production
           } 2>&1 | while IFS= read -r line; do
             echo "::add-mask::$line"
             echo "$line"
+            echo "Deploy to EC2 작업 완료"
           done
 
       - name: Rollback on Failure # 배포 실패 시 롤백
