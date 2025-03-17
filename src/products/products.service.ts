@@ -6,6 +6,7 @@ import { ProductQueryDto } from './dto/product.query.dto';
 import { PaginatedProductsResponseDto } from './dto/paginated-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductDto } from './dto/create-product.dto';
+import { BadRequestException } from '@nestjs/common';
 
 @Injectable()
 export class ProductsService {
@@ -18,7 +19,11 @@ export class ProductsService {
     categoryId,
     sort,
   }: ProductQueryDto): Promise<PaginatedProductsResponseDto> {
-    const [field, order] = sort.split(':');
+    const splitSort = sort.split(':');
+    if (splitSort.length !== 2) {
+      throw new BadRequestException('Invalid sort format');
+    }
+    const [field, order] = splitSort;
     const where = {
       ...(search && {
         name: {
