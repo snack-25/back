@@ -15,6 +15,7 @@ import { ProductResponseDto } from './dto/product.response.dto';
 import { PaginatedProductsResponseDto } from './dto/paginated-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductDto } from './dto/create-product.dto';
+import { SortOption } from './enums/sort-options.enum';
 
 @Controller('products')
 export class ProductsController {
@@ -57,13 +58,18 @@ export class ProductsController {
     description: '카테고리 ID',
     type: String,
     required: false,
+    example: 'cat-스낵',
   })
   @ApiQuery({
     name: 'sort',
-    description: '정렬 순서(기본-최신순)',
-    enum: ['createdAt:asc', 'createdAt:desc', 'price:asc', 'price:desc'],
+    description: `
+      createdAt:asc 생성일 오름차순 (오래된 순)
+      createdAt:desc 생성일 내림차순 (최신 순)
+      price:asc 가격 오름차순 (낮은 가격 순)
+      price:desc 가격 내림차순 (높은 가격 순)`,
+    enum: SortOption,
     required: false,
-    default: 'createdAt:desc',
+    default: SortOption.CREATED_AT_DESC,
   })
   @ApiResponse({ status: 200, description: '상품 목록', type: PaginatedProductsResponseDto })
   public findAll(
@@ -71,8 +77,11 @@ export class ProductsController {
     @Query('limit', ParseIntPipe) limit: number = 8,
     @Query('search') search: string = '',
     @Query('categoryId') categoryId: string = '',
-    @Query('sort') sort: string = 'createdAt:desc',
+    @Query('sort') sort: SortOption = SortOption.CREATED_AT_DESC,
   ): Promise<PaginatedProductsResponseDto> {
+    if (categoryId) {
+      categoryId = decodeURIComponent(categoryId);
+    }
     return this.productsService.findAll({ page, limit, search, categoryId, sort });
   }
 

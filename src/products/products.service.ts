@@ -28,19 +28,17 @@ export class ProductsService {
       ...(categoryId && { categoryId }),
     };
 
-    const [products, total] = await Promise.all([
-      this.prismaService.product.findMany({
-        where,
-        orderBy: {
-          [field]: order as 'asc' | 'desc',
-        },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      this.prismaService.product.count({ where }),
-    ]);
-
+    const total = await this.prismaService.product.count({ where });
     const totalPages = Math.ceil(total / limit);
+
+    const products = await this.prismaService.product.findMany({
+      where,
+      orderBy: {
+        [field]: order as 'asc' | 'desc',
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
 
     return {
       items: products.map(product => this.toResponseDto(product)),
@@ -48,6 +46,8 @@ export class ProductsService {
       page,
       limit,
       totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
     };
   }
 
