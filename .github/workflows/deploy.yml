@@ -121,9 +121,9 @@ jobs:
       - name: Create env file # 환경 변수 암호화
         run: |
           echo "::add-mask::$(echo DATABASE_URL=${DATABASE_URL})"
-          echo "DATABASE_URL=${DATABASE_URL}" | gpg --symmetric --batch --passphrase "${{ secrets.GPG_PASSPHRASE }}" > .env.production.gpg
-          scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} .env.production.gpg ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
-          echo "::add-mask::$(cat .env.production)"
+          echo "DATABASE_URL=${DATABASE_URL}" | gpg --symmetric --batch --passphrase "${{ secrets.GPG_PASSPHRASE }}" > .env.gpg
+          scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} .env.gpg ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
+          echo "::add-mask::$(cat .env)"
 
       - name: Setup PM2 Config # PM2 설정
         run: |
@@ -146,9 +146,9 @@ jobs:
         run: |
           # 환경 변수 파일 생성 시 마스킹
           echo "::add-mask::$(echo NODE_ENV=${NODE_ENV})"
-          echo "NODE_ENV=${NODE_ENV}" >> .env.production
+          echo "NODE_ENV=${NODE_ENV}" >> .env
           echo "::add-mask::$(echo DATABASE_URL=${DATABASE_URL})"
-          echo "DATABASE_URL=${DATABASE_URL}" >> .env.production
+          echo "DATABASE_URL=${DATABASE_URL}" >> .env
 
           # SSH 키 마스킹
           echo "::add-mask::$(cat ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }})"
@@ -182,10 +182,10 @@ jobs:
           {
             echo "Deploying to $HOST"
             echo "Starting deployment to EC2..."
-            echo "Creating .env.production file..."
-            echo "DATABASE_URL=${DATABASE_URL}" > .env.production
+            echo "Creating .env file..."
+            echo "DATABASE_URL=${DATABASE_URL}" > .env
             scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} -r dist package.json pnpm-lock.yaml prisma ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
-            scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} .env.production ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
+            scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} .env ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
             scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ecosystem.config.js ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
             ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && \
               source ~/.nvm/nvm.sh && nvm use 22 && corepack enable && \
