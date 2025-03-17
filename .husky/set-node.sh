@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # 노드 패키지 매니저 버전 조사 결과
 # Windows: nvm 3표, 직접설치 1표
