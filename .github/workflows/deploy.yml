@@ -125,7 +125,7 @@ jobs:
           scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} .env.production.gpg ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
           echo "::add-mask::$(cat .env.production)"
 
-      - name: Setup PM2 Config
+      - name: Setup PM2 Config # PM2 설정
         run: |
           cat << 'EOL' | gpg --symmetric --batch --passphrase "${{ secrets.GPG_PASSPHRASE }}" > ecosystem.config.js.gpg
           module.exports = {
@@ -176,6 +176,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }} # 데이터베이스 URL
           DEPLOY_VERIFY_KEY: ${{ secrets.DEPLOY_VERIFY_KEY }} # 배포 검증 키
           GIT_COMMIT_SHA: ${{ github.sha }} # GitHub 커밋 SHA
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           {
             echo "Deploying to $HOST"
@@ -188,6 +189,8 @@ jobs:
             scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ecosystem.config.js.gpg ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
             ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && \
               pm2 delete all || true && \
+              # GPG 파일 복호화
+              echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --passphrase-fd 0 --output ecosystem.config.js --decrypt ecosystem.config.js.gpg && \
               pnpm install --prod && \
               pnpm prisma generate && \
               pnpm prisma migrate deploy && \
