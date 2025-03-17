@@ -1,5 +1,15 @@
 #!/bin/sh
 
+# CI 환경 체크
+is_ci_environment() {
+  [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ]
+}
+
+# CI 환경에서는 hook 스킵
+if is_ci_environment; then
+  exit 0
+fi
+
 # 스크립트 실패 시 즉시 중단
 set -e
 

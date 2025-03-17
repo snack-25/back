@@ -65,14 +65,25 @@ readonly IS_PNPM_INSTALLED=$(check_installed "pnpm")
 
 
 # 운영체제 출력(Windows, macOS, Linux)
-function get_os() {
-  local os
+get_os() {
+  # GitHub Actions 환경 확인
+  if [ -n "$CI" ]; then
+    case "$RUNNER_OS" in
+      "Windows") echo "Windows" ;;
+      "macOS")   echo "macOS" ;;
+      "Linux")   echo "Linux" ;;
+      *)         echo "Linux" ;; # 기본값으로 Linux 설정
+    esac
+    return
+  fi
+
+  # 로컬 환경 확인
   os="$(uname -s | tr '[:upper:]' '[:lower:]')"
-  case "$os" in  # 소문자로 변환하여 비교
+  case "$os" in
     *mingw*|*msys*|*cygwin*)  echo "Windows" ;;
     *darwin*)                 echo "macOS" ;;
     *linux*)                  echo "Linux" ;;
-    *)                        echo "운영체제를 확인할 수 없습니다." && exit 1 ;;
+    *)                        echo "Linux" ;; # 기본값으로 Linux 설정
   esac
 }
 
@@ -268,32 +279,56 @@ function get_package_manager() {
 }
 
 check_latest_pnpm_installed() {
-  # 버전 비교 함수
+  # 버전 비교 함수 (POSIX sh 호환)
   version_compare() {
-    echo "$1" "$2" | awk '{
-      split($1,a,".");
-      split($2,b,".");
-      for(i=1;i<=3;i++) {
-        if(a[i]<b[i]) {print "-1"; exit}
-        if(a[i]>b[i]) {print "1"; exit}
-      }
-      print "0"
-    }'
+    # $1: 첫 번째 버전
+    # $2: 두 번째 버전
+
+    # 각 버전의 메이저, 마이너, 패치 버전을 추출
+    v1_major=$(echo "$1" | cut -d. -f1)
+    v1_minor=$(echo "$1" | cut -d. -f2)
+    v1_patch=$(echo "$1" | cut -d. -f3)
+
+    v2_major=$(echo "$2" | cut -d. -f1)
+    v2_minor=$(echo "$2" | cut -d. -f2)
+    v2_patch=$(echo "$2" | cut -d. -f3)
+
+    # 값이 없는 경우 0으로 설정
+    : "${v1_major:=0}" "${v1_minor:=0}" "${v1_patch:=0}"
+    : "${v2_major:=0}" "${v2_minor:=0}" "${v2_patch:=0}"
+
+    # 메이저 버전 비교
+    if [ "$v1_major" -lt "$v2_major" ]; then
+      echo "-1"
+      return
+    elif [ "$v1_major" -gt "$v2_major" ]; then
+      echo "1"
+      return
+    fi
+
+    # 마이너 버전 비교
+    if [ "$v1_minor" -lt "$v2_minor" ]; then
+      echo "-1"
+      return
+    elif [ "$v1_minor" -gt "$v2_minor" ]; then
+      echo "1"
+      return
+    fi
+
+    # 패치 버전 비교
+    if [ "$v1_patch" -lt "$v2_patch" ]; then
+      echo "-1"
+      return
+    elif [ "$v1_patch" -gt "$v2_patch" ]; then
+      echo "1"
+      return
+    fi
+
+    # 버전이 동일한 경우
+    echo "0"
   }
 
-  # 버전 정렬 함수(curl로 받아온 버전 문자열을 최신순으로 정렬)
-  function sort_versions() {
-    awk '{
-      split($0,v,/[+-]|\./);  # 버전 문자열을 배열로 분리
-      # 정렬을 위한 키와 원본 버전을 함께 저장
-      printf("%012d%012d%012d %s\n", v[1], v[2], v[3], $0);
-    }' |
-    sort -r |  # 역순 정렬로 최신 버전이 먼저 오도록 함
-    head -n 1 |  # 가장 최신 버전 선택
-    awk '{print $2}'  # 원본 버전 문자열 출력
-  }
-
-  # 최신 버전 확인
+  # 최신 버전 확인 (sort_versions 함수 제거하고 단순화)
   LATEST_VERSION=$(curl \
     --silent \
     --fail \
@@ -303,7 +338,8 @@ check_latest_pnpm_installed() {
     https://registry.npmjs.org/pnpm | \
     grep -Eo '"version":"[^"]+"' | \
     cut -d\" -f4 | \
-    sort_versions)
+    sort -V | \
+    tail -n 1)
 
   # 현재 pnpm이 최신 버전인지 확인
   CURRENT_VERSION=$(pnpm -v)
