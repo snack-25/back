@@ -7,6 +7,7 @@ import { PaginatedProductsResponseDto } from './dto/paginated-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { BadRequestException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class ProductsService {
@@ -57,13 +58,17 @@ export class ProductsService {
   }
 
   public async findOne(id: string): Promise<ProductResponseDto> {
-    const product = await this.prismaService.product.findUnique({
-      where: { id },
-    });
-    if (!product) {
-      throw new NotFoundException(`상품 ${id}을 찾을 수 없습니다.`);
+    try {
+      const product = await this.prismaService.product.findUniqueOrThrow({
+        where: { id },
+      });
+      return this.toResponseDto(product);
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
+        throw new NotFoundException(`상품 ${id}을 찾을 수 없습니다.`);
+      }
+      throw e;
     }
-    return this.toResponseDto(product);
   }
 
   public async create(createProductDto: CreateProductDto): Promise<ProductResponseDto> {
