@@ -190,6 +190,7 @@ jobs:
             scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} .env.production ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
             scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ecosystem.config.js.gpg ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
             ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && \
+              source ~/.nvm/nvm.sh && nvm use 22 && corepack enable && \
               pm2 stop snack25-be && pm2 delete snack25-be && \
               # GPG 파일 복호화
               echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --passphrase-fd 0 --output ecosystem.config.js --decrypt ecosystem.config.js.gpg && \
