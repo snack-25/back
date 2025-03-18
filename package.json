@@ -63,6 +63,7 @@
     "class-validator": "^0.14.1",
     "cookie-parser": "^1.4.7",
     "cross-env": "7.0.3",
+    "dotenv-cli": "8.0.0",
     "multer": "1.4.5-lts.1",
     "multer-s3": "^3.0.1",
     "passport": "^0.7.0",
@@ -89,7 +90,6 @@
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^6.0.2",
     "commitlint-config-gitmoji": "2.3.1",
-    "dotenv-cli": "8.0.0",
     "eslint": "^9.22.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.2",
@@ -134,6 +134,9 @@
       "argon2",
       "esbuild",
       "prisma"
-    ]
+    ],
+    "overrides": {
+      "@babel/helpers@<7.26.10": ">=7.26.10"
+    }
   }
 }
