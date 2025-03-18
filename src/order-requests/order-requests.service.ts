@@ -220,16 +220,37 @@ export class OrderRequestsService {
 
   // ✅ 주문 요청 삭제 (트랜잭션)
   async deleteRequestAndItemsInTransaction(orderRequestId: string): Promise<void> {
-    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // 주문 요청 아이템들 삭제
-      await tx.orderRequestItem.deleteMany({
-        where: { orderRequestId },
-      });
+    try {
+      await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        // 🔹 1. 주문 요청이 존재하는지 확인
+        const orderRequest = await tx.orderRequest.findUnique({
+          where: { id: orderRequestId },
+        });
 
-      // 주문 요청 삭제
-      await tx.orderRequest.delete({
-        where: { id: orderRequestId },
+        if (!orderRequest) {
+          throw new NotFoundException('주문 요청을 찾을 수 없습니다.');
+        }
+
+        // 🔹 2. PENDING 상태가 아닌 경우 삭제 불가
+        if (orderRequest.status !== OrderRequestStatus.PENDING) {
+          throw new BadRequestException('이미 처리된 주문 요청은 삭제할 수 없습니다.');
+        }
+
+        // 🔹 3. 주문 요청 아이템 삭제
+        await tx.orderRequestItem.deleteMany({
+          where: { orderRequestId },
+        });
+
+        // 🔹 4. 주문 요청 삭제
+        await tx.orderRequest.delete({
+          where: { id: orderRequestId },
+        });
       });
-    });
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error; // 명시적인 예외는 그대로 반환
+      }
+      throw new BadRequestException('삭제 중 오류가 발생했습니다.');
+    }
   }
 }
