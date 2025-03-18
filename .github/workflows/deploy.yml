@@ -131,13 +131,12 @@ jobs:
           echo "::add-mask::DEPLOY_VERIFY_KEY=${DEPLOY_VERIFY_KEY}"
           echo "::add-mask::${GPG_PASSPHRASE}"
           echo "::add-mask::GPG_PASSPHRASE=${GPG_PASSPHRASE}"
-          echo "::add-mask::${GIT_COMMIT_SHA}"
-          echo "::add-mask::GIT_COMMIT_SHA=${GIT_COMMIT_SHA}"
 
           # .env 파일 생성
           echo "NODE_ENV=${NODE_ENV}" > .env
           echo "DATABASE_URL=${DATABASE_URL}" >> .env
           echo "DEPLOY_VERIFY_KEY=${DEPLOY_VERIFY_KEY}" >> .env
+          echo "GIT_COMMIT_SHA=${GIT_COMMIT_SHA}" >> .env
 
           # 파일 암호화 및 전송
           cat .env | gpg --symmetric --batch --passphrase "${{ secrets.GPG_PASSPHRASE }}" > .env.gpg
@@ -195,7 +194,6 @@ jobs:
           echo "::add-mask::${EC2_SSH_KEY}"
           echo "::add-mask::${DATABASE_URL}"
           echo "::add-mask::${DEPLOY_VERIFY_KEY}"
-          echo "::add-mask::${GIT_COMMIT_SHA}"
           echo "::add-mask::${GPG_PASSPHRASE}"
 
           echo "EC2로 배포 시작"
