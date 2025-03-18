@@ -359,7 +359,7 @@ jobs:
 
           # PM2 상태 확인
           echo "PM2 프로세스 상태 확인..."
-          ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && pm2 list' || true
+          ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'source ~/.nvm/nvm.sh && cd ~/backend && pm2 list' || true
 
           MAX_RETRIES=5
           RETRY_COUNT=0
@@ -431,9 +431,12 @@ jobs:
               # 서버 로그 확인 (out.log와 error.log 모두 확인)
               echo "서버 로그 확인..."
               echo "=== 표준 출력 로그 ==="
-              ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && tail -n 50 logs/out.log' || true
+              ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'source ~/.nvm/nvm.sh && cd ~/backend && cat logs/out.log | tail -n 50' || true
               echo "=== 에러 로그 ==="
-              ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && tail -n 50 logs/error.log' || true
+              ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'source ~/.nvm/nvm.sh && cd ~/backend && cat logs/error.log | tail -n 50' || true
+
+              echo "=== PM2 프로세스 상태 재확인 ==="
+              ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'source ~/.nvm/nvm.sh && pm2 list' || true
 
               exit 1
             fi
