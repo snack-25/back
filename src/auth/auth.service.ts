@@ -1,22 +1,17 @@
+import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import {
   SignUpComponeyRequestDto,
+  SignUpRequestDto,
   SignInRequestDto,
   SigninResponseDto,
   SignUpResponseDto,
-  // TokenResponseDto,
+  TokenResponseDto,
 } from './dto/auth.dto';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import * as argon2 from 'argon2';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import {
-  // ConflictException,
-  Injectable,
-  BadRequestException,
-} from '@nestjs/common';
-import { SignUpRequestDto } from './dto/auth.dto';
-// import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class AuthService {
@@ -32,11 +27,11 @@ export class AuthService {
     const { email, password, name, company, bizno } = dto;
 
     //이름 확인 (길이제한, 특문, 띄어쓰기)
-    // await this.usersService.checkName({ name: name });
+    await this.usersService.checkName({ name: name });
     // 이메일 중복 확인
     await this.usersService.checkEmail({ email: email }); // 중복 메세지
     //회사 사업자 확인
-    // await this.usersService.checkCompany({ name: company, bizno: bizno });
+    await this.usersService.checkCompany({ name: company, bizno: bizno });
 
     const companyIdCheck: { id: string; msg: string } = await this.companyCreate({
       company,
@@ -44,7 +39,7 @@ export class AuthService {
     });
 
     //비밀번호 확인
-    // this.usersService.validatePassword(password);
+    this.usersService.validatePassword(password);
 
     //비밀번호 해시화
     interface IArgon2 {
@@ -127,7 +122,7 @@ export class AuthService {
     }
   }
 
-  // JWT 토큰 생성
+  // // JWT 토큰 생성
   // async generateToken(email: string): Promise<TokenResponseDto> {
   //   try {
   //     // accessToken, refreshToken 생성
