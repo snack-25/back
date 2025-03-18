@@ -131,7 +131,10 @@ export class OrderRequestsController {
 
   //TODO: /order-requests/{orderRequestId} (DELETE) 주문 요청 취소
   @Delete(':orderRequestId')
-  async deleteOrderRequest(@Req() req: Request, @Param('orderRequestId') orderRequestId: string): Promise<{ message: string }> {
+  async deleteOrderRequest(
+    @Req() req: Request, 
+    @Param('orderRequestId') orderRequestId: string,
+    ): Promise<{ message: string }> {
     const user = req.user as { id: string; role: UserRole; companyId: string };
 
     if (!user) {
