@@ -1,5 +1,5 @@
-import { ArrayNotEmpty, IsArray, IsInt, IsString, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { ArrayNotEmpty, IsArray, IsInt, IsString, Min } from 'class-validator';
 
 export class UpdateCartItemDto {
   @ApiProperty({

@@ -18,7 +18,6 @@ jobs:
         uses: actions/setup-node@v4 # actions/setup-node 레포지토리의 v4 버전 사용
         with:
           node-version: '22' # Node.js 버전 22 사용
-          run_install: false # 이미 설치되어 있으므로 설치하지 않음
 
       - name: Setup pnpm # pnpm 설정
         uses: pnpm/action-setup@v4 # pnpm/action-setup 레포지토리의 v4 버전 사용
@@ -42,10 +41,10 @@ jobs:
         env:
           CI: ${{ secrets.CI }}
 
-      - name: Generate Prisma Client # Prisma 클라이언트 생성
-        run: pnpm prisma generate # pnpm을 사용하여 Prisma 클라이언트 생성
+      - name: Generate Prisma Client
+        run: pnpm prisma:generate:prod
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }} # 데이터베이스 URL
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Build Project # NestJS 빌드
         run: pnpm build # pnpm을 사용하여 빌드
@@ -73,59 +72,78 @@ jobs:
 
       - name: Validate Environment Variables # 환경 변수 검증
         run: |
-          if [ -z "${{ secrets.DATABASE_URL }}" ]; then
-            echo "DATABASE_URL is not set"
+          if [ -z "${{ secrets.NODE_ENV }}" ]; then
+            echo "NODE_ENV is not set"
             exit 1
           fi
-          # 다른 필수 환경 변수들도 검증
-          if [ -z "${{ secrets.EC2_HOST }}" ]; then
-            echo "EC2_HOST is not set"
+          if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+            echo "DATABASE_URL is not set"
             exit 1
           fi
           if [ -z "${{ secrets.EC2_SSH_KEY }}" ]; then
             echo "EC2_SSH_KEY is not set"
             exit 1
           fi
-          if [ -z "${{ secrets.DEPLOY_VERIFY_KEY }}" ]; then
-            echo "DEPLOY_VERIFY_KEY is not set"
+          if [ -z "${{ secrets.EC2_KEY_PAIR_TYPE }}" ]; then
+            echo "EC2_KEY_PAIR_TYPE is not set"
             exit 1
           fi
           if [ -z "${{ secrets.EC2_USERNAME }}" ]; then
             echo "EC2_USERNAME is not set"
             exit 1
           fi
-          if [ -z "${{ secrets.EC2_KEY_PAIR_TYPE }}" ]; then
-            echo "EC2_KEY_PAIR_TYPE is not set"
+          if [ -z "${{ secrets.EC2_HOST }}" ]; then
+            echo "EC2_HOST is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.DEPLOY_VERIFY_KEY }}" ]; then
+            echo "DEPLOY_VERIFY_KEY is not set"
             exit 1
           fi
           if [ -z "${{ secrets.GPG_PASSPHRASE }}" ]; then
             echo "GPG_PASSPHRASE is not set"
             exit 1
           fi
-          if [ -z "${{ secrets.NODE_ENV }}" ]; then
-            echo "NODE_ENV is not set"
-            exit 1
-          fi
 
-      - name: Mask Sensitive Variables # 민감한 변수 마스킹
+      - name: Create and mask env file # .env 파일 생성, 마스킹 및 전송
+        env:
+          NODE_ENV: ${{ secrets.NODE_ENV }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          EC2_KEY_PAIR_TYPE: ${{ secrets.EC2_KEY_PAIR_TYPE }}
+          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          DEPLOY_VERIFY_KEY: ${{ secrets.DEPLOY_VERIFY_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GIT_COMMIT_SHA: ${{ github.sha }}
         run: |
-          echo "::add-mask::${{ secrets.DATABASE_URL }}"
-          echo "::add-mask::${{ secrets.EC2_HOST }}"
-          echo "::add-mask::${{ secrets.EC2_SSH_KEY }}"
-          echo "::add-mask::${{ secrets.DEPLOY_VERIFY_KEY }}"
-          echo "::add-mask::${{ secrets.EC2_USERNAME }}"
-          echo "::add-mask::${{ secrets.EC2_KEY_PAIR_TYPE }}"
-          echo "::add-mask::${{ secrets.GPG_PASSPHRASE }}"
-          echo "::add-mask::${{ github.sha }}"
+          # 환경 변수와 "키=값" 형태 모두 마스킹
+          echo "::add-mask::${NODE_ENV}"
+          echo "::add-mask::NODE_ENV=${NODE_ENV}"
+          echo "::add-mask::${DATABASE_URL}"
+          echo "::add-mask::DATABASE_URL=${DATABASE_URL}"
+          echo "::add-mask::${EC2_KEY_PAIR_TYPE}"
+          echo "::add-mask::EC2_KEY_PAIR_TYPE=${EC2_KEY_PAIR_TYPE}"
+          echo "::add-mask::${EC2_USERNAME}"
+          echo "::add-mask::EC2_USERNAME=${EC2_USERNAME}"
+          echo "::add-mask::${EC2_HOST}"
+          echo "::add-mask::EC2_HOST=${EC2_HOST}"
+          echo "::add-mask::${DEPLOY_VERIFY_KEY}"
+          echo "::add-mask::DEPLOY_VERIFY_KEY=${DEPLOY_VERIFY_KEY}"
+          echo "::add-mask::${GPG_PASSPHRASE}"
+          echo "::add-mask::GPG_PASSPHRASE=${GPG_PASSPHRASE}"
+          echo "::add-mask::${GIT_COMMIT_SHA}"
+          echo "::add-mask::GIT_COMMIT_SHA=${GIT_COMMIT_SHA}"
 
-      - name: Create env file # 환경 변수 암호화
-        run: |
-          echo "::add-mask::$(echo DATABASE_URL=${DATABASE_URL})"
-          echo "DATABASE_URL=${DATABASE_URL}" | gpg --symmetric --batch --passphrase "${{ secrets.GPG_PASSPHRASE }}" > .env.gpg
+          # .env 파일 생성
+          echo "NODE_ENV=${NODE_ENV}" > .env
+          echo "DATABASE_URL=${DATABASE_URL}" >> .env
+          echo "DEPLOY_VERIFY_KEY=${DEPLOY_VERIFY_KEY}" >> .env
+
+          # 파일 암호화 및 전송
+          cat .env | gpg --symmetric --batch --passphrase "${{ secrets.GPG_PASSPHRASE }}" > .env.gpg
           scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} .env.gpg ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
-          echo "::add-mask::$(cat .env)"
 
-      - name: Setup PM2 Config # PM2 설정
+      - name: Setup PM2 Config # PM2 설정 및 전송
         run: |
           echo "module.exports = {
             apps: [{
@@ -142,20 +160,6 @@ jobs:
           }" > ecosystem.config.js
           scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ecosystem.config.js ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
 
-      - name: Configure Environment
-        run: |
-          # 환경 변수 파일 생성 시 마스킹
-          echo "::add-mask::$(echo NODE_ENV=${NODE_ENV})"
-          echo "NODE_ENV=${NODE_ENV}" >> .env
-          echo "::add-mask::$(echo DATABASE_URL=${DATABASE_URL})"
-          echo "DATABASE_URL=${DATABASE_URL}" >> .env
-
-          # SSH 키 마스킹
-          echo "::add-mask::$(cat ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }})"
-
-          # 배포 경로 마스킹
-          echo "::add-mask::~/backend"
-
       - name: Backup current deployment
         run: |
           ssh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && \
@@ -170,10 +174,10 @@ jobs:
       - name: Deploy to EC2 # EC2로 배포
         timeout-minutes: 5 # 타임아웃 시간 설정
         env:
-          HOST: ${{ secrets.EC2_HOST }}
-          USERNAME: ${{ secrets.EC2_USERNAME }}
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
           KEY_PAIR_TYPE: ${{ secrets.EC2_KEY_PAIR_TYPE }}
+          USERNAME: ${{ secrets.EC2_USERNAME }}
+          HOST: ${{ secrets.EC2_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DEPLOY_VERIFY_KEY: ${{ secrets.DEPLOY_VERIFY_KEY }}
           GIT_COMMIT_SHA: ${{ github.sha }}
@@ -191,8 +195,8 @@ jobs:
               source ~/.nvm/nvm.sh && nvm use 22 && corepack enable && \
               pm2 stop all || true && pm2 delete all || true && \
               pnpm install --prod --ignore-scripts && \
-              pnpm prisma generate && \
-              pnpm prisma migrate deploy && \
+              pnpm prisma:generate:prod && \
+              pnpm prisma:deploy:prod && \
               pm2 start ecosystem.config.js --env production'
           } 2>&1 | tee deploy.log
           echo "Deploy to EC2 작업 완료"
@@ -211,6 +215,49 @@ jobs:
               echo "No backup found, cannot rollback."
             fi
           }'
+
+      - name: Verify Deployment # 배포 검증
+        env:
+          HOST: ${{ secrets.EC2_HOST }}
+          DEPLOY_VERIFY_KEY: ${{ secrets.DEPLOY_VERIFY_KEY }}
+          GIT_COMMIT_SHA: ${{ github.sha }}
+        run: |
+          echo "배포 검증을 시작합니다..."
+          # 서버가 완전히 시작할 때까지 잠시 대기
+          sleep 10
+
+          # 헬스 체크 엔드포인트로 요청 보내기 (X-Deploy-Key 헤더 포함)
+          RESPONSE=$(curl -s -w "\n%{http_code}" -H "X-Deploy-Key: ${DEPLOY_VERIFY_KEY}" http://localhost:4000/health)
+
+          # HTTP 상태 코드와 응답 본문 분리
+          HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
+          RESPONSE_BODY=$(echo "$RESPONSE" | sed '$ d')
+
+          echo "HTTP 상태 코드: ${HTTP_STATUS}"
+
+          # HTTP 상태 코드가 200인지 확인
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "오류: 배포 검증 실패. 서버가 정상적으로 응답하지 않습니다."
+            echo "응답: ${RESPONSE_BODY}"
+            exit 1
+          fi
+
+          # 응답에 "status": "ok"가 포함되어 있는지 확인
+          if ! echo "$RESPONSE_BODY" | grep -q '"status":"ok"'; then
+            echo "오류: 배포 검증 실패. 서버 상태가 정상이 아닙니다."
+            echo "응답: ${RESPONSE_BODY}"
+            exit 1
+          fi
+
+          # 응답에 올바른 GIT_COMMIT_SHA가 포함되어 있는지 확인
+          if ! echo "$RESPONSE_BODY" | grep -q "\"version\":\"$GIT_COMMIT_SHA\""; then
+            echo "경고: 배포된 버전이 예상과 다를 수 있습니다."
+            echo "예상 버전: ${GIT_COMMIT_SHA}"
+            echo "응답: ${RESPONSE_BODY}"
+            # 버전 불일치는 경고만 표시하고 배포를 실패로 처리하지 않음
+          fi
+
+          echo "✅ 배포 검증 성공: 애플리케이션이 정상적으로 실행 중입니다."
 
 permissions:
   contents: read # 레포지토리 내용 읽기 권한
