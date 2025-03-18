@@ -227,7 +227,7 @@ jobs:
           if ! gpg --decrypt --batch --passphrase "$GPG_PASSPHRASE" .env.gpg > .env.tmp; then
             echo "❌ 환경 변수 파일 복호화 실패"
             exit 1
-          fi
+          }
           mv .env.tmp .env
           chmod 600 .env
 
@@ -277,11 +277,14 @@ jobs:
             exit 1
           fi
 
-          # Prisma 스키마 배포
+          # Prisma 스키마 배포 - 로그 출력 제한 및 필터링
           echo "[INFO] Deploying Prisma schema..."
-          if ! pnpm prisma:deploy:prod; then
+          if ! (pnpm prisma:deploy:prod 2>&1 | grep -v -E "DATABASE_URL|connection string" > prisma_deploy.log); then
             echo "❌ Prisma 스키마 배포 실패"
+            echo "자세한 내용은 prisma_deploy.log를 확인하세요"
             exit 1
+          else
+            echo "✅ Prisma 스키마 배포 성공"
           fi
 
           # PM2 시작
