@@ -16,8 +16,8 @@ export class AppService {
   public getHealth(): HealthCheckResponse {
     return {
       status: 'ok',
-      message: 'All Systems Operational!',
-      version: process.env.GIT_COMMA_SHA || 'unknown',
+      message: '시스템이 정상적으로 가동중입니다!',
+      version: process.env.GIT_COMMIT_SHA || 'unknown',
       timestamp: new Intl.DateTimeFormat('ko-KR', {
         year: 'numeric',
         month: '2-digit',
