@@ -3,7 +3,7 @@ import { ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/s
 import { CartItem } from '@prisma/client';
 import { CartsService } from './carts.service';
 import { CreateCartDto } from './dto/create-cart.dto';
-import { UpdateCartItemDto } from './dto/update-cart.dto';
+import { DeleteCartItemsDto, UpdateCartItemDto } from './dto/update-cart.dto';
 
 @ApiTags('Carts')
 @Controller('carts')
