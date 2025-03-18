@@ -29,6 +29,6 @@
       "@utils/*": ["src/utils/*"]
     }
   },
-  "include": ["src/**/*", "test/**/*", ".lintstagedrc.js", "commitlint.config.js"],
+  "include": ["src/**/*", "prisma/**/*", "test/**/*", ".lintstagedrc.js", "commitlint.config.js"],
   "exclude": ["node_modules", "dist"]
 }
