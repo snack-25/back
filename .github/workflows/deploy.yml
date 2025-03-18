@@ -183,120 +183,136 @@ jobs:
           GIT_COMMIT_SHA: ${{ github.sha }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
-          {
-            # 민감한 정보 마스킹
-            echo "::add-mask::${EC2_KEY_PAIR_TYPE}"
-            echo "::add-mask::${EC2_USERNAME}"
-            echo "::add-mask::${EC2_HOST}"
-            echo "::add-mask::${EC2_SSH_KEY}"
-            echo "::add-mask::${DATABASE_URL}"
-            echo "::add-mask::${DEPLOY_VERIFY_KEY}"
-            echo "::add-mask::${GIT_COMMIT_SHA}"
-            echo "::add-mask::${GPG_PASSPHRASE}"
+          # 민감한 정보 마스킹
+          echo "::add-mask::${EC2_KEY_PAIR_TYPE}"
+          echo "::add-mask::${EC2_USERNAME}"
+          echo "::add-mask::${EC2_HOST}"
+          echo "::add-mask::${EC2_SSH_KEY}"
+          echo "::add-mask::${DATABASE_URL}"
+          echo "::add-mask::${DEPLOY_VERIFY_KEY}"
+          echo "::add-mask::${GIT_COMMIT_SHA}"
+          echo "::add-mask::${GPG_PASSPHRASE}"
 
-            echo "EC2로 배포 시작"
+          echo "EC2로 배포 시작"
 
-            # SSH 옵션 설정
-            SSH_OPTS="-o ConnectTimeout=10 -o StrictHostKeyChecking=yes -o ServerAliveInterval=60"
+          # SSH 옵션 설정
+          SSH_OPTS="-o ConnectTimeout=10 -o StrictHostKeyChecking=yes -o ServerAliveInterval=60"
 
-            # 파일 전송
-            echo "파일 전송 중..."
-            scp $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} -r dist package.json pnpm-lock.yaml prisma ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/ || {
-              echo "❌ 파일 전송 실패"
-              exit 1
-            }
-            scp $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ecosystem.config.js ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/ || {
-              echo "❌ PM2 설정 파일 전송 실패"
-              exit 1
-            }
+          # 파일 전송
+          echo "파일 전송 중..."
+          scp $SSH_OPTS -i ~/.ssh/id_${EC2_KEY_PAIR_TYPE} -r dist package.json pnpm-lock.yaml prisma ${EC2_USERNAME}@${EC2_HOST}:~/backend/ || {
+            echo "❌ 파일 전송 실패"
+            exit 1
+          }
 
-            # 배포 명령어 실행
-            ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && {
-              # GPG 복호화
-              if ! gpg --decrypt --batch --passphrase "${{ secrets.GPG_PASSPHRASE }}" .env.gpg > .env.tmp; then
-                echo "❌ 환경 변수 파일 복호화 실패"
-                exit 1
-              fi
-              mv .env.tmp .env
-              chmod 600 .env
+          scp $SSH_OPTS -i ~/.ssh/id_${EC2_KEY_PAIR_TYPE} ecosystem.config.js ${EC2_USERNAME}@${EC2_HOST}:~/backend/ || {
+            echo "❌ PM2 설정 파일 전송 실패"
+            exit 1
+          }
 
-              # Node.js 환경 설정
-              source ~/.nvm/nvm.sh || {
-                echo "❌ NVM 초기화 실패"
-                exit 1
-              }
-              nvm use 22 || {
-                echo "❌ Node.js 버전 설정 실패"
-                exit 1
-              }
-              corepack enable || {
-                echo "❌ Corepack 활성화 실패"
-                exit 1
-              }
+          # 배포 스크립트 생성
+          cat << EOF > deploy_script.sh
+          #!/bin/bash
+          set -e  # 에러 발생 시 즉시 종료
 
-              # PM2 프로세스 정리
-              pm2 stop all 2>/dev/null || true
-              pm2 delete all 2>/dev/null || true
+          cd ~/backend || {
+            echo "❌ 백엔드 디렉토리 진입 실패"
+            exit 1
+          }
 
-              # 로그 디렉토리 설정
-              mkdir -p logs
+          # GPG 복호화
+          if ! gpg --decrypt --batch --passphrase "$GPG_PASSPHRASE" .env.gpg > .env.tmp; then
+            echo "❌ 환경 변수 파일 복호화 실패"
+            exit 1
+          fi
+          mv .env.tmp .env
+          chmod 600 .env
 
-              {
-                echo "[INFO] Installing dependencies..."
-                PNPM_OUTPUT=$(pnpm install --prod --ignore-scripts 2>&1)
-                echo "$PNPM_OUTPUT" | grep -v "DATABASE_URL"
+          # Node.js 환경 설정
+          source ~/.nvm/nvm.sh || {
+            echo "❌ NVM 초기화 실패"
+            exit 1
+          }
+          nvm use 22 || {
+            echo "❌ Node.js 버전 설정 실패"
+            exit 1
+          }
+          corepack enable || {
+            echo "❌ Corepack 활성화 실패"
+            exit 1
+          }
 
-                echo "[INFO] Generating Prisma client..."
-                PRISMA_OUTPUT=$(PRISMA_CLIENT_ENGINE_TYPE=binary pnpm prisma:generate:prod 2>&1)
-                echo "$PRISMA_OUTPUT" | grep -v "DATABASE_URL"
+          # PM2 프로세스 정리
+          pm2 stop all 2>/dev/null || true
+          pm2 delete all 2>/dev/null || true
 
-                echo "[INFO] Deploying Prisma schema..."
-                PRISMA_DEPLOY_OUTPUT=$(pnpm prisma:deploy:prod 2>&1)
-                echo "$PRISMA_DEPLOY_OUTPUT" | grep -v "DATABASE_URL"
+          # 로그 디렉토리 설정
+          mkdir -p logs
 
-                # PM2 ecosystem 파일 업데이트
-                echo 'module.exports = {
-                  apps: [{
-                    name: "snack25-be",
-                    script: "dist/main.js",
-                    instances: "max",
-                    exec_mode: "cluster",
-                    autorestart: true,
-                    watch: false,
-                    max_memory_restart: "1G",
-                    env: {
-                      NODE_ENV: "production"
-                    },
-                    log_date_format: "YYYY-MM-DD HH:mm:ss Z",
-                    error_file: "logs/error.log",
-                    out_file: "logs/output.log",
-                    merge_logs: true,
-                    log_type: "json"
-                  }]
-                }' > ecosystem.config.js
+          # 의존성 설치
+          echo "[INFO] Installing dependencies..."
+          if ! pnpm install --prod --ignore-scripts; then
+            echo "❌ 의존성 설치 실패"
+            exit 1
+          fi
 
-                echo "[INFO] Starting PM2..."
-                pm2 start ecosystem.config.js --env production || {
-                  echo "❌ PM2 시작 실패"
-                  exit 1
-                }
+          # Prisma 클라이언트 생성
+          echo "[INFO] Generating Prisma client..."
+          if ! PRISMA_CLIENT_ENGINE_TYPE=binary pnpm prisma:generate:prod; then
+            echo "❌ Prisma 클라이언트 생성 실패"
+            exit 1
+          fi
 
-                # PM2 상태 저장
-                pm2 save || {
-                  echo "❌ PM2 상태 저장 실패"
-                  exit 1
-                }
+          # Prisma 스키마 배포
+          echo "[INFO] Deploying Prisma schema..."
+          if ! pnpm prisma:deploy:prod; then
+            echo "❌ Prisma 스키마 배포 실패"
+            exit 1
+          fi
 
-                echo "✅ 배포 완료"
-              }
-            }' 2>&1
-          } 2>&1 | tee deploy.log
+          # PM2 시작
+          echo "[INFO] Starting PM2..."
+          if ! pm2 start ecosystem.config.js --env production; then
+            echo "❌ PM2 시작 실패"
+            exit 1
+          fi
+
+          # PM2 상태 저장
+          if ! pm2 save; then
+            echo "❌ PM2 상태 저장 실패"
+            exit 1
+          fi
+
+          echo "✅ 배포 완료"
+          EOF
+
+          # 스크립트 파일 권한 설정
+          chmod +x deploy_script.sh || {
+            echo "❌ 스크립트 권한 설정 실패"
+            exit 1
+          }
+
+          # 배포 스크립트 전송
+          echo "배포 스크립트 전송 중..."
+          scp $SSH_OPTS deploy_script.sh ${EC2_USERNAME}@${EC2_HOST}:~/backend/ || {
+            echo "❌ 배포 스크립트 전송 실패"
+            exit 1
+          }
+
+          # 배포 스크립트 실행
+          echo "배포 스크립트 실행 중..."
+          ssh $SSH_OPTS -i ~/.ssh/id_${EC2_KEY_PAIR_TYPE} ${EC2_USERNAME}@${EC2_HOST} \
+            "cd ~/backend && GPG_PASSPHRASE='$GPG_PASSPHRASE' ./deploy_script.sh" 2>&1 | tee deploy.log || {
+            echo "❌ 배포 스크립트 실행 실패"
+            exit 1
+          }
 
           # deploy.log에서 민감한 정보 제거
           sed -i.bak 's|'"${DATABASE_URL}"'|[MASKED_DATABASE_URL]|g' deploy.log
           sed -i.bak 's|'"${DEPLOY_VERIFY_KEY}"'|[MASKED_DEPLOY_KEY]|g' deploy.log
           sed -i.bak 's|'"${GPG_PASSPHRASE}"'|[MASKED_GPG_PASSPHRASE]|g' deploy.log
           rm -f deploy.log.bak
+          rm -f deploy_script.sh
 
           echo "Deploy to EC2 작업 완료"
 
