@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, ExtractJwt } from 'passport-jwt';
-import { Request } from 'express';
+// import { Request } from 'express';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt-access') {
@@ -9,10 +9,10 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt-access') {
     super({
       // 커스텀 토큰 추출기: 요청 쿠키에서 'jwt' 키를 찾아 반환
       jwtFromRequest: ExtractJwt.fromExtractors([
-        (req: Request) => {
-          // req.cookies가 없으면 null을 반환
-          return req?.cookies?.accessToken || null;
-        },
+        // (req: Request) => {
+        //   // req.cookies가 없으면 null을 반환
+        //   return req?.cookies?.accessToken || null;
+        // },
       ]),
       ignoreExpiration: false, // 만료된 토큰은 거부
       secretOrKey: process.env.JWT_SECRET || '아무거나-넣기',
