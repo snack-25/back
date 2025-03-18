@@ -131,9 +131,9 @@ export class OrderRequestsController {
 
   //TODO: /order-requests/{orderRequestId} (DELETE) 주문 요청 취소
   @Delete(':orderRequestId')
-  async deleteOrderRequest(@Req() req, @Param('orderRequestId') orderRequestId: string) {
+  async deleteOrderRequest(@Req() req: Request, @Param('orderRequestId') orderRequestId: string): Promise<{ message: string }> {
     const user = req.user as { id: string; role: UserRole; companyId: string };
-    
+
     if (!user) {
       throw new UnauthorizedException('인증되지 않은 사용자입니다.');
     }
