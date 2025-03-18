@@ -167,7 +167,7 @@ jobs:
 
       - name: Backup current deployment
         run: |
-          ssh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && \
+          ssh -i ~/.ssh/id_${EC2_KEY_PAIR_TYPE} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && \
           if [ -d dist ] || [ -d node_modules ]; then \
             backup_file="backup-$(date +%Y%m%d_%H%M%S).tar.gz" && \
             echo "Creating backup: $backup_file" && \
@@ -205,12 +205,12 @@ jobs:
 
           # 파일 전송
           echo "파일 전송 중..."
-          scp $SSH_OPTS -i ~/.ssh/id_${EC2_KEY_PAIR_TYPE} -r dist package.json pnpm-lock.yaml prisma ${EC2_USERNAME}@${EC2_HOST}:~/backend/ || {
+          scp $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} -r dist package.json pnpm-lock.yaml prisma ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/ || {
             echo "❌ 파일 전송 실패"
             exit 1
           }
 
-          scp $SSH_OPTS -i ~/.ssh/id_${EC2_KEY_PAIR_TYPE} ecosystem.config.js ${EC2_USERNAME}@${EC2_HOST}:~/backend/ || {
+          scp $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ecosystem.config.js ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/ || {
             echo "❌ PM2 설정 파일 전송 실패"
             exit 1
           }
@@ -310,23 +310,23 @@ jobs:
 
           # 배포 스크립트 전송
           echo "배포 스크립트 전송 중..."
-          scp $SSH_OPTS deploy_script.sh ${EC2_USERNAME}@${EC2_HOST}:~/backend/ || {
+          scp $SSH_OPTS deploy_script.sh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/ || {
             echo "❌ 배포 스크립트 전송 실패"
             exit 1
           }
 
           # 배포 스크립트 실행
           echo "배포 스크립트 실행 중..."
-          ssh $SSH_OPTS -i ~/.ssh/id_${EC2_KEY_PAIR_TYPE} ${EC2_USERNAME}@${EC2_HOST} \
+          ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} \
             "cd ~/backend && GPG_PASSPHRASE='$GPG_PASSPHRASE' ./deploy_script.sh" 2>&1 | tee deploy.log || {
             echo "❌ 배포 스크립트 실행 실패"
             exit 1
           }
 
           # deploy.log에서 민감한 정보 제거
-          sed -i.bak 's|'"${DATABASE_URL}"'|[MASKED_DATABASE_URL]|g' deploy.log
-          sed -i.bak 's|'"${DEPLOY_VERIFY_KEY}"'|[MASKED_DEPLOY_KEY]|g' deploy.log
-          sed -i.bak 's|'"${GPG_PASSPHRASE}"'|[MASKED_GPG_PASSPHRASE]|g' deploy.log
+          sed -i.bak 's|'"${{ secrets.DATABASE_URL }}"'|[MASKED_DATABASE_URL]|g' deploy.log
+          sed -i.bak 's|'"${{ secrets.DEPLOY_VERIFY_KEY }}"'|[MASKED_DEPLOY_KEY]|g' deploy.log
+          sed -i.bak 's|'"${{ secrets.GPG_PASSPHRASE }}"'|[MASKED_GPG_PASSPHRASE]|g' deploy.log
           rm -f deploy.log.bak
           rm -f deploy_script.sh
 
@@ -335,7 +335,7 @@ jobs:
       - name: Rollback on Failure # 배포 실패 시 롤백
         if: failure()
         run: |
-          ssh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && {
+          ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && {
             if ls backup-*.tar.gz 1> /dev/null 2>&1; then
               echo "Backup found, restoring..."
               pm2 stop all || true && pm2 delete all || true
@@ -349,6 +349,8 @@ jobs:
 
       - name: Verify Deployment
         env:
+          EC2_KEY_PAIR_TYPE: ${{ secrets.EC2_KEY_PAIR_TYPE }}
+          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
           DEPLOY_VERIFY_KEY: ${{ secrets.DEPLOY_VERIFY_KEY }}
           GIT_COMMIT_SHA: ${{ github.sha }}
@@ -357,7 +359,7 @@ jobs:
 
           # PM2 상태 확인
           echo "PM2 프로세스 상태 확인..."
-          ssh ${{ secrets.EC2_USERNAME }}@${EC2_HOST} 'cd ~/backend && pm2 list' || true
+          ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && pm2 list' || true
 
           MAX_RETRIES=5
           RETRY_COUNT=0
@@ -387,7 +389,7 @@ jobs:
 
             # 포트 상태 확인
             echo "포트 4000 상태 확인..."
-            ssh ${{ secrets.EC2_USERNAME }}@${EC2_HOST} 'netstat -tulpn | grep :4000' || echo "❌ 포트 4000이 열려있지 않음"
+            ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'netstat -tulpn | grep :4000' || echo "❌ 포트 4000이 열려있지 않음"
 
             HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
             RESPONSE_BODY=$(echo "$RESPONSE" | sed '$ d')
@@ -429,9 +431,9 @@ jobs:
               # 서버 로그 확인 (out.log와 error.log 모두 확인)
               echo "서버 로그 확인..."
               echo "=== 표준 출력 로그 ==="
-              ssh ${{ secrets.EC2_USERNAME }}@${EC2_HOST} 'cd ~/backend && tail -n 50 logs/out.log' || true
+              ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && tail -n 50 logs/out.log' || true
               echo "=== 에러 로그 ==="
-              ssh ${{ secrets.EC2_USERNAME }}@${EC2_HOST} 'cd ~/backend && tail -n 50 logs/error.log' || true
+              ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && tail -n 50 logs/error.log' || true
 
               exit 1
             fi
