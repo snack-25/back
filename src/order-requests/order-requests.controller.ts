@@ -13,9 +13,9 @@ import {
 } from '@nestjs/common';
 import { OrderRequestStatus, UserRole } from '@prisma/client';
 import type { Request } from 'express';
-import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
-import { CreateOrderRequestDto } from './dto/create-order-request.dto';
-import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
+import { ApproveOrderRequestDto } from './dto/approve-order-requests.dto';
+import { CreateOrderRequestDto } from './dto/create-order-requests.dto';
+import { RejectOrderRequestDto } from './dto/reject-order-requests.dto';
 import { OrderRequestsService } from './order-requests.service';
 
 @Controller('order-requests')
@@ -132,8 +132,8 @@ export class OrderRequestsController {
   //TODO: /order-requests/{orderRequestId} (DELETE) 주문 요청 취소
   @Delete(':orderRequestId')
   async deleteOrderRequest(@Req() req, @Param('orderRequestId') orderRequestId: string) {
-    const user = req.user; // 요청한 사용자 정보 가져오기
-
+    const user = req.user as { id: string; role: UserRole; companyId: string };
+    
     if (!user) {
       throw new UnauthorizedException('인증되지 않은 사용자입니다.');
     }
