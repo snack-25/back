@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { OrderRequest, OrderRequestStatus, PrismaClient } from '@prisma/client';
+import { OrderRequest, OrderRequestStatus, Prisma, PrismaClient } from '@prisma/client';
 import { CreateOrderRequestDto } from './dto/create-order-request.dto';
 import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
 import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
@@ -7,7 +7,6 @@ import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
 @Injectable()
 export class OrderRequestsService {
   private prisma: PrismaClient;
-  deleteRequestAndItemsInTransaction: any;
   constructor() {
     this.prisma = new PrismaClient();
   }
@@ -232,6 +231,21 @@ export class OrderRequestsService {
       where: {
         orderRequestId: orderRequestId, // 해당 주문 요청 ID에 해당하는 아이템 삭제
       },
+    });
+  }
+
+  // 주문 요청과 관련된 아이템을 트랜잭션 내에서 삭제하는 메서드
+  async deleteRequestAndItemsInTransaction(orderRequestId: string): Promise<void> {
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // 주문 요청 아이템들 삭제
+      await tx.orderRequestItem.deleteMany({
+        where: { orderRequestId },
+      });
+
+      // 주문 요청 삭제
+      await tx.orderRequest.delete({
+        where: { id: orderRequestId },
+      });
     });
   }
 }
