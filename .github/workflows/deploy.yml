@@ -338,8 +338,8 @@ jobs:
           GIT_COMMIT_SHA: ${{ github.sha }}
         run: |
           echo "배포 검증을 시작합니다..."
-          # 서버가 완전히 시작할 때까지 잠시 대기
-          sleep 10
+          # 서버가 완전히 시작할 때까지 넉넉하게 60초 대기
+          sleep 60
 
           # 헬스 체크 엔드포인트로 요청 보내기 (X-Deploy-Key 헤더 포함)
           RESPONSE=$(curl -s -w "\n%{http_code}" -H "X-Deploy-Key: ${DEPLOY_VERIFY_KEY}" http://${HOST}:4000/health)
