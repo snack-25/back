@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, Min } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsInt, IsString, Min } from 'class-validator';
 
 export class UpdateCartItemDto {
   @ApiProperty({
@@ -13,8 +13,11 @@ export class UpdateCartItemDto {
 
 export class DeleteCartItemsDto {
   @ApiProperty({
-    description: '삭제할 상품의 ID 목록',
-    example: ['item-1', 'item-2'],
+    description: '삭제할 장바구니 상품 ID 목록',
+    example: ['product_07', 'product_08'],
   })
+  @IsArray()
+  @ArrayNotEmpty({ message: '삭제할 상품 목록은 비어 있을 수 없습니다.' })
+  @IsString({ each: true })
   public itemIds: string[];
 }
