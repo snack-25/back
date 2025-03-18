@@ -1,16 +1,10 @@
 import { PrismaClient } from '@prisma/client';
-import { ConfigModule } from '@nestjs/config';
 import { orderRequestItems } from './const/orderRequestItems'; // orderRequestItems.ts 파일에서 데이터 임포트
 import { products } from './const/products';
 
 const prisma = new PrismaClient();
 
-ConfigModule.forRoot({
-  envFilePath: `.env.${process.env.NODE_ENV || 'local'}`,
-  isGlobal: true,
-});
-
-async function main() {
+async function main(): Promise<void> {
   console.log('🚀 Seeding database...');
 
   await prisma.$transaction(async tx => {
@@ -224,6 +218,6 @@ main()
     console.error('❌ Seeding failed:', e);
     process.exit(1);
   })
-  .finally(async () => {
-    await prisma.$disconnect();
+  .finally(() => {
+    void prisma.$disconnect();
   });
