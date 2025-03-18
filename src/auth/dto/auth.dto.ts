@@ -2,7 +2,19 @@ import { OmitType, PickType } from '@nestjs/swagger';
 import { UserDto } from 'src/users/dto/user.dto';
 
 // 회원가입 요청 DTO
-export class SignUpRequestDto extends OmitType(UserDto, ['id', 'refreshToken']) {}
+export class SignUpRequestDto extends OmitType(UserDto, ['id', 'refreshToken']) {
+  public company: string;
+  public bizno: string;
+}
+
+// 회원가입 응답 DTO
+export class SignUpResponseDto extends PickType(UserDto, ['email', 'name']) {
+  public company: string;
+  public companyId: string;
+  public role: string;
+}
+
+export class SignUpComponeyRequestDto extends PickType(SignUpRequestDto, ['company', 'bizno']) {}
 
 // 회원가입 응답 DTO
 export class SignupResponseDto extends OmitType(UserDto, ['password']) {}
