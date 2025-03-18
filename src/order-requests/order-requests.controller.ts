@@ -131,31 +131,39 @@ export class OrderRequestsController {
 
   //TODO: /order-requests/{orderRequestId} (DELETE) 주문 요청 취소
   @Delete(':orderRequestId')
-  public async deleteOrderRequest(
-    @Req() req: Request, 
+  public async deleteRequestAndItemsInTransaction(
+    @Req() req: Request,
     @Param('orderRequestId') orderRequestId: string,
-    ): Promise<{ message: string }> {
+  ): Promise<{ message: string }> {
     const user = req.user as { id: string; role: UserRole; companyId: string };
 
     if (!user) {
       throw new UnauthorizedException('인증되지 않은 사용자입니다.');
     }
 
+    // 🔹 주문 요청 데이터 가져오기
     const orderRequest = await this.orderRequestsService.getOrderRequestById(orderRequestId);
     if (!orderRequest) {
       throw new NotFoundException('주문 요청을 찾을 수 없습니다.');
     }
 
+    // 🔹 본인이 생성한 주문 요청만 삭제 가능
     if (orderRequest.requesterId !== user.id) {
       throw new ForbiddenException('본인이 생성한 주문 요청만 삭제할 수 있습니다.');
     }
 
+    // 🔹 PENDING 상태가 아닌 경우 삭제 불가
     if (orderRequest.status !== OrderRequestStatus.PENDING) {
       throw new BadRequestException('이미 처리된 주문 요청은 삭제할 수 없습니다.');
     }
 
-    // 주문 요청과 아이템을 트랜잭션으로 삭제
-    await this.orderRequestsService.deleteRequestAndItemsInTransaction(orderRequestId);
+    try {
+      // 🔹 트랜잭션을 사용하여 주문 요청과 아이템을 함께 삭제
+      await this.orderRequestsService.deleteRequestAndItemsInTransaction(orderRequestId);
+    } catch (error) {
+      // 🔹 외래 키 제약 조건으로 인해 삭제 실패 가능성을 고려한 예외 처리
+      throw new BadRequestException('삭제 중 오류가 발생했습니다. 다른 데이터와 연결된 항목이 있을 수 있습니다.');
+    }
 
     return { message: '주문 요청이 삭제되었습니다.' };
   }

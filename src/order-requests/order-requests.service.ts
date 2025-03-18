@@ -225,15 +225,6 @@ export class OrderRequestsService {
     });
   }
 
-  // 주문 요청 아이템 삭제
-  async deleteOrderRequestItems(orderRequestId: string) {
-    return this.prisma.orderRequestItem.deleteMany({
-      where: {
-        orderRequestId: orderRequestId, // 해당 주문 요청 ID에 해당하는 아이템 삭제
-      },
-    });
-  }
-
   // 주문 요청과 관련된 아이템을 트랜잭션 내에서 삭제하는 메서드
   async deleteRequestAndItemsInTransaction(orderRequestId: string): Promise<void> {
     await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
