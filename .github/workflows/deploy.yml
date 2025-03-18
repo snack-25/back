@@ -227,7 +227,7 @@ jobs:
           sleep 10
 
           # 헬스 체크 엔드포인트로 요청 보내기 (X-Deploy-Key 헤더 포함)
-          RESPONSE=$(curl -s -w "\n%{http_code}" -H "X-Deploy-Key: ${DEPLOY_VERIFY_KEY}" http://localhost:4000/health)
+          RESPONSE=$(curl -s -w "\n%{http_code}" -H "X-Deploy-Key: ${DEPLOY_VERIFY_KEY}" http://{HOST}:4000/health)
 
           # HTTP 상태 코드와 응답 본문 분리
           HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
