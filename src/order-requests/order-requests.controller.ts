@@ -131,11 +131,8 @@ export class OrderRequestsController {
 
   //TODO: /order-requests/{orderRequestId} (DELETE) 주문 요청 취소
   @Delete(':orderRequestId')
-  public async deleteOrderRequest(
-    @Req() req: Request,
-    @Param('orderRequestId') orderRequestId: string,
-  ): Promise<{ message: string }> {
-    const user = req.user as { id: string; role: UserRole; companyId: string }; // 요청한 사용자 정보 가져오기
+  async deleteOrderRequest(@Req() req, @Param('orderRequestId') orderRequestId: string) {
+    const user = req.user; // 요청한 사용자 정보 가져오기
 
     if (!user) {
       throw new UnauthorizedException('인증되지 않은 사용자입니다.');
@@ -154,6 +151,7 @@ export class OrderRequestsController {
       throw new BadRequestException('이미 처리된 주문 요청은 삭제할 수 없습니다.');
     }
 
+    // 주문 요청과 아이템을 트랜잭션으로 삭제
     await this.orderRequestsService.deleteRequestAndItemsInTransaction(orderRequestId);
 
     return { message: '주문 요청이 삭제되었습니다.' };
