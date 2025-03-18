@@ -210,13 +210,6 @@ export class OrderRequestsService {
     });
   }
 
-  // ✅ 주문 요청 취소
-  async deleteOrderRequest(orderRequestId: string): Promise<void> {
-    await this.prisma.orderRequest.delete({
-      where: { id: orderRequestId },
-    });
-  }
-
   // ✅ 주문 요청 ID로 상세 조회
   async getOrderRequestById(orderRequestId: string): Promise<OrderRequest | null> {
     return this.prisma.orderRequest.findUnique({
@@ -225,7 +218,7 @@ export class OrderRequestsService {
     });
   }
 
-  // 주문 요청과 관련된 아이템을 트랜잭션 내에서 삭제하는 메서드
+  // ✅ 주문 요청 삭제 (트랜잭션)
   async deleteRequestAndItemsInTransaction(orderRequestId: string): Promise<void> {
     await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // 주문 요청 아이템들 삭제
