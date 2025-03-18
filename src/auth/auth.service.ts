@@ -7,6 +7,7 @@ import {
   SigninResponseDto,
   SignUpResponseDto,
   TokenResponseDto,
+  TokenRequestDto,
 } from './dto/auth.dto';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import * as argon2 from 'argon2';
@@ -93,7 +94,7 @@ export class AuthService {
   }
 
   // 로그인
-  public async login(dto: SignInRequestDto): Promise<SigninResponseDto | undefined> {
+  public async login(dto: SignInRequestDto): Promise<SigninResponseDto | null> {
     try {
       // console.warn(dto);
       // console.log('너가 나오는거냐?', dto);
@@ -102,70 +103,100 @@ export class AuthService {
         where: {
           email,
         },
+        select: {
+          companyId: true,
+          company: true,
+          email: true,
+          name: true,
+          role: true,
+          password: true,
+        },
       });
 
-      // console.log('너가 user?', user);
+      console.log('너가 user?', user);
+
       if (!user) {
-        return undefined;
+        return null;
       }
       // 입력된 비밀번호와 데이터베이스에 저장된 비밀번호 해시 비교
       const isPasswordValid = await argon2.verify(user.password, password);
 
       // 비밀번호가 유효하지 않으면 에러 발생
       if (!isPasswordValid) {
+        console.error('비번이 틀렸어');
         throw new BadRequestException('이메일 또는 비밀번호가 잘못되었습니다.');
       }
-      // return await Promise.resolve(user);
+
+      // JWT 토큰 생성
+      const tokens = await this.generateToken(user.email);
+
+      return {
+        token: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+        },
+        user: {
+          email: user.email,
+          name: user.name,
+          company: {
+            name: user.company.name,
+            id: user.companyId,
+          },
+          role: user.role,
+          companyId: user.companyId,
+        },
+      };
     } catch (err) {
+      // 에러 처리: 예외 발생 시 로그를 출력하고 null 반환
       console.error(err);
-      return undefined;
+      return null;
     }
   }
 
-  // // JWT 토큰 생성
-  // async generateToken(email: string): Promise<TokenResponseDto> {
-  //   try {
-  //     // accessToken, refreshToken 생성
-  //     const [accessToken, refreshToken] = await Promise.all([
-  //       this.generateAccessToken(email),
-  //       this.generateRefreshToken(email),
-  //     ]);
+  // JWT 토큰 생성
+  public async generateToken(email: string): Promise<TokenResponseDto> {
+    try {
+      // accessToken, refreshToken 생성
+      const [accessToken, refreshToken] = await Promise.all([
+        this.generateAccessToken(email),
+        this.generateRefreshToken(email),
+      ]);
 
-  //     // 토큰 생성 시점에 refreshToken을 DB에 저장
-  //     await this.prisma.user.update({
-  //       where: { email },
-  //       data: { refreshToken: refreshToken }, // 새 토큰 저장
-  //     });
+      // 토큰 생성 시점에 refreshToken을 DB에 저장
+      await this.prisma.user.update({
+        where: { email },
+        data: { refreshToken: refreshToken }, // 새 토큰 저장
+      });
 
-  //     return { accessToken, refreshToken };
-  //   } catch (error) {
-  //     throw new UnauthorizedException('토큰 생성에 실패했습니다.', error.message);
-  //   }
-  // }
+      return { accessToken, refreshToken };
+    } catch (error) {
+      throw new UnauthorizedException('토큰 생성에 실패했습니다.', error.message);
+    }
+  }
 
-  // // accessToken 생성
-  // private async generateAccessToken(userId: string): Promise<string> {
-  //   const payload: TokenRequestDto = {
-  //     sub: userId,
-  //     type: 'access',
-  //   };
+  // accessToken 생성
+  private async generateAccessToken(email: string): Promise<string> {
+    const payload: TokenRequestDto = {
+      sub: email,
+      type: 'access',
+    };
 
-  //   return this.jwtService.signAsync(payload, {
-  //     secret: this.configService.getOrThrow<string>('JWT_SECRET'),
-  //     expiresIn: this.configService.getOrThrow<string>('JWT_EXPIRES_IN'),
-  //   });
-  // }
+    return this.jwtService.signAsync(payload, {
+      secret: this.configService.getOrThrow<string>('JWT_SECRET'),
+      expiresIn: this.configService.getOrThrow<string>('JWT_EXPIRES_IN'),
+    });
+  }
 
-  // // refreshToken 생성
-  // private async generateRefreshToken(userId: string): Promise<string> {
-  //   const payload: TokenRequestDto = {
-  //     sub: userId,
-  //     type: 'refresh',
-  //   };
+  // refreshToken 생성
+  private async generateRefreshToken(email: string): Promise<string> {
+    const payload: TokenRequestDto = {
+      sub: email,
+      type: 'refresh',
+    };
 
-  //   return this.jwtService.signAsync(payload, {
-  //     secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
-  //     expiresIn: this.configService.getOrThrow<string>('JWT_REFRESH_EXPIRES_IN'),
-  //   });
-  // }
+    return this.jwtService.signAsync(payload, {
+      secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+      expiresIn: this.configService.getOrThrow<string>('JWT_REFRESH_EXPIRES_IN'),
+    });
+  }
 }

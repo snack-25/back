@@ -1,4 +1,4 @@
-import { OmitType, PickType } from '@nestjs/swagger';
+import { OmitType, PickType, ApiProperty } from '@nestjs/swagger';
 import { UserDto } from 'src/users/dto/user.dto';
 
 // 회원가입 요청 DTO
@@ -20,10 +20,36 @@ export class SignUpComponeyRequestDto extends PickType(SignUpRequestDto, ['compa
 export class SignupResponseDto extends OmitType(UserDto, ['password']) {}
 
 // 로그인 요청 DTO (필요한 Email, Password만 받음)
-export class SignInRequestDto extends PickType(UserDto, ['email', 'password']) {}
+export class SignInRequestDto extends PickType(UserDto, ['email', 'password']) {
+  public cookie: string;
+}
 
 // 로그인 응답 DTO
-export class SigninResponseDto extends SignupResponseDto {}
+// export class SigninResponseDto extends PickType(UserDto, ['email', 'name']) {
+//   public company: string;
+//   public companyId: string;
+//   public role: string;
+//   @ApiProperty({ description: '액세스 토큰', example: 'eyJhbGciOiJI...' })
+//   public accessToken: string | null;
+//   @ApiProperty({ description: '리프레시 토큰', example: 'eyJhbGciOiJI...' })
+//   public refreshToken: string | null;
+// }
+export class SigninResponseDto {
+  @ApiProperty({ description: '토큰', type: Object })
+  public token: {
+    accessToken: string | null;
+    refreshToken: string | null;
+  };
+
+  @ApiProperty({ description: '사용자 정보', type: Object })
+  public user: {
+    email: string;
+    name: string;
+    company: { name: string; id: string };
+    role: string;
+    companyId: string;
+  };
+}
 
 // 토큰 생성 요청 DTO
 export class TokenRequestDto {
