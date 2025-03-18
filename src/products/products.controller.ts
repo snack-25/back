@@ -58,7 +58,7 @@ export class ProductsController {
     description: '카테고리 ID',
     type: String,
     required: false,
-    example: 'cat-스낵',
+    example: 'nvbgq8nf3k7qinjkaeuf4tah',
   })
   @ApiQuery({
     name: 'sort',

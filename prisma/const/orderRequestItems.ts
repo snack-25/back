@@ -3,8 +3,8 @@ import { products } from './products'; // 상품 데이터를 임포트
 
 export const orderRequestItems = [
   {
-    id: 'item-1',
-    orderRequestId: 'order-1',
+    id: 'olhupsw07eaku99fidwkf4o2',
+    orderRequestId: 'ynf7ggigzi49nw950fvtb69w',
     productId: products[0].id,
     quantity: 2,
     price: products[0].price,
@@ -12,8 +12,8 @@ export const orderRequestItems = [
     updatedAt: new Date(),
   },
   {
-    id: 'item-2',
-    orderRequestId: 'order-1',
+    id: 'dmbk5nky6e0vqa14pryhnhs0',
+    orderRequestId: 'ynf7ggigzi49nw950fvtb69w',
     productId: products[1].id,
     quantity: 3,
     price: products[1].price,
@@ -21,8 +21,8 @@ export const orderRequestItems = [
     updatedAt: new Date(),
   },
   {
-    id: 'item-3',
-    orderRequestId: 'order-2',
+    id: 't44ji6rafdhlk4ucj4rddm8p',
+    orderRequestId: 'au38gwt16z0gruclcdl7q3dz',
     productId: products[1].id,
     quantity: 1,
     price: products[1].price,
@@ -30,8 +30,8 @@ export const orderRequestItems = [
     updatedAt: new Date(),
   },
   {
-    id: 'item-4',
-    orderRequestId: 'order-2',
+    id: 'i90uu5srquux03yirs8l7fug',
+    orderRequestId: 'au38gwt16z0gruclcdl7q3dz',
     productId: products[2].id,
     quantity: 3,
     price: products[2].price,
@@ -39,8 +39,8 @@ export const orderRequestItems = [
     updatedAt: new Date(),
   },
   {
-    id: 'item-5',
-    orderRequestId: 'order-2',
+    id: 'voevo18c2rsj8f0h4yunfiir',
+    orderRequestId: 'au38gwt16z0gruclcdl7q3dz',
     productId: products[3].id,
     quantity: 4,
     price: products[3].price,
@@ -48,8 +48,8 @@ export const orderRequestItems = [
     updatedAt: new Date(),
   },
   {
-    id: 'item-6', // item-5는 중복되지 않도록 id 변경
-    orderRequestId: 'order-3',
+    id: 'pmyy48yu25ef0uvqult9dd0i',
+    orderRequestId: 'tsnrxxdcnh8z0o8bx7bp6hk8',
     productId: products[1].id,
     quantity: 2,
     price: products[1].price,

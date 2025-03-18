@@ -14,7 +14,12 @@ export class CartsController {
     summary: '장바구니 조회',
     description: '특정 장바구니의 상품 목록을 조회합니다.',
   })
-  @ApiParam({ name: 'cartId', required: true, description: '조회할 장바구니 ID' })
+  @ApiParam({
+    name: 'cartId',
+    required: true,
+    description: '조회할 장바구니 ID',
+    example: 'rbh4ib2mt2pt5175wuf9wsz6',
+  })
   @ApiResponse({ status: 200, description: '장바구니 조회 성공' })
   @Get(':cartId/items')
   public async getCartItems(@Param('cartId') cartId: string): Promise<CartItem[]> {
@@ -25,8 +30,21 @@ export class CartsController {
     summary: '장바구니 상품 추가',
     description: '특정 장바구니에 상품을 추가합니다.',
   })
-  @ApiParam({ name: 'cartId', required: true, description: '상품을 추가할 장바구니 ID' })
-  @ApiBody({ type: CreateCartDto, description: '추가할 상품의 ID' })
+  @ApiParam({
+    name: 'cartId',
+    required: true,
+    description: '상품을 추가할 장바구니 ID',
+    example: 'rbh4ib2mt2pt5175wuf9wsz6',
+  })
+  @ApiBody({
+    type: CreateCartDto,
+    description: '추가할 상품의 ID',
+    examples: {
+      example1: {
+        value: { productId: 'jlvtn4vc0wkycxa9c9koa2sw' },
+      },
+    },
+  })
   @ApiResponse({ status: 201, description: '상품 추가 성공' })
   @Post(':cartId/items')
   public async addToCart(
@@ -40,8 +58,18 @@ export class CartsController {
     summary: '장바구니 상품 수량 변경',
     description: '특정 장바구니 상품의 수량을 변경합니다.',
   })
-  @ApiParam({ name: 'cartId', required: true, description: '장바구니 ID' })
-  @ApiParam({ name: 'itemId', required: true, description: '수량을 변경할 장바구니 상품 ID' })
+  @ApiParam({
+    name: 'cartId',
+    required: true,
+    description: '장바구니 ID',
+    example: 'rbh4ib2mt2pt5175wuf9wsz6',
+  })
+  @ApiParam({
+    name: 'itemId',
+    required: true,
+    description: '수량을 변경할 장바구니 상품 ID',
+    example: 'jlvtn4vc0wkycxa9c9koa2sw',
+  })
   @ApiBody({ type: UpdateCartItemDto, description: '변경할 상품 수량' })
   @ApiResponse({ status: 200, description: '상품 수량 변경 성공' })
   @Patch(':cartId/items/:itemId')
@@ -57,8 +85,21 @@ export class CartsController {
     summary: '장바구니 상품 삭제',
     description: '특정 장바구니에서 선택한 상품들을 삭제합니다.',
   })
-  @ApiParam({ name: 'cartId', required: true, description: '상품을 삭제할 장바구니 ID' })
-  @ApiBody({ type: DeleteCartItemsDto, description: '삭제할 상품의 ID 목록' })
+  @ApiParam({
+    name: 'cartId',
+    required: true,
+    description: '상품을 삭제할 장바구니 ID',
+    example: 'rbh4ib2mt2pt5175wuf9wsz6',
+  })
+  @ApiBody({
+    type: DeleteCartItemsDto,
+    description: '삭제할 상품의 ID 목록',
+    examples: {
+      example1: {
+        value: { itemIds: ['jlvtn4vc0wkycxa9c9koa2sw'] },
+      },
+    },
+  })
   @ApiResponse({ status: 200, description: '상품 삭제 성공' })
   @Delete(':cartId/items')
   public async deleteCartItems(
