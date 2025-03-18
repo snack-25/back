@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { OrderRequest, OrderRequestStatus, PrismaClient } from '@prisma/client';
+import { OrderRequest, OrderRequestStatus, Prisma, PrismaClient } from '@prisma/client';
 import { CreateOrderRequestDto } from './dto/create-order-request.dto';
 import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
 import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
@@ -7,7 +7,6 @@ import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
 @Injectable()
 export class OrderRequestsService {
   private prisma: PrismaClient;
-  deleteRequestAndItemsInTransaction: any;
   constructor() {
     this.prisma = new PrismaClient();
   }
@@ -211,13 +210,6 @@ export class OrderRequestsService {
     });
   }
 
-  // ✅ 주문 요청 취소
-  async deleteOrderRequest(orderRequestId: string): Promise<void> {
-    await this.prisma.orderRequest.delete({
-      where: { id: orderRequestId },
-    });
-  }
-
   // ✅ 주문 요청 ID로 상세 조회
   async getOrderRequestById(orderRequestId: string): Promise<OrderRequest | null> {
     return this.prisma.orderRequest.findUnique({
@@ -226,12 +218,39 @@ export class OrderRequestsService {
     });
   }
 
-  // 주문 요청 아이템 삭제
-  async deleteOrderRequestItems(orderRequestId: string) {
-    return this.prisma.orderRequestItem.deleteMany({
-      where: {
-        orderRequestId: orderRequestId, // 해당 주문 요청 ID에 해당하는 아이템 삭제
-      },
-    });
+   // ✅ 주문 요청 삭제 (트랜잭션)
+   async deleteRequestAndItemsInTransaction(orderRequestId: string): Promise<void> {
+    try {
+      await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        // 🔹 1. 주문 요청이 존재하는지 확인
+        const orderRequest = await tx.orderRequest.findUnique({
+          where: { id: orderRequestId },
+        });
+
+        if (!orderRequest) {
+          throw new NotFoundException('주문 요청을 찾을 수 없습니다.');
+        }
+
+        // 🔹 2. PENDING 상태가 아닌 경우 삭제 불가
+        if (orderRequest.status !== OrderRequestStatus.PENDING) {
+          throw new BadRequestException('이미 처리된 주문 요청은 삭제할 수 없습니다.');
+        }
+
+        // 🔹 3. 주문 요청 아이템 삭제
+        await tx.orderRequestItem.deleteMany({
+          where: { orderRequestId },
+        });
+
+        // 🔹 4. 주문 요청 삭제
+        await tx.orderRequest.delete({
+          where: { id: orderRequestId },
+        });
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error; // 명시적인 예외는 그대로 반환
+      }
+      throw new BadRequestException('삭제 중 오류가 발생했습니다.');
+    }
   }
 }
