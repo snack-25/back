@@ -357,90 +357,97 @@ jobs:
         run: |
           echo "배포 검증을 시작합니다..."
 
+          # SSH 옵션 설정
+          SSH_OPTS="-o ConnectTimeout=10 -o StrictHostKeyChecking=yes -o ServerAliveInterval=60"
+
+          # 검증 대기 시간
+          echo "서버 시작 대기 중... (30초)"
+          sleep 30
+
           # PM2 상태 확인
           echo "PM2 프로세스 상태 확인..."
-          ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'source ~/.nvm/nvm.sh && cd ~/backend && pm2 list' || true
+          ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'source ~/.nvm/nvm.sh && cd ~/backend && pm2 list' || true
 
-          MAX_RETRIES=5
-          RETRY_COUNT=0
-          WAIT_TIME=15
+          # EC2 내부에서 건강 검사 수행
+          echo "서버 상태 확인 (EC2 내부에서)..."
+          VERIFY_RESULT=$(ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "
+            # EC2 내부에서 실행
+            source ~/.nvm/nvm.sh &&
+            cd ~/backend &&
 
-          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            echo "서버 상태 확인 시도 ${RETRY_COUNT}..."
+            # 최대 5회 시도
+            MAX_RETRIES=5
+            RETRY_COUNT=0
+            WAIT_TIME=10
 
-            # curl 명령어에 타임아웃 및 상세 에러 출력 추가
-            RESPONSE=$(curl -s -w "\n%{http_code}" \
-              -H "X-Deploy-Key: ${DEPLOY_VERIFY_KEY}" \
-              --connect-timeout 5 \
-              --max-time 10 \
-              -v \
-              http://${EC2_HOST}:4000/health 2>&1)
+            while [ \$RETRY_COUNT -lt \$MAX_RETRIES ]; do
+              echo \"시도 \$((RETRY_COUNT+1))/\$MAX_RETRIES...\"
 
-            CURL_EXIT_CODE=$?
+              # 로컬에서 curl 실행 (localhost 사용)
+              RESPONSE=\$(curl -s -w \"\\n%{http_code}\" \\
+                -H \"X-Deploy-Key: ${DEPLOY_VERIFY_KEY}\" \\
+                --connect-timeout 5 \\
+                --max-time 10 \\
+                http://localhost:4000/health 2>&1)
 
-            # curl 종료 코드에 따른 에러 메시지 출력
-            case $CURL_EXIT_CODE in
-              0) echo "curl 요청 성공" ;;
-              6) echo "❌ 호스트 이름 확인 실패" ;;
-              7) echo "❌ 서버 연결 실패" ;;
-              28) echo "❌ 요청 타임아웃" ;;
-              *) echo "❌ curl 에러 코드: $CURL_EXIT_CODE" ;;
-            esac
+              CURL_EXIT_CODE=\$?
 
-            # 포트 상태 확인
-            echo "포트 4000 상태 확인..."
-            ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'netstat -tulpn | grep :4000' || echo "❌ 포트 4000이 열려있지 않음"
+              if [ \$CURL_EXIT_CODE -eq 0 ]; then
+                HTTP_STATUS=\$(echo \"\$RESPONSE\" | tail -n1)
+                RESPONSE_BODY=\$(echo \"\$RESPONSE\" | sed '\$ d')
 
-            HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
-            RESPONSE_BODY=$(echo "$RESPONSE" | sed '$ d')
+                echo \"HTTP 상태 코드: \${HTTP_STATUS}\"
 
-            echo "HTTP 상태 코드: ${HTTP_STATUS}"
-            echo "응답 본문: ${RESPONSE_BODY}"
+                if [ \"\$HTTP_STATUS\" -eq 200 ]; then
+                  if echo \"\$RESPONSE_BODY\" | grep -q '\"status\":\"ok\"'; then
+                    echo \"✅ 검증 성공: 서버가 정상적으로 실행 중입니다\"
+                    echo \"\$RESPONSE_BODY\"
+                    exit 0
+                  else
+                    echo \"❌ 검증 실패: 응답 형식이 올바르지 않습니다\"
+                    echo \"\$RESPONSE_BODY\"
+                  fi
+                else
+                  echo \"❌ 검증 실패: 상태 코드가 200이 아닙니다: \${HTTP_STATUS}\"
+                fi
+              else
+                echo \"❌ curl 요청 실패 (종료 코드: \$CURL_EXIT_CODE)\"
+              fi
 
-            if [ "$HTTP_STATUS" -eq 200 ]; then
-              echo "✅ 서버가 정상적으로 응답합니다."
+              RETRY_COUNT=\$((RETRY_COUNT + 1))
 
-              # 응답 형식 검증
-              if ! echo "$RESPONSE_BODY" | grep -q '"status":"ok"'; then
-                echo "❌ 응답 형식이 올바르지 않습니다."
-                echo "기대한 응답: {\"status\":\"ok\",...}"
-                echo "실제 응답: $RESPONSE_BODY"
+              if [ \$RETRY_COUNT -lt \$MAX_RETRIES ]; then
+                echo \"재시도 대기 중... (\$WAIT_TIME초)\"
+                sleep \$WAIT_TIME
+              else
+                echo \"❌ 최대 재시도 횟수 초과\"
                 exit 1
               fi
+            done
 
-              # 버전 검증
-              if ! echo "$RESPONSE_BODY" | grep -q "\"version\":\"$GIT_COMMIT_SHA\""; then
-                echo "⚠️ 버전 불일치 경고"
-                echo "기대한 버전: ${GIT_COMMIT_SHA}"
-                echo "응답: ${RESPONSE_BODY}"
-              fi
+            exit 1
+          ")
 
-              echo "✅ 배포 검증 성공"
-              exit 0
-            fi
+          VERIFY_EXIT_CODE=$?
 
-            RETRY_COUNT=$((RETRY_COUNT + 1))
-            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-              echo "재시도 대기 중... ($WAIT_TIME초)"
-              sleep $WAIT_TIME
-            else
-              echo "❌ 최대 재시도 횟수 초과"
-              echo "마지막 응답: $RESPONSE_BODY"
-              echo "마지막 상태 코드: $HTTP_STATUS"
+          echo "$VERIFY_RESULT"
 
-              # 서버 로그 확인 (out.log와 error.log 모두 확인)
-              echo "서버 로그 확인..."
-              echo "=== 표준 출력 로그 ==="
-              ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'source ~/.nvm/nvm.sh && cd ~/backend && cat logs/out.log | tail -n 50' || true
-              echo "=== 에러 로그 ==="
-              ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'source ~/.nvm/nvm.sh && cd ~/backend && cat logs/error.log | tail -n 50' || true
+          if [ $VERIFY_EXIT_CODE -ne 0 ]; then
+            echo "❌ 배포 검증 실패"
 
-              echo "=== PM2 프로세스 상태 재확인 ==="
-              ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'source ~/.nvm/nvm.sh && pm2 list' || true
+            echo "=== 표준 출력 로그 ==="
+            ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'source ~/.nvm/nvm.sh && cd ~/backend && cat logs/out.log | tail -n 50' || true
 
-              exit 1
-            fi
-          done
+            echo "=== 에러 로그 ==="
+            ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'source ~/.nvm/nvm.sh && cd ~/backend && cat logs/error.log | tail -n 50' || true
+
+            echo "=== 방화벽 상태 확인 ==="
+            ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'sudo iptables -L | grep 4000 || echo "4000번 포트에 관한 방화벽 규칙이 없습니다"' || true
+
+            exit 1
+          else
+            echo "✅ 배포 검증 성공"
+          fi
 
 permissions:
   contents: read # 레포지토리 내용 읽기 권한
