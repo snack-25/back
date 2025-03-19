@@ -234,6 +234,14 @@ jobs:
             exit 1
           }
 
+          export PNPM_HOME="$HOME/.local/share/pnpm"
+          export PATH="$HOME/.local/share/pnpm/lib/bin:$PATH"
+
+          # 기존 pnpm 환경변수 로드
+          if [ -f ~/.bashrc ]; then
+            source ~/.bashrc
+          fi
+
           # pnpm 설치 확인
           if ! command -v pnpm &> /dev/null; then
             echo "[INFO] Installing pnpm..."
@@ -241,11 +249,6 @@ jobs:
               echo "❌ pnpm 설치 실패"
               exit 1
             }
-          fi
-
-          # 기존 pnpm 환경변수 로드
-          if [ -f ~/.bashrc ]; then
-            source ~/.bashrc
           fi
 
           # PNPM_HOME이 설정되어 있지 않은 경우에만 setup 실행
