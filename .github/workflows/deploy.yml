@@ -223,6 +223,13 @@ jobs:
             exit 1
           }
 
+          # PM2 경로 설정 및 검증
+          PM2="$HOME/.local/share/pnpm/pm2"
+          if [ ! -f "$PM2" ]; then
+            echo "❌ PM2 실행 파일을 찾을 수 없습니다: $PM2"
+            exit 1
+          fi
+
           # GPG 복호화
           if ! gpg --decrypt --batch --passphrase "${GPG_PASSPHRASE}" .env.gpg > .env.tmp; then
             echo "❌ 환경 변수 파일 복호화 실패"
@@ -247,8 +254,19 @@ jobs:
           }
 
           # PM2 프로세스 정리
-          pm2 stop all 2>/dev/null || echo "No running PM2 processes to stop"
-          pm2 delete all 2>/dev/null || echo "No PM2 processes to delete"
+          if ! "$PM2" stop all 2>/dev/null; then
+            echo "No running PM2 processes to stop or PM2 stop failed"
+          fi
+          if ! "$PM2" delete all 2>/dev/null; then
+            echo "No PM2 processes to delete or PM2 delete failed"
+          fi
+
+          # PM2 시작 전 환경 검증
+          echo "[INFO] Starting PM2..."
+          if [ ! -f "ecosystem.config.js" ]; then
+            echo "❌ ecosystem.config.js 파일을 찾을 수 없습니다"
+            exit 1
+          fi
 
           # 로그 디렉토리 설정
           mkdir -p logs
@@ -290,13 +308,13 @@ jobs:
 
           # PM2 시작
           echo "[INFO] Starting PM2..."
-          if ! pm2 start ecosystem.config.js --env production; then
+          if ! "$PM2" start ecosystem.config.js --env production; then
             echo "❌ PM2 시작 실패"
             exit 1
           fi
 
           # PM2 상태 저장
-          if ! pm2 save; then
+          if ! "$PM2" save; then
             echo "❌ PM2 상태 저장 실패"
             exit 1
           fi
@@ -338,11 +356,12 @@ jobs:
         if: failure()
         run: |
           ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && {
+            PM2="$HOME/.local/share/pnpm/pm2"
             if ls backup-*.tar.gz 1> /dev/null 2>&1; then
               echo "Backup found, restoring..."
-              pm2 stop all || true && pm2 delete all || true
+              "$PM2" stop all || true && "$PM2" delete all || true
               tar -xzf backup-*.tar.gz
-              pm2 start ecosystem.config.js --env production
+              "$PM2" start ecosystem.config.js --env production
               echo "Rollback complete."
             else
               echo "No backup found, cannot rollback."
@@ -369,20 +388,15 @@ jobs:
           # PM2 상태 확인 (환경 설정 추가)
           echo "PM2 프로세스 상태 확인..."
           ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
-            source ~/.nvm/nvm.sh
-            source ~/.bashrc
-            export PATH="$PATH:$(pnpm root -g)"
+            PM2="$HOME/.local/share/pnpm/pm2"
             cd ~/backend
-            pm2 list
+            "$PM2" list
           ' || true
 
           # EC2 내부에서 건강 검사 수행 (환경 설정 추가)
           echo "서버 상태 확인 (EC2 내부에서)..."
           VERIFY_RESULT=$(ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "
-            # EC2 내부에서 실행
-            source ~/.nvm/nvm.sh
-            source ~/.bashrc
-            export PATH=\"\$PATH:\$(pnpm root -g)\"
+            PM2=\"\$HOME/.local/share/pnpm/pm2\"
             cd ~/backend
 
             # 최대 5회 시도
