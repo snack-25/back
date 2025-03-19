@@ -234,7 +234,7 @@ jobs:
             exit 1
           }
 
-          # pnpm 설치 확인 및 설치
+          # pnpm 설치 확인
           if ! command -v pnpm &> /dev/null; then
             echo "[INFO] Installing pnpm..."
             curl -fsSL https://get.pnpm.io/install.sh | sh || {
@@ -243,27 +243,27 @@ jobs:
             }
           fi
 
-          # pnpm setup 실행
-          echo "[INFO] Running pnpm setup..."
-          pnpm setup || {
-            echo "❌ pnpm setup 실패"
-            exit 1
-          }
-
-          # 환경변수 설정
-          export PNPM_HOME="$HOME/.local/share/pnpm"
-          export PATH="$PNPM_HOME:$PATH"
-
-          # pnpm 환경변수 영구 설정 (기존 섹션 확인 후 추가)
-          if ! grep -q "pnpm" ~/.bashrc; then
-            echo "export PNPM_HOME=\"$HOME/.local/share/pnpm\"" >> ~/.bashrc
-            echo "export PATH=\"\$PNPM_HOME:\$PATH\"" >> ~/.bashrc
-          else
-            echo "[INFO] pnpm 섹션이 이미 존재합니다. 기존 설정을 확인하세요."
+          # 기존 pnpm 환경변수 로드
+          if [ -f ~/.bashrc ]; then
+            source ~/.bashrc
           fi
 
-          # 현재 셸에 환경변수 적용
-          source ~/.bashrc
+          # PNPM_HOME이 설정되어 있지 않은 경우에만 setup 실행
+          if [ -z "$PNPM_HOME" ]; then
+            echo "[INFO] Running pnpm setup with force option..."
+            pnpm setup --force || {
+              echo "❌ pnpm setup 실패"
+              exit 1
+            }
+            source ~/.bashrc
+          else
+            echo "[INFO] PNPM_HOME이 이미 설정되어 있습니다: $PNPM_HOME"
+          fi
+
+          # PATH에 pnpm 경로가 없는 경우에만 추가
+          if [[ ":$PATH:" != *":$PNPM_HOME:"* ]]; then
+            export PATH="$PNPM_HOME:$PATH"
+          fi
 
           # PM2 설치 및 경로 설정
           echo "[INFO] Installing PM2..."
