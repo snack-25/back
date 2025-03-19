@@ -223,8 +223,15 @@ jobs:
             exit 1
           }
 
+          # PM2 설치 및 경로 설정
+          echo "[INFO] Installing PM2..."
+          if ! pnpm install -g pm2; then
+            echo "❌ PM2 설치 실패"
+            exit 1
+          fi
+
           # PM2 경로 설정 및 검증
-          PM2="$HOME/.local/share/pnpm/pm2"
+          PM2=$(which pm2)
           if [ ! -f "$PM2" ]; then
             echo "❌ PM2 실행 파일을 찾을 수 없습니다: $PM2"
             exit 1
@@ -246,10 +253,6 @@ jobs:
           }
           nvm use 22 || {
             echo "❌ Node.js 버전 설정 실패"
-            exit 1
-          }
-          corepack enable || {
-            echo "❌ Corepack 활성화 실패"
             exit 1
           }
 
@@ -391,14 +394,13 @@ jobs:
             # NVM 설정
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
 
             # Node.js 활성화
             nvm use 22
 
             # 환경 변수 설정
             export PATH="$HOME/.local/share/pnpm:$PATH"
-            PM2="$HOME/.local/share/pnpm/pm2"
+            PM2=$(which pm2)
 
             cd ~/backend
             "$PM2" list
@@ -407,6 +409,16 @@ jobs:
           # EC2 내부에서 건강 검사 수행 (환경 설정 추가)
           echo "서버 상태 확인 (EC2 내부에서)..."
           VERIFY_RESULT=$(ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
+            # NVM 설정
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+            # Node.js 활성화
+            nvm use 22
+
+            # 환경 변수 설정
+            export DEPLOY_VERIFY_KEY="${DEPLOY_VERIFY_KEY}"
+
             cd ~/backend
 
             # 최대 5회 시도
@@ -414,26 +426,26 @@ jobs:
             RETRY_COUNT=0
             WAIT_TIME=10
 
-            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            while [ "$RETRY_COUNT" -lt "$MAX_RETRIES" ]; do
               echo "시도 $((RETRY_COUNT+1))/$MAX_RETRIES..."
 
               # 로컬에서 curl 실행 (localhost 사용)
               RESPONSE=$(curl -s -w "\n%{http_code}" \
-                -H "X-Deploy-Key: ${DEPLOY_VERIFY_KEY}" \
+                -H "X-Deploy-Key: $DEPLOY_VERIFY_KEY" \
                 --connect-timeout 5 \
                 --max-time 10 \
                 http://localhost:4000/api/health 2>&1)
 
-              CURL_EXIT_CODE=$?
+              CURL_EXIT_CODE="$?"
 
-              if [ $CURL_EXIT_CODE -eq 0 ]; then
+              if [ "$CURL_EXIT_CODE" -eq 0 ]; then
                 HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
                 RESPONSE_BODY=$(echo "$RESPONSE" | sed "$ d")
 
                 echo "HTTP 상태 코드: $HTTP_STATUS"
 
                 if [ "$HTTP_STATUS" -eq 200 ]; then
-                  if echo "$RESPONSE_BODY" | grep -q '"status":"ok"'; then
+                  if echo "$RESPONSE_BODY" | grep -q "\"status\":\"ok\""; then
                     echo "✅ 검증 성공: 서버가 정상적으로 실행 중입니다"
                     echo "$RESPONSE_BODY"
                     exit 0
@@ -450,9 +462,9 @@ jobs:
 
               RETRY_COUNT=$((RETRY_COUNT + 1))
 
-              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              if [ "$RETRY_COUNT" -lt "$MAX_RETRIES" ]; then
                 echo "재시도 대기 중... ($WAIT_TIME초)"
-                sleep $WAIT_TIME
+                sleep "$WAIT_TIME"
               else
                 echo "❌ 최대 재시도 횟수 초과"
                 exit 1
