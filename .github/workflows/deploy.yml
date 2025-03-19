@@ -434,22 +434,16 @@ jobs:
 
             # 환경 변수 설정
             export PNPM_HOME="$HOME/.pnpm-global"
-            export PATH="$HOME/.pnpm-global/bin:$PATH"
-            PM2=$(which pm2)
-
+            export PATH="$PNPM_HOME/bin:$PATH"
             cd ~/backend
-            "$PM2" list
-          ' || true
+            pm2 list
+          '
 
-          # EC2 내부에서 건강 검사 수행 (환경 설정 추가)
+          # 건강 검사
           echo "서버 상태 확인 (EC2 내부에서)..."
-          VERIFY_RESULT=$(ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
-            # 환경 변수 설정
-            export DEPLOY_VERIFY_KEY="${{ secrets.DEPLOY_VERIFY_KEY }}"
-
+          VERIFY_RESULT=$(ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "
             cd ~/backend
 
-            # 최대 5회 시도
             MAX_RETRIES=5
             RETRY_COUNT=0
             WAIT_TIME=10
