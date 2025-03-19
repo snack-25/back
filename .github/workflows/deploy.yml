@@ -214,7 +214,7 @@ jobs:
           }
 
           # 배포 스크립트 생성
-          cat << EOF > deploy_script.sh
+          cat << 'EOF' > deploy_script.sh
           #!/bin/bash
           set -e  # 에러 발생 시 즉시 종료
 
@@ -224,10 +224,11 @@ jobs:
           }
 
           # GPG 복호화
-          if ! gpg --decrypt --batch --passphrase "$GPG_PASSPHRASE" .env.gpg > .env.tmp; then
+          if ! gpg --decrypt --batch --passphrase "${GPG_PASSPHRASE}" .env.gpg > .env.tmp; then
             echo "❌ 환경 변수 파일 복호화 실패"
             exit 1
-          }
+          fi
+
           mv .env.tmp .env
           chmod 600 .env
 
@@ -246,8 +247,8 @@ jobs:
           }
 
           # PM2 프로세스 정리
-          pm2 stop all 2>/dev/null || true
-          pm2 delete all 2>/dev/null || true
+          pm2 stop all 2>/dev/null || echo "No running PM2 processes to stop"
+          pm2 delete all 2>/dev/null || echo "No PM2 processes to delete"
 
           # 로그 디렉토리 설정
           mkdir -p logs
@@ -319,15 +320,15 @@ jobs:
           # 배포 스크립트 실행
           echo "배포 스크립트 실행 중..."
           ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} \
-            "cd ~/backend && GPG_PASSPHRASE='$GPG_PASSPHRASE' ./deploy_script.sh" 2>&1 | tee deploy.log || {
+            "cd ~/backend && GPG_PASSPHRASE=\"$GPG_PASSPHRASE\" ./deploy_script.sh" 2>&1 | tee deploy.log || {
             echo "❌ 배포 스크립트 실행 실패"
             exit 1
           }
 
           # deploy.log에서 민감한 정보 제거
-          sed -i.bak 's|'"${{ secrets.DATABASE_URL }}"'|[MASKED_DATABASE_URL]|g' deploy.log
-          sed -i.bak 's|'"${{ secrets.DEPLOY_VERIFY_KEY }}"'|[MASKED_DEPLOY_KEY]|g' deploy.log
-          sed -i.bak 's|'"${{ secrets.GPG_PASSPHRASE }}"'|[MASKED_GPG_PASSPHRASE]|g' deploy.log
+          sed -i.bak "s|$(echo "${{ secrets.DATABASE_URL }}" | sed 's/[\/&]/\\&/g')|[MASKED_DATABASE_URL]|g" deploy.log
+          sed -i.bak "s|$(echo "${{ secrets.DEPLOY_VERIFY_KEY }}" | sed 's/[\/&]/\\&/g')|[MASKED_DEPLOY_KEY]|g" deploy.log
+          sed -i.bak "s|$(echo "${{ secrets.GPG_PASSPHRASE }}" | sed 's/[\/&]/\\&/g')|[MASKED_GPG_PASSPHRASE]|g" deploy.log
           rm -f deploy.log.bak
           rm -f deploy_script.sh
 
