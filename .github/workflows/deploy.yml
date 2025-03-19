@@ -25,6 +25,26 @@ jobs:
           version: '10' # pnpm 버전 10 사용
           run_install: false # 이미 설치되어 있으므로 설치하지 않음
 
+      - name: Check pnpm installation # pnpm 설치 확인
+        run: |
+          if ! command -v pnpm &> /dev/null; then
+            echo "[INFO] pnpm이 설치되어 있지 않습니다. 설치를 시도합니다."
+            curl -fsSL https://get.pnpm.io/install.sh | sh || {
+              echo "❌ pnpm 설치 실패"
+              exit 1
+            }
+          else
+            echo "[INFO] pnpm이 이미 설치되어 있습니다."
+          fi
+
+      - name: Run pnpm setup # pnpm setup 실행
+        run: |
+          echo "[INFO] Running pnpm setup..."
+          pnpm setup || {
+            echo "❌ pnpm setup 실패"
+            exit 1
+          }
+
       - name: Cache dependencies # 의존성 캐싱
         uses: actions/cache@v4 # actions/cache 레포지토리의 v4 버전 사용
         with:
@@ -234,7 +254,7 @@ jobs:
           # pnpm 설치 확인 및 설치
           if ! command -v pnpm &> /dev/null; then
             echo "[INFO] Installing pnpm..."
-            npm install -g pnpm || {
+            curl -fsSL https://get.pnpm.io/install.sh | sh || {
               echo "❌ pnpm 설치 실패"
               exit 1
             }
@@ -251,12 +271,12 @@ jobs:
           export PNPM_HOME="$HOME/.local/share/pnpm"
           export PATH="$PNPM_HOME:$PATH"
 
-          # pnpm 환경변수 영구 설정 (이미 있는 경우 추가하지 않음)
-          if ! grep -q "export PNPM_HOME=" ~/.bashrc; then
+          # pnpm 환경변수 영구 설정 (기존 섹션 확인 후 추가)
+          if ! grep -q "pnpm" ~/.bashrc; then
             echo "export PNPM_HOME=\"$HOME/.local/share/pnpm\"" >> ~/.bashrc
-          fi
-          if ! grep -q "export PATH=\$PNPM_HOME:\$PATH" ~/.bashrc; then
             echo "export PATH=\"\$PNPM_HOME:\$PATH\"" >> ~/.bashrc
+          else
+            echo "[INFO] pnpm 섹션이 이미 존재합니다. 기존 설정을 확인하세요."
           fi
 
           # 현재 셸에 환경변수 적용
@@ -446,7 +466,7 @@ jobs:
             nvm use 22
 
             # 환경 변수 설정
-            export DEPLOY_VERIFY_KEY='"'"'${DEPLOY_VERIFY_KEY}'"'"'
+            export DEPLOY_VERIFY_KEY="${{ secrets.DEPLOY_VERIFY_KEY }}"
 
             cd ~/backend
 
