@@ -223,6 +223,26 @@ jobs:
             exit 1
           }
 
+          # Node.js 환경 설정
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          nvm use 22 || {
+            echo "❌ Node.js 버전 설정 실패"
+            exit 1
+          }
+
+          # pnpm 설치 확인 및 설치
+          if ! command -v pnpm &> /dev/null; then
+            echo "[INFO] Installing pnpm..."
+            npm install -g pnpm || {
+              echo "❌ pnpm 설치 실패"
+              exit 1
+            }
+          fi
+
+          # PATH에 pnpm 추가
+          export PATH="$HOME/.local/share/pnpm:$PATH"
+
           # PM2 설치 및 경로 설정
           echo "[INFO] Installing PM2..."
           if ! pnpm install -g pm2; then
@@ -245,16 +265,6 @@ jobs:
 
           mv .env.tmp .env
           chmod 600 .env
-
-          # Node.js 환경 설정
-          source ~/.nvm/nvm.sh || {
-            echo "❌ NVM 초기화 실패"
-            exit 1
-          }
-          nvm use 22 || {
-            echo "❌ Node.js 버전 설정 실패"
-            exit 1
-          }
 
           # PM2 프로세스 정리
           if ! "$PM2" stop all 2>/dev/null; then
@@ -417,7 +427,7 @@ jobs:
             nvm use 22
 
             # 환경 변수 설정
-            export DEPLOY_VERIFY_KEY="${DEPLOY_VERIFY_KEY}"
+            export DEPLOY_VERIFY_KEY='"'"'${DEPLOY_VERIFY_KEY}'"'"'
 
             cd ~/backend
 
@@ -436,7 +446,7 @@ jobs:
                 --max-time 10 \
                 http://localhost:4000/api/health 2>&1)
 
-              CURL_EXIT_CODE="$?"
+              CURL_EXIT_CODE=$?
 
               if [ "$CURL_EXIT_CODE" -eq 0 ]; then
                 HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
@@ -445,7 +455,7 @@ jobs:
                 echo "HTTP 상태 코드: $HTTP_STATUS"
 
                 if [ "$HTTP_STATUS" -eq 200 ]; then
-                  if echo "$RESPONSE_BODY" | grep -q "\"status\":\"ok\""; then
+                  if echo "$RESPONSE_BODY" | grep -q '\''{"status":"ok"}'\''; then
                     echo "✅ 검증 성공: 서버가 정상적으로 실행 중입니다"
                     echo "$RESPONSE_BODY"
                     exit 0
