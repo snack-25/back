@@ -366,16 +366,24 @@ jobs:
           echo "서버 시작 대기 중... (30초)"
           sleep 30
 
-          # PM2 상태 확인
+          # PM2 상태 확인 (환경 설정 추가)
           echo "PM2 프로세스 상태 확인..."
-          ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'source ~/.nvm/nvm.sh && cd ~/backend && pm2 list' || true
+          ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
+            source ~/.nvm/nvm.sh
+            source ~/.bashrc
+            export PATH="$PATH:$(pnpm root -g)"
+            cd ~/backend
+            pm2 list
+          ' || true
 
-          # EC2 내부에서 건강 검사 수행
+          # EC2 내부에서 건강 검사 수행 (환경 설정 추가)
           echo "서버 상태 확인 (EC2 내부에서)..."
           VERIFY_RESULT=$(ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "
             # EC2 내부에서 실행
-            source ~/.nvm/nvm.sh &&
-            cd ~/backend &&
+            source ~/.nvm/nvm.sh
+            source ~/.bashrc
+            export PATH=\"\$PATH:\$(pnpm root -g)\"
+            cd ~/backend
 
             # 최대 5회 시도
             MAX_RETRIES=5
