@@ -23,27 +23,10 @@ jobs:
         uses: pnpm/action-setup@v4 # pnpm/action-setup 레포지토리의 v4 버전 사용
         with:
           version: '10' # pnpm 버전 10 사용
-          run_install: false # 이미 설치되어 있으므로 설치하지 않음
 
-      - name: Check pnpm installation # pnpm 설치 확인
+      - name: Set SHELL environment variable # SHELL 환경 변수 설정
         run: |
-          if ! command -v pnpm &> /dev/null; then
-            echo "[INFO] pnpm이 설치되어 있지 않습니다. 설치를 시도합니다."
-            curl -fsSL https://get.pnpm.io/install.sh | sh || {
-              echo "❌ pnpm 설치 실패"
-              exit 1
-            }
-          else
-            echo "[INFO] pnpm이 이미 설치되어 있습니다."
-          fi
-
-      - name: Run pnpm setup # pnpm setup 실행
-        run: |
-          echo "[INFO] Running pnpm setup..."
-          pnpm setup || {
-            echo "❌ pnpm setup 실패"
-            exit 1
-          }
+          echo "SHELL=/bin/bash" >> $GITHUB_ENV # bash 사용
 
       - name: Cache dependencies # 의존성 캐싱
         uses: actions/cache@v4 # actions/cache 레포지토리의 v4 버전 사용
