@@ -406,8 +406,7 @@ jobs:
 
           # EC2 내부에서 건강 검사 수행 (환경 설정 추가)
           echo "서버 상태 확인 (EC2 내부에서)..."
-          VERIFY_RESULT=$(ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "
-
+          VERIFY_RESULT=$(ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
             cd ~/backend
 
             # 최대 5회 시도
@@ -429,7 +428,7 @@ jobs:
 
               if [ $CURL_EXIT_CODE -eq 0 ]; then
                 HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
-                RESPONSE_BODY=$(echo "$RESPONSE" | sed '$ d')
+                RESPONSE_BODY=$(echo "$RESPONSE" | sed "$ d")
 
                 echo "HTTP 상태 코드: $HTTP_STATUS"
 
@@ -461,7 +460,7 @@ jobs:
             done
 
             exit 1
-          ")
+          ')
 
           VERIFY_EXIT_CODE=$?
 
