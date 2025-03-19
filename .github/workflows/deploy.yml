@@ -240,8 +240,27 @@ jobs:
             }
           fi
 
-          # PATH에 pnpm 추가
-          export PATH="$HOME/.local/share/pnpm:$PATH"
+          # pnpm setup 실행
+          echo "[INFO] Running pnpm setup..."
+          pnpm setup || {
+            echo "❌ pnpm setup 실패"
+            exit 1
+          }
+
+          # 환경변수 설정
+          export PNPM_HOME="$HOME/.local/share/pnpm"
+          export PATH="$PNPM_HOME:$PATH"
+
+          # pnpm 환경변수 영구 설정 (이미 있는 경우 추가하지 않음)
+          if ! grep -q "export PNPM_HOME=" ~/.bashrc; then
+            echo "export PNPM_HOME=\"$HOME/.local/share/pnpm\"" >> ~/.bashrc
+          fi
+          if ! grep -q "export PATH=\$PNPM_HOME:\$PATH" ~/.bashrc; then
+            echo "export PATH=\"\$PNPM_HOME:\$PATH\"" >> ~/.bashrc
+          fi
+
+          # 현재 셸에 환경변수 적용
+          source ~/.bashrc
 
           # PM2 설치 및 경로 설정
           echo "[INFO] Installing PM2..."
