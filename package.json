@@ -37,7 +37,7 @@
     "prisma:seed:local": "dotenv -e .env.local -- ts-node prisma/seed.ts",
     "prisma:generate:prod": "dotenv -e .env.production -- npx prisma generate",
     "prisma:deploy:prod": "dotenv -e .env.production -- npx prisma migrate deploy",
-    "prisma:seed:prod": "dotenv -e .env.production -- ts-node prisma/seed.ts",
+    "prisma:seed:prod": "dotenv -e .env.production -- node --loader ts-node/esm prisma/seed.ts",
     "db:seed": "ts-node prisma/seed.ts"
   },
   "lint-staged": {
