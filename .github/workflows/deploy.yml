@@ -72,7 +72,7 @@ jobs:
           chmod 600 ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }}
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Validate Environment Variables # 환경 변수 검증
+      - name: Validate Environment Variables
         run: |
           required_vars=(
             "NODE_ENV"
@@ -86,7 +86,7 @@ jobs:
           )
 
           for var in "${required_vars[@]}"; do
-            if [ -z "${{ secrets.$var }}" ]; then
+            if [ -z "${!var}" ]; then
               echo "❌ $var is not set"
               exit 1
             fi
@@ -389,7 +389,7 @@ jobs:
 
           echo "Deploy to EC2 작업 완료"
 
-      - name: Rollback on Failure # 배포 실패 시 롤백
+      - name: Rollback on Failure
         if: failure()
         run: |
           ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && {
@@ -402,6 +402,13 @@ jobs:
               echo "Backup found, restoring..."
               "$PM2" stop all || true && "$PM2" delete all || true
               tar -xzf backup-*.tar.gz
+
+              # 데이터베이스 롤백
+              if [ -f "prisma/migrations" ]; then
+                echo "Rolling back database..."
+                pnpm prisma migrate reset --force
+              fi
+
               "$PM2" start ecosystem.config.js --env production
               echo "Rollback complete."
             else
