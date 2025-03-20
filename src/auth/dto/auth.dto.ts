@@ -25,15 +25,6 @@ export class SignInRequestDto extends PickType(UserDto, ['email', 'password']) {
 }
 
 // 로그인 응답 DTO
-// export class SigninResponseDto extends PickType(UserDto, ['email', 'name']) {
-//   public company: string;
-//   public companyId: string;
-//   public role: string;
-//   @ApiProperty({ description: '액세스 토큰', example: 'eyJhbGciOiJI...' })
-//   public accessToken: string | null;
-//   @ApiProperty({ description: '리프레시 토큰', example: 'eyJhbGciOiJI...' })
-//   public refreshToken: string | null;
-// }
 export class SigninResponseDto {
   @ApiProperty({ description: '토큰', type: Object })
   public token: {
@@ -68,4 +59,12 @@ export class TokenResponseDto {
 export class TokenOptionsDto {
   public secret: string;
   public expiresIn: string;
+}
+
+//
+export interface JwtPayload {
+  sub: string; // 사용자 ID
+  email: string; // 사용자 이메일 (필요하다면)
+  iat: number; // 토큰 발행 시간
+  exp: number; // 토큰 만료 시간 (필요하면)
 }

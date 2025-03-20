@@ -1,7 +1,8 @@
-import { Controller, Body, Post, Req, Res, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Body, Post, Get, Req, Res, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { SignUpRequestDto, SignInRequestDto } from './dto/auth.dto';
+import { SignUpRequestDto, SignInRequestDto, TokenResponseDto } from './dto/auth.dto';
 import { Request, Response } from 'express';
+import { AuthGuard } from './auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -16,21 +17,63 @@ export class AuthController {
   }
 
   @Post('login')
-  @UseGuards()
   public async login(
     @Body() dto: SignInRequestDto,
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    // console.log('????');
     // console.log('dto', dto);
     console.log('Cookies:', req.cookies);
-    const result = await this.authService.login(dto);
-    if (!result) {
-      throw new BadRequestException('이메일 또는 비밀번호를 확인해주세요.');
+
+    const loginResult = await this.authService.login(dto);
+
+    if (!loginResult) {
+      throw new Error('로그인 실패: 응답이 없습니다.');
     }
-    res.status(200).json({ msg: '로그인 성공', data: result });
+
+    const { token, user } = loginResult;
+
+    // 쿠키 인증 설정
+    this.setAuthCookies(res, token);
+
+    res.status(200).json({ msg: '로그인 성공', data: user });
   }
+
+  // 로그아웃
+  @UseGuards(AuthGuard)
+  @Post('logout')
+  async logout(@Req() req, @Res() res) {
+    console.log('sj dks skdhk?');
+    const invalidateToken = req.cookies['refreshToken'];
+
+    return await this.authService.logout(invalidateToken, res);
+  }
+
+  // 쿠키 인증 설정(accessToken, refreshToken 둘 다 설정)
+  private setAuthCookies(@Res() res: Response, token: TokenResponseDto): void {
+    res.cookie('accessToken', token.accessToken, {
+      httpOnly: true, // XSS 공격 방지
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict', // CORS 문제 방지
+      maxAge: 60 * 1000 * 60 * 24, // 24시간 (24시간 × 60분 × 60초 × 1000밀리초)
+    });
+
+    res.cookie('refreshToken', token.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 60 * 1000 * 60 * 24 * 14, // 2w
+    });
+  }
+
+  // 아래와 같이 사용하려는 API Endpoint위에 @UseGuards(AuthGuard) 데코레이터를 추가하면
+  // 쿠키 기반 인증을 검사합니다. 권한이 없으면 에러를 반환합니다.
+  @UseGuards(AuthGuard)
+  @Get('guard')
+  public findAll(): string {
+    return 'guard';
+  }
+
   // TODO: /auth/login (POST) 로그인
   // TODO: /auth/logout (POST) 로그아웃
   // TODO: /auth/refresh (POST) 토큰 재발급
