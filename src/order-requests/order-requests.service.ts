@@ -198,7 +198,7 @@ export class OrderRequestsService {
   async rejectOrderRequest(orderRequestId: string, dto: RejectOrderRequestDto) {
     return this.prisma.$transaction(async tx => {
     // 1️⃣ 주문 요청 상태 확인
-    const orderRequest = await this.prisma.orderRequest.findUnique({
+    const orderRequest = await tx.orderRequest.findUnique({
       where: { id: orderRequestId },
       select: { status: true }, // status만 조회
     });
