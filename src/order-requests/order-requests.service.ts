@@ -113,6 +113,8 @@ export class OrderRequestsService {
     const orderRequest = await this.prisma.orderRequest.findUnique({
       where: { id: orderRequestId },
       include: {
+        requester: { select: { name: true } }, // 요청한 사람 정보 조회
+        resolver: { select: { name: true } }, // 처리한 사람 정보 조회 (nullable)
         orderRequestItems: {
           include: {
             product: {
@@ -132,23 +134,10 @@ export class OrderRequestsService {
         },
       },
     });
-
+  
     if (!orderRequest) {
       throw new NotFoundException('해당 주문 요청을 찾을 수 없습니다.');
     }
-  
-    // 🔹 요청한 사람(requesterId)과 처리한 사람(resolverId)의 이름 조회
-    const requester = await this.prisma.user.findUnique({
-      where: { id: orderRequest.requesterId },
-      select: { name: true },
-    });
-  
-    const resolver = orderRequest.resolverId 
-      ? await this.prisma.user.findUnique({
-          where: { id: orderRequest.resolverId },
-          select: { name: true },
-        })
-      : null;
   
     return {
       requestId: orderRequest.id,
@@ -156,8 +145,8 @@ export class OrderRequestsService {
       requestedAt: orderRequest.createdAt, // 요청일
       resolvedAt: orderRequest.resolvedAt, // 처리일
       resolverMessage: orderRequest.notes, // 처리 메시지
-      requesterName: requester?.name || '알 수 없음', // 요청한 사람의 이름
-      resolverName: resolver?.name || null, // 처리한 사람의 이름
+      requesterName: orderRequest.requester?.name || '알 수 없음', // 요청한 사람의 이름
+      resolverName: orderRequest.resolver?.name || null, // 처리한 사람의 이름
       items: orderRequest.orderRequestItems.map(item => ({
         productName: item.product?.name || '상품 정보 없음',
         categoryId: item.product?.category?.id || null,   // 🔹 카테고리 ID 추가
@@ -169,6 +158,7 @@ export class OrderRequestsService {
       })),
     };
   }
+  
 
   // ✅ 주문 요청 승인
   async approveOrderRequest(orderRequestId: string, dto: ApproveOrderRequestDto) {
