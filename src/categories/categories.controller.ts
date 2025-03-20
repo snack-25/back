@@ -8,7 +8,7 @@ import { CategoryResponseDto } from './dto/category.response.dto';
 export class CategoriesController {
   public constructor(private readonly categoriesService: CategoriesService) {}
 
-  // TODO: /categories (GET) 카테고리 목록 조회
+  // 카테고리 목록 조회
   @Get('/all')
   @ApiOperation({ summary: '모든 카테고리 조회' })
   @ApiResponse({ status: 200, description: '카테고리 목록', type: [CategoryResponseDto] })
@@ -16,6 +16,7 @@ export class CategoriesController {
     return this.categoriesService.findAll();
   }
 
+  // 부모 카테고리 목록 조회
   @Get('/parents')
   @ApiOperation({ summary: '부모 카테고리 목록 조회' })
   @ApiResponse({ status: 200, description: '부모 카테고리 목록', type: [CategoryResponseDto] })
@@ -23,6 +24,7 @@ export class CategoriesController {
     return this.categoriesService.getParentCategories();
   }
 
+  // 하위 카테고리 목록 조회
   @Get('/parents/:id')
   @ApiOperation({ summary: '하위 카테고리 목록 조회' })
   @ApiResponse({ status: 200, description: '하위 카테고리 목록', type: [CategoryResponseDto] })

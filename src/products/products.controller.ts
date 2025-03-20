@@ -79,15 +79,16 @@ export class ProductsController {
     @Query('categoryId') categoryId: string = '',
     @Query('sort') sort: SortOption = SortOption.CREATED_AT_DESC,
   ): Promise<PaginatedProductsResponseDto> {
-    if (categoryId) {
-      categoryId = decodeURIComponent(categoryId);
-    }
+    // url에 한글이 들어가는 경우 필요
+    // if (categoryId) {
+    //   categoryId = decodeURIComponent(categoryId);
+    // }
     return this.productsService.findAll({ page, limit, search, categoryId, sort });
   }
 
   @Get(':id')
   @ApiOperation({ summary: '단일 상품 조회' })
-  @ApiParam({ name: 'id', description: '상품 ID', example: 'product_01' })
+  @ApiParam({ name: 'id', description: '상품 ID', example: 'jlvtn4vc0wkycxa9c9koa2sw' })
   @ApiResponse({ status: 200, description: '상품 정보', type: ProductResponseDto })
   @ApiResponse({ status: 404, description: '상품을 찾을 수 없습니다.' })
   public findOne(@Param('id') id: string): Promise<ProductResponseDto> {
@@ -96,7 +97,7 @@ export class ProductsController {
 
   @Patch(':id')
   @ApiOperation({ summary: '상품 수정' })
-  @ApiParam({ name: 'id', description: '상품 ID', example: 'product_01' })
+  @ApiParam({ name: 'id', description: '상품 ID', example: 'jlvtn4vc0wkycxa9c9koa2sw' })
   @ApiBody({ type: UpdateProductDto })
   @ApiResponse({ status: 200, description: '상품 수정 성공', type: ProductResponseDto })
   @ApiResponse({ status: 404, description: '상품을 찾을 수 없습니다.' })
@@ -109,7 +110,7 @@ export class ProductsController {
 
   @Delete(':id')
   @ApiOperation({ summary: '상품 삭제' })
-  @ApiParam({ name: 'id', description: '상품 ID', example: 'product_01' })
+  @ApiParam({ name: 'id', description: '상품 ID', example: 'jlvtn4vc0wkycxa9c9koa2sw' })
   @ApiResponse({ status: 200, description: '상품 삭제 성공' })
   @ApiResponse({ status: 404, description: '상품을 찾을 수 없습니다.' })
   public remove(@Param('id') id: string): Promise<string> {

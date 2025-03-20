@@ -29,7 +29,7 @@ export const products = [
     name: '신라면 컵',
     price: 1300,
     description: '매콤한 국물이 일품인 컵라면',
-    imageUrl: 'https://placehold.co/600x400?text=cupnoodle',
+    imageUrl: 'https://placehold.co/600x400?text=cup+noodle',
   },
   {
     id: 'ylwf20woxv501edrmb39icdj',

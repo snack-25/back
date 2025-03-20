@@ -10,7 +10,7 @@ export class PaginatedProductsResponseDto {
 
   @ApiProperty({
     description: '전체 상품 수',
-    example: 100,
+    example: 40,
   })
   public total: number;
 
@@ -22,13 +22,13 @@ export class PaginatedProductsResponseDto {
 
   @ApiProperty({
     description: '페이지당 상품 수',
-    example: 10,
+    example: 8,
   })
   public limit: number;
 
   @ApiProperty({
     description: '전체 페이지 수',
-    example: 10,
+    example: 5,
   })
   public totalPages: number;
 
