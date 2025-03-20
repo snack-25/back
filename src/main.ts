@@ -19,7 +19,20 @@ async function bootstrap(): Promise<void> {
   SwaggerModule.setup('api', app, document, customOption);
   // CORS 설정
   app.enableCors({
-    origin: ['http://localhost:3000', 'https://ocs.navy', 'https://www.ocs.navy'],
+    origin: [
+      'http://localhost:3000',
+      'https://amplify.ocs.navy',
+      'https://ocs.navy',
+      'https://www.ocs.navy',
+    ],
+    allowedHeaders: [
+      'Authorization',
+      'Content-Type',
+      'x-amz-date',
+      'x-amz-security-token',
+      'x-amz-content-sha256',
+    ],
+    exposedHeaders: ['ETag', 'x-amz-server-side-encryption', 'x-amz-request-id', 'x-amz-id-2'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
     preflightContinue: false,
