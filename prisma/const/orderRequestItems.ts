@@ -1,10 +1,14 @@
 // orderRequestItems.ts
+import { createId } from '@paralleldrive/cuid2';
 import { products } from './products'; // 상품 데이터를 임포트
+
+export const orderRequestIds = [createId(), createId(), createId()];
+export const orderRequestItemsIds = Array.from({ length: 6 }, () => createId());
 
 export const orderRequestItems = [
   {
-    id: 'item-1',
-    orderRequestId: 'order-1',
+    id: orderRequestItemsIds[0],
+    orderRequestId: orderRequestIds[0],
     productId: products[0].id,
     quantity: 2,
     price: products[0].price,
@@ -12,8 +16,8 @@ export const orderRequestItems = [
     updatedAt: new Date(),
   },
   {
-    id: 'item-2',
-    orderRequestId: 'order-1',
+    id: orderRequestItemsIds[1],
+    orderRequestId: orderRequestIds[0],
     productId: products[1].id,
     quantity: 3,
     price: products[1].price,
@@ -21,8 +25,8 @@ export const orderRequestItems = [
     updatedAt: new Date(),
   },
   {
-    id: 'item-3',
-    orderRequestId: 'order-2',
+    id: orderRequestItemsIds[2],
+    orderRequestId: orderRequestIds[1],
     productId: products[1].id,
     quantity: 1,
     price: products[1].price,
@@ -30,8 +34,8 @@ export const orderRequestItems = [
     updatedAt: new Date(),
   },
   {
-    id: 'item-4',
-    orderRequestId: 'order-2',
+    id: orderRequestItemsIds[3],
+    orderRequestId: orderRequestIds[1],
     productId: products[2].id,
     quantity: 3,
     price: products[2].price,
@@ -39,8 +43,8 @@ export const orderRequestItems = [
     updatedAt: new Date(),
   },
   {
-    id: 'item-5',
-    orderRequestId: 'order-2',
+    id: orderRequestItemsIds[4],
+    orderRequestId: orderRequestIds[1],
     productId: products[3].id,
     quantity: 4,
     price: products[3].price,
@@ -48,12 +52,15 @@ export const orderRequestItems = [
     updatedAt: new Date(),
   },
   {
-    id: 'item-6', // item-5는 중복되지 않도록 id 변경
-    orderRequestId: 'order-3',
+    id: orderRequestItemsIds[5],
+    orderRequestId: orderRequestIds[2],
     productId: products[1].id,
     quantity: 2,
     price: products[1].price,
     createdAt: new Date(),
     updatedAt: new Date(),
   },
-];
+].map((item, index) => ({
+  ...item,
+  id: orderRequestItemsIds[index],
+}));

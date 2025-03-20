@@ -1,5 +1,7 @@
+import { createId } from '@paralleldrive/cuid2';
 import { PrismaClient } from '@prisma/client';
-import { orderRequestItems } from './const/orderRequestItems'; // orderRequestItems.ts 파일에서 데이터 임포트
+import { hash } from 'argon2';
+import { orderRequestIds, orderRequestItems } from './const/orderRequestItems'; // orderRequestItems.ts 파일에서 데이터 임포트
 import { products } from './const/products';
 
 const prisma = new PrismaClient();
@@ -9,11 +11,17 @@ async function main(): Promise<void> {
 
   await prisma.$transaction(async tx => {
     // 1. Company 데이터 추가
+    const companyId = createId();
+    const mainCategoryId = createId();
+    const subCategoryId = createId();
+    const userId = createId();
+    const cartId = createId();
+
     const company = await tx.company.upsert({
-      where: { id: 'comp-1' },
+      where: { id: companyId },
       update: {},
       create: {
-        id: 'comp-1',
+        id: companyId,
         name: '테스트 회사',
         bizno: '1234567890',
         address: '서울시 강남구 테헤란로 123',
@@ -28,10 +36,10 @@ async function main(): Promise<void> {
 
     for (const category of mainCategories) {
       await tx.category.upsert({
-        where: { id: `cat-${category}` },
+        where: { id: mainCategoryId },
         update: {},
         create: {
-          id: `cat-${category}`,
+          id: mainCategoryId,
           companyId: company.id,
           name: category,
           isActive: true,
@@ -90,7 +98,7 @@ async function main(): Promise<void> {
 
     for (const [mainCategory, subCategoryList] of Object.entries(subCategories)) {
       const parentCategory = await tx.category.findUnique({
-        where: { id: `cat-${mainCategory}` },
+        where: { id: mainCategoryId },
       });
 
       if (!parentCategory) {
@@ -100,10 +108,10 @@ async function main(): Promise<void> {
 
       for (const subCategory of subCategoryList) {
         await tx.category.upsert({
-          where: { id: `sub-${subCategory}` },
+          where: { id: subCategoryId },
           update: {},
           create: {
-            id: `sub-${subCategory}`,
+            id: subCategoryId,
             parentId: parentCategory.id,
             companyId: company.id,
             name: subCategory,
@@ -115,29 +123,29 @@ async function main(): Promise<void> {
       }
     }
 
-    // 4. User ID 11 추가
+    // 4. User11 추가
     const user11 = await tx.user.upsert({
-      where: { id: '11' },
+      where: { id: userId },
       update: {},
       create: {
-        id: '11',
+        id: userId,
         companyId: company.id,
         email: 'user11@example.com',
-        password: 'hashedpassword11',
+        password: await hash('hashedpassword11'),
         name: '테스트 유저 11',
         role: 'USER',
-        refreshToken: null,
+        // refreshToken: null, // 기본값이 nullable이므로 생략
         createdAt: new Date(),
         updatedAt: new Date(),
       },
     });
 
-    // 5. 장바구니 추가 (User ID 11)
+    // 5. 장바구니 추가 (User11)
     await tx.cart.upsert({
-      where: { id: 'cart-11' },
+      where: { id: cartId },
       update: {},
       create: {
-        id: 'cart-11',
+        id: cartId,
         userId: user11.id,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -154,7 +162,7 @@ async function main(): Promise<void> {
     await tx.orderRequest.createMany({
       data: [
         {
-          id: 'order-1',
+          id: orderRequestIds[0],
           requesterId: user11.id,
           companyId: company.id,
           status: 'PENDING',
@@ -163,7 +171,7 @@ async function main(): Promise<void> {
           updatedAt: new Date(),
         },
         {
-          id: 'order-2',
+          id: orderRequestIds[1],
           requesterId: user11.id,
           companyId: company.id,
           status: 'PENDING',
@@ -172,7 +180,7 @@ async function main(): Promise<void> {
           updatedAt: new Date(),
         },
         {
-          id: 'order-3',
+          id: orderRequestIds[2],
           requesterId: user11.id,
           companyId: company.id,
           status: 'PENDING',
@@ -191,7 +199,7 @@ async function main(): Promise<void> {
     });
 
     // 9. 각 주문 요청에 대해 totalAmount 계산 후 업데이트
-    const orderRequestIds = ['order-1', 'order-2', 'order-3'];
+    // const orderRequestIds = ['order-1', 'order-2', 'order-3'];
 
     for (const orderRequestId of orderRequestIds) {
       // 해당 주문 요청의 아이템 조회

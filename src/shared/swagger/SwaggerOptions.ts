@@ -17,6 +17,7 @@ const swaggerOption = (): Omit<OpenAPIObject, 'paths'> => {
     .addTag('Products', '상품 관리')
     .addTag('Orders', '주문 관리')
     .addTag('Users', '사용자 관리')
+    .addTag('Wishlists', '찜 관리')
     .build();
 
   return options;
