@@ -74,38 +74,23 @@ jobs:
 
       - name: Validate Environment Variables # 환경 변수 검증
         run: |
-          if [ -z "${{ secrets.NODE_ENV }}" ]; then
-            echo "NODE_ENV is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.DATABASE_URL }}" ]; then
-            echo "DATABASE_URL is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.EC2_SSH_KEY }}" ]; then
-            echo "EC2_SSH_KEY is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.EC2_KEY_PAIR_TYPE }}" ]; then
-            echo "EC2_KEY_PAIR_TYPE is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.EC2_USERNAME }}" ]; then
-            echo "EC2_USERNAME is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.EC2_HOST }}" ]; then
-            echo "EC2_HOST is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.DEPLOY_VERIFY_KEY }}" ]; then
-            echo "DEPLOY_VERIFY_KEY is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.GPG_PASSPHRASE }}" ]; then
-            echo "GPG_PASSPHRASE is not set"
-            exit 1
-          fi
+          required_vars=(
+            "NODE_ENV"
+            "DATABASE_URL"
+            "EC2_SSH_KEY"
+            "EC2_KEY_PAIR_TYPE"
+            "EC2_USERNAME"
+            "EC2_HOST"
+            "DEPLOY_VERIFY_KEY"
+            "GPG_PASSPHRASE"
+          )
+
+          for var in "${required_vars[@]}"; do
+            if [ -z "${{ secrets.$var }}" ]; then
+              echo "❌ $var is not set"
+              exit 1
+            fi
+          done
 
       - name: Create and mask env file # .env 파일 생성, 마스킹 및 전송
         env:
@@ -343,6 +328,21 @@ jobs:
             echo "✅ Prisma 스키마 배포 성공"
           fi
 
+          # Prisma Seeding 실행 (조건부)
+          echo "[INFO] Checking if seeding is needed..."
+          if ! (pnpm prisma db seed --preview-feature 2>&1 | grep -q "No seed file found"); then
+            echo "[INFO] Running Prisma seeding..."
+            if ! (pnpm prisma:seed:prod 2>&1 | grep -v -E "DATABASE_URL|connection string" > prisma_seed.log); then
+              echo "❌ Prisma seeding 실패"
+              echo "자세한 내용은 prisma_seed.log를 확인하세요"
+              exit 1
+            else
+              echo "✅ Prisma seeding 성공"
+            fi
+          else
+            echo "✅ Seeding이 필요하지 않습니다"
+          fi
+
           # PM2 시작
           echo "[INFO] Starting PM2..."
           if ! "$PM2" start ecosystem.config.js --env production; then
@@ -393,7 +393,11 @@ jobs:
         if: failure()
         run: |
           ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && {
-            PM2="$HOME/.local/share/pnpm/pm2"
+            PM2=$(which pm2)
+            if [ -z "$PM2" ]; then
+              PM2="$HOME/.local/share/pnpm/pm2"
+            fi
+
             if ls backup-*.tar.gz 1> /dev/null 2>&1; then
               echo "Backup found, restoring..."
               "$PM2" stop all || true && "$PM2" delete all || true
