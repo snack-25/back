@@ -196,6 +196,7 @@ export class OrderRequestsService {
 
   // ✅ 주문 요청 거절
   async rejectOrderRequest(orderRequestId: string, dto: RejectOrderRequestDto) {
+    return this.prisma.$transaction(async tx => {
     // 1️⃣ 주문 요청 상태 확인
     const orderRequest = await this.prisma.orderRequest.findUnique({
       where: { id: orderRequestId },
@@ -215,7 +216,7 @@ export class OrderRequestsService {
     }
 
     // 3️⃣ 거절 처리 (상태 변경)
-    return this.prisma.orderRequest.update({
+    return tx.orderRequest.update({
       where: { id: orderRequestId },
       data: {
         status: OrderRequestStatus.REJECTED,
@@ -223,6 +224,7 @@ export class OrderRequestsService {
         notes: dto.notes, // 관리자 처리 메시지 저장
         resolvedAt: new Date(),
       },
+    });
     });
   }
 
