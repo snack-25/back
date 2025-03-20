@@ -23,13 +23,17 @@ export class OrderRequestsService {
           select: {
             price: true, // 상품 가격
             product: {
-              select: { name: true }, // 상품 이름
+              select: { 
+                name: true, // 상품 이름
+                imageUrl: true, // 상품 이미지 URL 추가
+              }, 
             },
           },
         },
       },
     });
   }
+  
 
   // ✅ 관리자(admin) & 최고 관리자(superadmin)의 회사 구매 요청 내역 조회 (로그인한 사용자의 `companyId` 기준)
   async getCompanyOrderRequests(companyId: string) {
@@ -39,20 +43,26 @@ export class OrderRequestsService {
         createdAt: true, // 요청 날짜
         totalAmount: true, // 총 주문 금액
         requester: {
-          select: { name: true }, // 요청한 사용자 이름
+          select: { name: true }, // 요청한 사용자 이름 (user 테이블)
+        },
+        resolver: {
+          select: { name: true }, // 승인 담당자 이름 (user 테이블)
         },
         orderRequestItems: {
           select: {
             price: true, // 상품 가격
             product: {
-              select: { name: true }, // 상품 이름
+              select: { 
+                name: true, // 상품 이름
+                imageUrl: true, // 상품 이미지 URL 추가
+              }, 
             },
           },
         },
       },
     });
   }
-
+  
   // ✅ 주문 요청 생성
   async createOrderRequest(dto: CreateOrderRequestDto) {
     return this.prisma.$transaction(async tx => {
@@ -110,35 +120,53 @@ export class OrderRequestsService {
         orderRequestItems: {
           include: {
             product: {
-              select: { name: true, price: true },
+              select: { 
+                name: true, 
+                price: true, 
+                imageUrl: true,  // 🔹 상품 이미지 URL 추가
+                category: {      // 🔹 카테고리 정보 가져오기 (ID + 이름)
+                  select: {
+                    id: true, 
+                    name: true,  // 🔹 카테고리 이름 추가
+                  },
+                },
+              },
             },
           },
         },
-        requester: {
-          // 요청한 사람 정보 가져오기
-          select: { name: true },
-        },
-        resolver: {
-          // 요청을 처리한 사람 정보 가져오기 (null 가능)
-          select: { name: true },
-        },
       },
     });
-
+  
     if (!orderRequest) {
       throw new NotFoundException('해당 주문 요청을 찾을 수 없습니다.');
     }
-
+  
+    // 🔹 요청한 사람(requesterId)과 처리한 사람(resolverId)의 이름 조회
+    const requester = await this.prisma.user.findUnique({
+      where: { id: orderRequest.requesterId },
+      select: { name: true },
+    });
+  
+    const resolver = orderRequest.resolverId 
+      ? await this.prisma.user.findUnique({
+          where: { id: orderRequest.resolverId },
+          select: { name: true },
+        })
+      : null;
+  
     return {
       requestId: orderRequest.id,
       status: orderRequest.status,
       requestedAt: orderRequest.createdAt, // 요청일
       resolvedAt: orderRequest.resolvedAt, // 처리일
       resolverMessage: orderRequest.notes, // 처리 메시지
-      requesterName: orderRequest.requester?.name || '알 수 없음', // 요청한 사람의 이름
-      resolverName: orderRequest.resolver?.name || null, // 처리한 사람의 이름
+      requesterName: requester?.name || '알 수 없음', // 요청한 사람의 이름
+      resolverName: resolver?.name || null, // 처리한 사람의 이름
       items: orderRequest.orderRequestItems.map(item => ({
         productName: item.product?.name || '상품 정보 없음',
+        categoryId: item.product?.category?.id || null,   // 🔹 카테고리 ID 추가
+        categoryName: item.product?.category?.name || '카테고리 정보 없음', // 🔹 카테고리 이름 추가
+        imageUrl: item.product?.imageUrl || null,  // 🔹 이미지 URL 추가
         quantity: item.quantity,
         price: item.product?.price || 0,
         notes: item.notes || null, // 주문 요청 시 입력한 메모
