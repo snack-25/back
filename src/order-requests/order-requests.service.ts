@@ -6,10 +6,7 @@ import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
 
 @Injectable()
 export class OrderRequestsService {
-  private prisma: PrismaClient;
-  constructor() {
-    this.prisma = new PrismaClient();
-  }
+  constructor(private prisma: PrismaClient) {}
 
   // ✅ 일반 사용자(user)의 구매 요청 내역 조회 (본인의 `userId` 기준)
   async getUserOrderRequests(userId: string) {
@@ -34,7 +31,6 @@ export class OrderRequestsService {
     });
   }
   
-
   // ✅ 관리자(admin) & 최고 관리자(superadmin)의 회사 구매 요청 내역 조회 (로그인한 사용자의 `companyId` 기준)
   async getCompanyOrderRequests(companyId: string) {
     return this.prisma.orderRequest.findMany({
@@ -136,7 +132,7 @@ export class OrderRequestsService {
         },
       },
     });
-  
+
     if (!orderRequest) {
       throw new NotFoundException('해당 주문 요청을 찾을 수 없습니다.');
     }
@@ -176,8 +172,9 @@ export class OrderRequestsService {
 
   // ✅ 주문 요청 승인
   async approveOrderRequest(orderRequestId: string, dto: ApproveOrderRequestDto) {
+    return this.prisma.$transaction(async tx => {
     // 1️⃣ 주문 요청 상태 확인
-    const orderRequest = await this.prisma.orderRequest.findUnique({
+    const orderRequest = await tx.orderRequest.findUnique({
       where: { id: orderRequestId },
       select: { status: true }, // status만 조회
     });
@@ -195,7 +192,7 @@ export class OrderRequestsService {
     }
 
     // 3️⃣ 승인 처리 (상태 변경)
-    return this.prisma.orderRequest.update({
+    return tx.orderRequest.update({
       where: { id: orderRequestId },
       data: {
         status: OrderRequestStatus.APPROVED,
@@ -203,6 +200,7 @@ export class OrderRequestsService {
         notes: dto.notes, // 관리자 처리 메시지 저장
         resolvedAt: new Date(),
       },
+    });
     });
   }
 
