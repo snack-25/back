@@ -1,0 +1,31 @@
+### 장바구니 상품추가
+POST http://localhost:4000/api/carts/vp34j1ki34p5o4vtg9dzgmbn/items
+Content-Type: application/json
+
+{
+  "productId": "b9kafx2nzxk8kly3aqu10il5"
+}
+
+###
+장바구니 항목조회
+GET http://localhost:4000/api/carts/vp34j1ki34p5o4vtg9dzgmbn/items
+Content-Type: application/json
+
+###
+장바구니 수량변경
+PATCH http://localhost:4000/carts/vp34j1ki34p5o4vtg9dzgmbn/items/xcl94l94lyb6dqceqi71r7z3
+
+Content-Type: application/json
+
+{
+  "quantity": 311
+}
+
+###
+장바구니 항목 삭제
+DELETE http://localhost:4000/api/carts/vp34j1ki34p5o4vtg9dzgmbn/items
+Content-Type: application/json
+
+{
+  "itemIds": ["devmajowwz7w18l6evnsq372"]
+}

@@ -3,6 +3,7 @@ import { PrismaService } from '@src/shared/prisma/prisma.service';
 import { OrderRequestDto } from './dto/create-order.dto';
 import { Order } from '@prisma/client';
 import { OrderQueryDto } from './dto/update-order.dto';
+import { calculateShippingFee } from '@src/shared/utils/shipping.util';
 
 @Injectable()
 export class OrdersService {
@@ -79,6 +80,7 @@ export class OrdersService {
         if (productPrice === undefined) {
           throw new NotFoundException(`상품을 찾을 수 없습니다. (productId: ${item.productId})`);
         }
+
         const itemTotal = productPrice * item.quantity;
         totalAmount += itemTotal;
 
@@ -90,7 +92,7 @@ export class OrdersService {
       });
 
       // 배송비 추가 (5만원 미만 주문 시)
-      const shippingFee = totalAmount < 50000 ? 3000 : 0;
+      const shippingFee = calculateShippingFee(totalAmount);
       totalAmount += shippingFee;
 
       // 주문 생성
