@@ -11,6 +11,8 @@ model Invitation {
   inviterId String @db.Text
 
   /// 3. 필수 필드 (Required Fields)
+  /// 초대 사용자 이름(사용자 이름은 중복될 수 있음)
+  name  String
   /// 초대를 보낼 이메일 주소(유니크를 지정하지 않은 이유는 초대 보낸 이후 사용자 토큰이 만료됐거나, 다시 초대할 수 있도록 하기 위함)
   email  String
   /// 초대 토큰
