@@ -51,7 +51,7 @@ model User {
   /// 일반 유저가 요청했던 주문들
   requestedOrders       Order[]        @relation("RequestedOrders")
   /// [발전과제] 유저가 찜한(Wishlist) 상품들
-  /// wishlists Wishlist[]
+  wishlists             Wishlist[]
 
   /// 유효성 검증을 위한 제약사항 추가
   @@index([companyId])

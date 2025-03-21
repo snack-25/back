@@ -44,7 +44,7 @@ model Product {
   /// 상품은 여러 주문 항목(OrderItem)을 가진다(Product has many OrderItems, 1:N)
   orderItems        OrderItem[]
   /// [발전과제] 상품은 여러 찜(Wishlists)을 가진다(Product has many Wishlists, 1:N)
-  /// wishlists Wishlist[]
+  wishlists         Wishlist[]
 
   /// 검색 최적화를 위한 인덱스
   @@index([name])

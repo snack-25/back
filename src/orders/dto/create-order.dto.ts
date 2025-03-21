@@ -14,11 +14,11 @@ export class OrderItemDto {
 
 export class OrderRequestDto {
   @ApiProperty({
-    description: '주문할 상품 목록',
+    description: '주문할 상품 목록, 상품이 장바구니에 들어있어야 주문이 가능합니다.',
     type: [OrderItemDto],
     example: [
-      { productId: 'product_08', quantity: 2 },
-      { productId: 'product_01', quantity: 1 },
+      { productId: 'px5hr4u412wqsunqd5tn0qrz', quantity: 2 },
+      { productId: 'lipepl8goyg3re6vl76mlcp9', quantity: 1 },
     ],
   })
   @IsArray()

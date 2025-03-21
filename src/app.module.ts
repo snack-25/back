@@ -13,6 +13,7 @@ import { OrdersModule } from './orders/orders.module';
 import { OrderRequestsModule } from './order-requests/order-requests.module';
 import { BudgetsModule } from './budgets/budgets.module';
 import { InvitationsModule } from './invitations/invitations.module';
+import { WishlistsModule } from './wishlists/wishlists.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { InvitationsModule } from './invitations/invitations.module';
     OrderRequestsModule,
     BudgetsModule,
     InvitationsModule,
+    WishlistsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

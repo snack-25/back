@@ -1,12 +1,14 @@
 import { NestFactory } from '@nestjs/core';
-import cookieParser from 'cookie-parser';
-import { SwaggerModule, SwaggerCustomOptions, OpenAPIObject } from '@nestjs/swagger';
+import { OpenAPIObject, SwaggerCustomOptions, SwaggerModule } from '@nestjs/swagger';
 import docsOptions from '@shared/swagger/SwaggerOptions';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
+  // Global Prefix 설정
+  app.setGlobalPrefix('api');
   // Swagger Custom Options 및 Swagger Options 설정
   const customOption: SwaggerCustomOptions = docsOptions.swaggerCustom();
   const swaggerOptions: Omit<OpenAPIObject, 'paths'> = docsOptions.swagger();
@@ -17,7 +19,20 @@ async function bootstrap(): Promise<void> {
   SwaggerModule.setup('api', app, document, customOption);
   // CORS 설정
   app.enableCors({
-    origin: ['http://localhost:3000', 'https://ocs.navy', 'https://www.ocs.navy'],
+    origin: [
+      'http://localhost:3000',
+      'https://amplify.ocs.navy',
+      'https://ocs.navy',
+      'https://www.ocs.navy',
+    ],
+    allowedHeaders: [
+      'Authorization',
+      'Content-Type',
+      'x-amz-date',
+      'x-amz-security-token',
+      'x-amz-content-sha256',
+    ],
+    exposedHeaders: ['ETag', 'x-amz-server-side-encryption', 'x-amz-request-id', 'x-amz-id-2'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
     preflightContinue: false,

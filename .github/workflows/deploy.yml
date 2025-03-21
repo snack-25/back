@@ -14,16 +14,23 @@ jobs:
       - name: Checkout Repository # 1. 레포지토리를 체크아웃
         uses: actions/checkout@v4 # actions/checkout 레포지토리의 v4 버전 사용
 
-      - name: Setup Node.js # 2. Node.js 설정
-        uses: actions/setup-node@v4 # actions/setup-node 레포지토리의 v4 버전 사용
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '22' # Node.js 버전 22 사용
+          node-version: '22'
 
-      - name: Setup pnpm # pnpm 설정
-        uses: pnpm/action-setup@v4 # pnpm/action-setup 레포지토리의 v4 버전 사용
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          version: '10' # pnpm 버전 10 사용
-          run_install: false # 이미 설치되어 있으므로 설치하지 않음
+          version: '10'
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Set SHELL environment variable # SHELL 환경 변수 설정
+        run: |
+          echo "SHELL=/bin/bash" >> $GITHUB_ENV # bash 사용
 
       - name: Cache dependencies # 의존성 캐싱
         uses: actions/cache@v4 # actions/cache 레포지토리의 v4 버전 사용
@@ -35,11 +42,6 @@ jobs:
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }} # 캐시 키 설정
           restore-keys: |
             ${{ runner.os }}-pnpm- # 캐시 키 복원
-
-      - name: Install Dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts # 빌드에 필요한 devDependencies도 설치
-        env:
-          CI: ${{ secrets.CI }}
 
       - name: Generate Prisma Client
         run: pnpm prisma:generate:prod
@@ -70,7 +72,7 @@ jobs:
           chmod 600 ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }}
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Validate Environment Variables # 환경 변수 검증
+      - name: Validate Environment Variables
         run: |
           if [ -z "${{ secrets.NODE_ENV }}" ]; then
             echo "NODE_ENV is not set"
@@ -104,6 +106,10 @@ jobs:
             echo "GPG_PASSPHRASE is not set"
             exit 1
           fi
+          if [ -z "${{ github.sha }}" ]; then
+            echo "GIT_COMMIT_SHA is not set"
+            exit 1
+          fi
 
       - name: Create and mask env file # .env 파일 생성, 마스킹 및 전송
         env:
@@ -131,13 +137,12 @@ jobs:
           echo "::add-mask::DEPLOY_VERIFY_KEY=${DEPLOY_VERIFY_KEY}"
           echo "::add-mask::${GPG_PASSPHRASE}"
           echo "::add-mask::GPG_PASSPHRASE=${GPG_PASSPHRASE}"
-          echo "::add-mask::${GIT_COMMIT_SHA}"
-          echo "::add-mask::GIT_COMMIT_SHA=${GIT_COMMIT_SHA}"
 
           # .env 파일 생성
           echo "NODE_ENV=${NODE_ENV}" > .env
           echo "DATABASE_URL=${DATABASE_URL}" >> .env
           echo "DEPLOY_VERIFY_KEY=${DEPLOY_VERIFY_KEY}" >> .env
+          echo "GIT_COMMIT_SHA=${GIT_COMMIT_SHA}" >> .env
 
           # 파일 암호화 및 전송
           cat .env | gpg --symmetric --batch --passphrase "${{ secrets.GPG_PASSPHRASE }}" > .env.gpg
@@ -155,14 +160,19 @@ jobs:
               max_memory_restart: '1G',
               env: {
                 NODE_ENV: 'production'
-              }
+              },
+              output: 'logs/out.log',
+              error: 'logs/error.log',
+              log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+              merge_logs: true,
+              log_type: 'json'
             }]
           }" > ecosystem.config.js
           scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ecosystem.config.js ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
 
       - name: Backup current deployment
         run: |
-          ssh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && \
+          ssh -i ~/.ssh/id_${EC2_KEY_PAIR_TYPE} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && \
           if [ -d dist ] || [ -d node_modules ]; then \
             backup_file="backup-$(date +%Y%m%d_%H%M%S).tar.gz" && \
             echo "Creating backup: $backup_file" && \
@@ -174,90 +184,351 @@ jobs:
       - name: Deploy to EC2 # EC2로 배포
         timeout-minutes: 5 # 타임아웃 시간 설정
         env:
-          KEY_PAIR_TYPE: ${{ secrets.EC2_KEY_PAIR_TYPE }}
-          USERNAME: ${{ secrets.EC2_USERNAME }}
-          HOST: ${{ secrets.EC2_HOST }}
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_KEY_PAIR_TYPE: ${{ secrets.EC2_KEY_PAIR_TYPE }}
+          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DEPLOY_VERIFY_KEY: ${{ secrets.DEPLOY_VERIFY_KEY }}
           GIT_COMMIT_SHA: ${{ github.sha }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
-          {
-            echo "Deploying to $HOST"
-            echo "Starting deployment to EC2..."
-            echo "Creating .env file..."
-            echo "DATABASE_URL=${DATABASE_URL}" > .env
-            scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} -r dist package.json pnpm-lock.yaml prisma ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
-            scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} .env ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
-            scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ecosystem.config.js ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
-            ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && \
-              source ~/.nvm/nvm.sh && nvm use 22 && corepack enable && \
-              pm2 stop all || true && pm2 delete all || true && \
-              pnpm install --prod --ignore-scripts && \
-              pnpm prisma:generate:prod && \
-              pnpm prisma:deploy:prod && \
-              pm2 start ecosystem.config.js --env production'
-          } 2>&1 | tee deploy.log
+          # 민감한 정보 마스킹
+          echo "::add-mask::${EC2_KEY_PAIR_TYPE}"
+          echo "::add-mask::${EC2_USERNAME}"
+          echo "::add-mask::${EC2_HOST}"
+          echo "::add-mask::${EC2_SSH_KEY}"
+          echo "::add-mask::${DATABASE_URL}"
+          echo "::add-mask::${DEPLOY_VERIFY_KEY}"
+          echo "::add-mask::${GPG_PASSPHRASE}"
+
+          echo "EC2로 배포 시작"
+
+          # SSH 옵션 설정
+          SSH_OPTS="-o ConnectTimeout=10 -o StrictHostKeyChecking=yes -o ServerAliveInterval=60"
+
+          # 파일 전송
+          echo "파일 전송 중..."
+          scp $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} -r dist package.json pnpm-lock.yaml prisma ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/ || {
+            echo "❌ 파일 전송 실패"
+            exit 1
+          }
+
+          scp $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ecosystem.config.js ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/ || {
+            echo "❌ PM2 설정 파일 전송 실패"
+            exit 1
+          }
+
+          # 배포 스크립트 생성
+          cat << 'EOF' > deploy_script.sh
+          #!/bin/bash
+          set -e  # 에러 발생 시 즉시 종료
+
+          cd ~/backend || {
+            echo "❌ 백엔드 디렉토리 진입 실패"
+            exit 1
+          }
+
+          # Node.js 환경 설정
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          nvm use 22 || {
+            echo "❌ Node.js 버전 설정 실패"
+            exit 1
+          }
+
+          export PNPM_HOME="$HOME/.pnpm-global"
+          export PATH="$HOME/.pnpm-global/bin:$PATH"
+
+          # 기존 pnpm 환경변수 로드
+          if [ -f ~/.bashrc ]; then
+            source ~/.bashrc
+          fi
+
+          # pnpm 설치 확인
+          if ! command -v pnpm &> /dev/null; then
+            echo "[INFO] Installing pnpm..."
+            curl -fsSL https://get.pnpm.io/install.sh | sh || {
+              echo "❌ pnpm 설치 실패"
+              exit 1
+            }
+          fi
+
+          # PNPM_HOME이 설정되어 있지 않은 경우에만 setup 실행
+          if [ -z "$PNPM_HOME" ]; then
+            echo "[INFO] Running pnpm setup with force option..."
+            pnpm setup --force || {
+              echo "❌ pnpm setup 실패"
+              exit 1
+            }
+            source ~/.bashrc
+          else
+            echo "[INFO] PNPM_HOME이 이미 설정되어 있습니다: $PNPM_HOME"
+          fi
+
+          # PATH에 pnpm 경로가 없는 경우에만 추가
+          if [[ ":$PATH:" != *":$PNPM_HOME:"* ]]; then
+            export PATH="$PNPM_HOME:$PATH"
+          fi
+
+          # PM2 설치 및 경로 설정
+          echo "[INFO] Installing PM2..."
+          if ! pnpm install -g pm2; then
+            echo "❌ PM2 설치 실패"
+            exit 1
+          fi
+
+          # PM2 경로 설정 및 검증
+          PM2=$(which pm2)
+          if [ ! -f "$PM2" ]; then
+            echo "❌ PM2 실행 파일을 찾을 수 없습니다: $PM2"
+            exit 1
+          fi
+
+          # GPG 복호화
+          if ! gpg --decrypt --batch --passphrase "${GPG_PASSPHRASE}" .env.gpg > .env.tmp; then
+            echo "❌ 환경 변수 파일 복호화 실패"
+            exit 1
+          fi
+
+          mv .env.tmp .env
+          chmod 600 .env
+
+          # PM2 프로세스 정리
+          if ! "$PM2" stop all 2>/dev/null; then
+            echo "No running PM2 processes to stop or PM2 stop failed"
+          fi
+          if ! "$PM2" delete all 2>/dev/null; then
+            echo "No PM2 processes to delete or PM2 delete failed"
+          fi
+
+          # PM2 시작 전 환경 검증
+          echo "[INFO] Starting PM2..."
+          if [ ! -f "ecosystem.config.js" ]; then
+            echo "❌ ecosystem.config.js 파일을 찾을 수 없습니다"
+            exit 1
+          fi
+
+          # 로그 디렉토리 설정
+          mkdir -p logs
+          # 기존 로그 파일 백업 (있는 경우)
+          if [ -f logs/error.log ]; then
+            mv logs/error.log logs/error.log.$(date +%Y%m%d_%H%M%S).bak
+          fi
+          if [ -f logs/out.log ]; then
+            mv logs/out.log logs/out.log.$(date +%Y%m%d_%H%M%S).bak
+          fi
+          # 새 로그 파일 생성
+          touch logs/error.log logs/out.log
+          # 로그 파일 권한 설정
+          chmod 644 logs/error.log logs/out.log
+
+          # 의존성 설치
+          echo "[INFO] Installing dependencies..."
+          if ! pnpm install --ignore-scripts; then
+            echo "❌ 의존성 설치 실패"
+            exit 1
+          fi
+
+          # Prisma 클라이언트 생성
+          echo "[INFO] Generating Prisma client..."
+          if ! PRISMA_CLIENT_ENGINE_TYPE=binary pnpm prisma:generate:prod; then
+            echo "❌ Prisma 클라이언트 생성 실패"
+            exit 1
+          fi
+
+          # Prisma 스키마 배포 - 로그 출력 제한 및 필터링
+          echo "[INFO] Deploying Prisma schema..."
+          if ! (pnpm prisma:deploy:prod 2>&1 | grep -v -E "DATABASE_URL|connection string" > prisma_deploy.log); then
+            echo "❌ Prisma 스키마 배포 실패"
+            echo "자세한 내용은 prisma_deploy.log를 확인하세요"
+            exit 1
+          else
+            echo "✅ Prisma 스키마 배포 성공"
+          fi
+
+          # Prisma Seeding 실행 (조건부)
+          echo "[INFO] Checking if seeding is needed..."
+          if ! (pnpm prisma db seed --preview-feature 2>&1 | grep -q "No seed file found"); then
+            echo "[INFO] Running Prisma seeding..."
+            if ! (pnpm prisma:seed:prod 2>&1 | grep -v -E "DATABASE_URL|connection string" > prisma_seed.log); then
+              echo "❌ Prisma seeding 실패"
+              echo "자세한 내용은 prisma_seed.log를 확인하세요"
+              exit 1
+            else
+              echo "✅ Prisma seeding 성공"
+            fi
+          else
+            echo "✅ Seeding이 필요하지 않습니다"
+          fi
+
+          # PM2 시작
+          echo "[INFO] Starting PM2..."
+          if ! "$PM2" start ecosystem.config.js --env production; then
+            echo "❌ PM2 시작 실패"
+            exit 1
+          fi
+
+          # PM2 상태 저장
+          if ! "$PM2" save; then
+            echo "❌ PM2 상태 저장 실패"
+            exit 1
+          fi
+
+          echo "✅ 배포 완료"
+          EOF
+
+          # 스크립트 파일 권한 설정
+          chmod +x deploy_script.sh || {
+            echo "❌ 스크립트 권한 설정 실패"
+            exit 1
+          }
+
+          # 배포 스크립트 전송
+          echo "배포 스크립트 전송 중..."
+          scp $SSH_OPTS deploy_script.sh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/ || {
+            echo "❌ 배포 스크립트 전송 실패"
+            exit 1
+          }
+
+          # 배포 스크립트 실행
+          echo "배포 스크립트 실행 중..."
+          ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} \
+            "cd ~/backend && GPG_PASSPHRASE=\"$GPG_PASSPHRASE\" ./deploy_script.sh" 2>&1 | tee deploy.log || {
+            echo "❌ 배포 스크립트 실행 실패"
+            exit 1
+          }
+
+          # deploy.log에서 민감한 정보 제거
+          sed -i.bak "s|$(echo "${{ secrets.DATABASE_URL }}" | sed 's/[\/&]/\\&/g')|[MASKED_DATABASE_URL]|g" deploy.log
+          sed -i.bak "s|$(echo "${{ secrets.DEPLOY_VERIFY_KEY }}" | sed 's/[\/&]/\\&/g')|[MASKED_DEPLOY_KEY]|g" deploy.log
+          sed -i.bak "s|$(echo "${{ secrets.GPG_PASSPHRASE }}" | sed 's/[\/&]/\\&/g')|[MASKED_GPG_PASSPHRASE]|g" deploy.log
+          rm -f deploy.log.bak
+          rm -f deploy_script.sh
+
           echo "Deploy to EC2 작업 완료"
 
-      - name: Rollback on Failure # 배포 실패 시 롤백
+      - name: Rollback on Failure
         if: failure()
         run: |
-          ssh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && {
+          ssh -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'cd ~/backend && {
+            PM2=$(which pm2)
+            if [ -z "$PM2" ]; then
+              PM2="$HOME/.local/share/pnpm/pm2"
+            fi
+
             if ls backup-*.tar.gz 1> /dev/null 2>&1; then
               echo "Backup found, restoring..."
-              pm2 stop all || true && pm2 delete all || true
+              "$PM2" stop all || true && "$PM2" delete all || true
               tar -xzf backup-*.tar.gz
-              pm2 start ecosystem.config.js --env production
+
+              # 데이터베이스 롤백
+              if [ -f "prisma/migrations" ]; then
+                echo "Rolling back database..."
+                pnpm prisma migrate reset --force
+              fi
+
+              "$PM2" start ecosystem.config.js --env production
               echo "Rollback complete."
             else
               echo "No backup found, cannot rollback."
             fi
           }'
 
-      - name: Verify Deployment # 배포 검증
+      - name: Verify Deployment
         env:
-          HOST: ${{ secrets.EC2_HOST }}
+          EC2_KEY_PAIR_TYPE: ${{ secrets.EC2_KEY_PAIR_TYPE }}
+          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
           DEPLOY_VERIFY_KEY: ${{ secrets.DEPLOY_VERIFY_KEY }}
           GIT_COMMIT_SHA: ${{ github.sha }}
         run: |
           echo "배포 검증을 시작합니다..."
-          # 서버가 완전히 시작할 때까지 잠시 대기
-          sleep 10
 
-          # 헬스 체크 엔드포인트로 요청 보내기 (X-Deploy-Key 헤더 포함)
-          RESPONSE=$(curl -s -w "\n%{http_code}" -H "X-Deploy-Key: ${DEPLOY_VERIFY_KEY}" http://${HOST}:4000/health)
+          # SSH 옵션 설정
+          SSH_OPTS="-o ConnectTimeout=10 -o StrictHostKeyChecking=yes -o ServerAliveInterval=60"
 
-          # HTTP 상태 코드와 응답 본문 분리
-          HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
-          RESPONSE_BODY=$(echo "$RESPONSE" | sed '$ d')
+          # 검증 대기 시간
+          echo "서버 시작 대기 중... (30초)"
+          sleep 30
 
-          echo "HTTP 상태 코드: ${HTTP_STATUS}"
+          # 건강 검사
+          echo "서버 상태 확인 (EC2 내부에서)..."
+          VERIFY_RESULT=$(ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "
+            cd ~/backend
 
-          # HTTP 상태 코드가 200인지 확인
-          if [ "$HTTP_STATUS" -ne 200 ]; then
-            echo "오류: 배포 검증 실패. 서버가 정상적으로 응답하지 않습니다."
-            echo "응답: ${RESPONSE_BODY}"
+            MAX_RETRIES=5
+            RETRY_COUNT=0
+            WAIT_TIME=10
+
+            while [ \$RETRY_COUNT -lt \$MAX_RETRIES ]; do
+              echo \"시도 \$((RETRY_COUNT+1))/\$MAX_RETRIES...\"
+
+              # 로컬에서 curl 실행 (localhost 사용)
+              RESPONSE=\$(curl -s -w \"\\n%{http_code}\" \\
+                -H \"X-Deploy-Key: ${DEPLOY_VERIFY_KEY}\" \\
+                --connect-timeout 5 \\
+                --max-time 10 \\
+                http://localhost:4000/api/health 2>&1)
+
+              CURL_EXIT_CODE=\$?
+
+              if [ \$CURL_EXIT_CODE -eq 0 ]; then
+                HTTP_STATUS=\$(echo \"\$RESPONSE\" | tail -n1)
+                RESPONSE_BODY=\$(echo \"\$RESPONSE\" | sed '\$ d')
+
+                echo \"HTTP 상태 코드: \${HTTP_STATUS}\"
+
+                if [ \"\$HTTP_STATUS\" -eq 200 ]; then
+                  if echo \"\$RESPONSE_BODY\" | grep -q '\"status\":\"ok\"'; then
+                    echo \"✅ 검증 성공: 서버가 정상적으로 실행 중입니다\"
+                    echo \"\$RESPONSE_BODY\"
+                    exit 0
+                  else
+                    echo \"❌ 검증 실패: 응답 형식이 올바르지 않습니다\"
+                    echo \"\$RESPONSE_BODY\"
+                  fi
+                else
+                  echo \"❌ 검증 실패: 상태 코드가 200이 아닙니다: \${HTTP_STATUS}\"
+                fi
+              else
+                echo \"❌ curl 요청 실패 (종료 코드: \$CURL_EXIT_CODE)\"
+              fi
+
+              RETRY_COUNT=\$((RETRY_COUNT + 1))
+
+              if [ \$RETRY_COUNT -lt \$MAX_RETRIES ]; then
+                echo \"재시도 대기 중... (\$WAIT_TIME초)\"
+                sleep \$WAIT_TIME
+              else
+                echo \"❌ 최대 재시도 횟수 초과\"
+                exit 1
+              fi
+            done
+
             exit 1
-          fi
+          ")
 
-          # 응답에 "status": "ok"가 포함되어 있는지 확인
-          if ! echo "$RESPONSE_BODY" | grep -q '"status":"ok"'; then
-            echo "오류: 배포 검증 실패. 서버 상태가 정상이 아닙니다."
-            echo "응답: ${RESPONSE_BODY}"
+          VERIFY_EXIT_CODE=$?
+
+          echo "$VERIFY_RESULT"
+
+          if [ $VERIFY_EXIT_CODE -ne 0 ]; then
+            echo "❌ 배포 검증 실패"
+
+            echo "=== 표준 출력 로그 ==="
+            ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'source ~/.nvm/nvm.sh && cd ~/backend && cat logs/out.log | tail -n 50' || true
+
+            echo "=== 에러 로그 ==="
+            ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'source ~/.nvm/nvm.sh && cd ~/backend && cat logs/error.log | tail -n 50' || true
+
+            echo "=== 방화벽 상태 확인 ==="
+            ssh $SSH_OPTS -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'sudo iptables -L | grep 4000 || echo "4000번 포트에 관한 방화벽 규칙이 없습니다"' || true
+
             exit 1
+          else
+            echo "✅ 배포 검증 성공"
           fi
-
-          # 응답에 올바른 GIT_COMMIT_SHA가 포함되어 있는지 확인
-          if ! echo "$RESPONSE_BODY" | grep -q "\"version\":\"$GIT_COMMIT_SHA\""; then
-            echo "경고: 배포된 버전이 예상과 다를 수 있습니다."
-            echo "예상 버전: ${GIT_COMMIT_SHA}"
-            echo "응답: ${RESPONSE_BODY}"
-            # 버전 불일치는 경고만 표시하고 배포를 실패로 처리하지 않음
-          fi
-
-          echo "✅ 배포 검증 성공: 애플리케이션이 정상적으로 실행 중입니다."
 
 permissions:
   contents: read # 레포지토리 내용 읽기 권한
