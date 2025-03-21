@@ -14,7 +14,7 @@ export class UpdateCartItemDto {
 export class DeleteCartItemsDto {
   @ApiProperty({
     description: '삭제할 장바구니 상품 ID 목록',
-    example: ['product_07', 'product_08'],
+    example: ['b9kafx2nzxk8kly3aqu10il5', 'bpzjjojw9tdds3jas9nglcqp'],
   })
   @IsArray()
   @ArrayNotEmpty({ message: '삭제할 상품 목록은 비어 있을 수 없습니다.' })
