@@ -17,7 +17,11 @@ export class CartsController {
   @ApiParam({ name: 'cartId', required: true, description: '조회할 장바구니 ID' })
   @ApiResponse({ status: 200, description: '장바구니 조회 성공' })
   @Get(':cartId/items')
-  public async getCartItems(@Param('cartId') cartId: string): Promise<CartItem[]> {
+  public async getCartItems(@Param('cartId') cartId: string): Promise<{
+    items: CartItem[];
+    totalAmount: number;
+    shippingFee: number;
+  }> {
     return await this.cartsService.getCartItems(cartId);
   }
 
