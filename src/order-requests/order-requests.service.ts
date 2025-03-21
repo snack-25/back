@@ -1,16 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { OrderRequest, OrderRequestStatus, Prisma, PrismaClient } from '@prisma/client';
+import { OrderRequest, OrderRequestStatus, Prisma } from '@prisma/client';
 import { CreateOrderRequestDto } from './dto/create-order-request.dto';
 import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
 import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
+import { PrismaService } from '@src/shared/prisma/prisma.service';
 
 @Injectable()
 export class OrderRequestsService {
-  private prisma: PrismaClient;
-  constructor() {
-    this.prisma = new PrismaClient();
-  }
-
+  constructor(private readonly prisma: PrismaService) {}
   // ✅ 일반 사용자(user)의 구매 요청 내역 조회 (본인의 `userId` 기준)
   async getUserOrderRequests(userId: string) {
     return this.prisma.orderRequest.findMany({
@@ -23,7 +20,10 @@ export class OrderRequestsService {
           select: {
             price: true, // 상품 가격
             product: {
-              select: { name: true }, // 상품 이름
+              select: {
+                name: true, // 상품 이름
+                imageUrl: true, // 상품 이미지 URL 추가
+              },
             },
           },
         },
@@ -39,13 +39,19 @@ export class OrderRequestsService {
         createdAt: true, // 요청 날짜
         totalAmount: true, // 총 주문 금액
         requester: {
-          select: { name: true }, // 요청한 사용자 이름
+          select: { name: true }, // 요청한 사용자 이름 (user 테이블)
+        },
+        resolver: {
+          select: { name: true }, // 승인 담당자 이름 (user 테이블)
         },
         orderRequestItems: {
           select: {
             price: true, // 상품 가격
             product: {
-              select: { name: true }, // 상품 이름
+              select: {
+                name: true, // 상품 이름
+                imageUrl: true, // 상품 이미지 URL 추가
+              },
             },
           },
         },
@@ -107,20 +113,25 @@ export class OrderRequestsService {
     const orderRequest = await this.prisma.orderRequest.findUnique({
       where: { id: orderRequestId },
       include: {
+        requester: { select: { name: true } }, // 요청한 사람 정보 조회
+        resolver: { select: { name: true } }, // 처리한 사람 정보 조회 (nullable)
         orderRequestItems: {
           include: {
             product: {
-              select: { name: true, price: true },
+              select: {
+                name: true,
+                price: true,
+                imageUrl: true, // 🔹 상품 이미지 URL 추가
+                category: {
+                  // 🔹 카테고리 정보 가져오기 (ID + 이름)
+                  select: {
+                    id: true,
+                    name: true, // 🔹 카테고리 이름 추가
+                  },
+                },
+              },
             },
           },
-        },
-        requester: {
-          // 요청한 사람 정보 가져오기
-          select: { name: true },
-        },
-        resolver: {
-          // 요청을 처리한 사람 정보 가져오기 (null 가능)
-          select: { name: true },
         },
       },
     });
@@ -139,6 +150,9 @@ export class OrderRequestsService {
       resolverName: orderRequest.resolver?.name || null, // 처리한 사람의 이름
       items: orderRequest.orderRequestItems.map(item => ({
         productName: item.product?.name || '상품 정보 없음',
+        categoryId: item.product?.category?.id || null, // 🔹 카테고리 ID 추가
+        categoryName: item.product?.category?.name || '카테고리 정보 없음', // 🔹 카테고리 이름 추가
+        imageUrl: item.product?.imageUrl || null, // 🔹 이미지 URL 추가
         quantity: item.quantity,
         price: item.product?.price || 0,
         notes: item.notes || null, // 주문 요청 시 입력한 메모
@@ -148,65 +162,69 @@ export class OrderRequestsService {
 
   // ✅ 주문 요청 승인
   async approveOrderRequest(orderRequestId: string, dto: ApproveOrderRequestDto) {
-    // 1️⃣ 주문 요청 상태 확인
-    const orderRequest = await this.prisma.orderRequest.findUnique({
-      where: { id: orderRequestId },
-      select: { status: true }, // status만 조회
-    });
+    return this.prisma.$transaction(async tx => {
+      // 1️⃣ 주문 요청 상태 확인
+      const orderRequest = await tx.orderRequest.findUnique({
+        where: { id: orderRequestId },
+        select: { status: true }, // status만 조회
+      });
 
-    if (!orderRequest) {
-      throw new BadRequestException('주문 요청을 찾을 수 없습니다.');
-    }
+      if (!orderRequest) {
+        throw new BadRequestException('주문 요청을 찾을 수 없습니다.');
+      }
 
-    // 2️⃣ 이미 승인되었거나 거절된 경우 예외 처리
-    if (
-      orderRequest.status === OrderRequestStatus.APPROVED ||
-      orderRequest.status === OrderRequestStatus.REJECTED
-    ) {
-      throw new BadRequestException('이미 처리된 주문 요청은 승인할 수 없습니다.');
-    }
+      // 2️⃣ 이미 승인되었거나 거절된 경우 예외 처리
+      if (
+        orderRequest.status === OrderRequestStatus.APPROVED ||
+        orderRequest.status === OrderRequestStatus.REJECTED
+      ) {
+        throw new BadRequestException('이미 처리된 주문 요청은 승인할 수 없습니다.');
+      }
 
-    // 3️⃣ 승인 처리 (상태 변경)
-    return this.prisma.orderRequest.update({
-      where: { id: orderRequestId },
-      data: {
-        status: OrderRequestStatus.APPROVED,
-        resolverId: dto.resolverId,
-        notes: dto.notes, // 관리자 처리 메시지 저장
-        resolvedAt: new Date(),
-      },
+      // 3️⃣ 승인 처리 (상태 변경)
+      return tx.orderRequest.update({
+        where: { id: orderRequestId },
+        data: {
+          status: OrderRequestStatus.APPROVED,
+          resolverId: dto.resolverId,
+          notes: dto.notes, // 관리자 처리 메시지 저장
+          resolvedAt: new Date(),
+        },
+      });
     });
   }
 
   // ✅ 주문 요청 거절
   async rejectOrderRequest(orderRequestId: string, dto: RejectOrderRequestDto) {
-    // 1️⃣ 주문 요청 상태 확인
-    const orderRequest = await this.prisma.orderRequest.findUnique({
-      where: { id: orderRequestId },
-      select: { status: true }, // status만 조회
-    });
+    return this.prisma.$transaction(async tx => {
+      // 1️⃣ 주문 요청 상태 확인
+      const orderRequest = await tx.orderRequest.findUnique({
+        where: { id: orderRequestId },
+        select: { status: true }, // status만 조회
+      });
 
-    if (!orderRequest) {
-      throw new BadRequestException('주문 요청을 찾을 수 없습니다.');
-    }
+      if (!orderRequest) {
+        throw new BadRequestException('주문 요청을 찾을 수 없습니다.');
+      }
 
-    // 2️⃣ 이미 승인되었거나 거절된 경우 예외 처리
-    if (
-      orderRequest.status === OrderRequestStatus.APPROVED ||
-      orderRequest.status === OrderRequestStatus.REJECTED
-    ) {
-      throw new BadRequestException('이미 처리된 주문 요청은 거절할 수 없습니다.');
-    }
+      // 2️⃣ 이미 승인되었거나 거절된 경우 예외 처리
+      if (
+        orderRequest.status === OrderRequestStatus.APPROVED ||
+        orderRequest.status === OrderRequestStatus.REJECTED
+      ) {
+        throw new BadRequestException('이미 처리된 주문 요청은 거절할 수 없습니다.');
+      }
 
-    // 3️⃣ 거절 처리 (상태 변경)
-    return this.prisma.orderRequest.update({
-      where: { id: orderRequestId },
-      data: {
-        status: OrderRequestStatus.REJECTED,
-        resolverId: dto.resolverId,
-        notes: dto.notes, // 관리자 처리 메시지 저장
-        resolvedAt: new Date(),
-      },
+      // 3️⃣ 거절 처리 (상태 변경)
+      return tx.orderRequest.update({
+        where: { id: orderRequestId },
+        data: {
+          status: OrderRequestStatus.REJECTED,
+          resolverId: dto.resolverId,
+          notes: dto.notes, // 관리자 처리 메시지 저장
+          resolvedAt: new Date(),
+        },
+      });
     });
   }
 
