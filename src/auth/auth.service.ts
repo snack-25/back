@@ -51,6 +51,16 @@ export class AuthService {
         companyId: companyIdCheck.id,
         role: 'SUPERADMIN',
       },
+      // 토큰 생성을 위해 가입 날짜(createdAt)도 가져옵니다.
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        companyId: true,
+        company: true,
+        role: true,
+        createdAt: true,
+      },
     });
 
     const response: SignUpResponseDto = {
@@ -96,6 +106,7 @@ export class AuthService {
           name: true,
           role: true,
           password: true,
+          createdAt: true, // 가입 날짜
         },
       });
 
@@ -107,8 +118,8 @@ export class AuthService {
         throw new BadRequestException('이메일 또는 비밀번호가 잘못되었습니다.');
       }
 
-      // JWT 토큰 생성 (payload의 sub 값은 email)
-      const tokens = await this.generateToken(user.email);
+      // JWT 토큰 생성 시, payload의 sub 대신 userId와 joinDate 사용
+      const tokens = await this.generateToken(user.id, user.createdAt);
       console.log('token', tokens);
 
       return {
@@ -133,17 +144,21 @@ export class AuthService {
     }
   }
 
-  // JWT 토큰 생성 (로그인 시 호출) – payload의 sub 값은 email
-  public async generateToken(email: string): Promise<TokenResponseDto> {
+  // JWT 토큰 생성 (로그인 시 호출) – payload의 sub와 joinDate 사용
+  public async generateToken(userId: string, joinDate: Date): Promise<TokenResponseDto> {
     try {
       const [accessToken, refreshToken] = await Promise.all([
-        this.generateAccessToken(email),
-        this.generateRefreshToken(email),
+        this.generateAccessToken(userId, joinDate),
+        this.generateRefreshToken(userId, joinDate),
       ]);
 
-      // DB 업데이트: 사용자 email 기준으로 refreshToken 저장
+      // DB 업데이트: 사용자 email 대신 id를 이용해도 되지만,
+      // 토큰 생성 시에는 가입 시 제공된 userId와 joinDate로 생성되었으므로,
+      // 여기서는 백엔드에서 사용자 조회 시 id로 처리하는 경우에 맞게 수정하거나,
+      // 만약 기존 로직대로 이메일로 처리하고 싶다면, 별도로 이메일을 저장해야 합니다.
+      // 예시에서는 사용자를 id로 식별합니다.
       await this.prisma.user.update({
-        where: { email },
+        where: { id: userId },
         data: { refreshToken },
       });
 
@@ -154,26 +169,26 @@ export class AuthService {
     }
   }
 
-  // accessToken 생성 (payload의 sub 값은 email)
-  private async generateAccessToken(email: string): Promise<string> {
+  // accessToken 생성 (payload에 userId와 joinDate 포함)
+  private async generateAccessToken(userId: string, joinDate: Date): Promise<string> {
     const payload: TokenRequestDto = {
-      sub: email,
+      sub: userId, // 사용자 ID
+      joinDate: joinDate.toISOString(), // 가입 날짜를 문자열로 전달
       type: 'access',
     };
-
     return this.jwtService.signAsync(payload, {
       secret: this.configService.getOrThrow<string>('JWT_SECRET'),
       expiresIn: this.configService.getOrThrow<string>('JWT_EXPIRES_IN'),
     });
   }
 
-  // refreshToken 생성 (payload의 sub 값은 email)
-  private async generateRefreshToken(email: string): Promise<string> {
+  // refreshToken 생성 (payload에 userId와 joinDate 포함)
+  private async generateRefreshToken(userId: string, joinDate: Date): Promise<string> {
     const payload: TokenRequestDto = {
-      sub: email,
+      sub: userId,
+      joinDate: joinDate.toISOString(),
       type: 'refresh',
     };
-
     return this.jwtService.signAsync(payload, {
       secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
       expiresIn: this.configService.getOrThrow<string>('JWT_REFRESH_EXPIRES_IN'),
@@ -183,14 +198,12 @@ export class AuthService {
   // 로그아웃: 쿠키 삭제 및 DB 업데이트
   public async logout(refreshToken: string, @Res() res: Response): Promise<Response> {
     try {
-      // refreshToken 검증
       const payload = await this.verifyRefreshToken(refreshToken);
-      // payload.sub는 email이므로, 변수명을 email로 사용
-      const email = payload.sub;
+      // payload.sub는 userId
+      const userId = payload.sub;
 
-      // DB 업데이트: 사용자 email 기준으로 refreshToken 무효화
       await this.prisma.user.update({
-        where: { email },
+        where: { id: userId },
         data: { refreshToken: null },
       });
 
@@ -222,11 +235,9 @@ export class AuthService {
       const storedRefreshToken = await this.prisma.user.findFirst({
         where: { refreshToken },
       });
-
       if (!refreshToken || !storedRefreshToken) {
         throw new UnauthorizedException('유효하지 않은 리프레시 토큰입니다.');
       }
-
       return await this.jwtService.verifyAsync(refreshToken, {
         secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
       });
@@ -241,33 +252,29 @@ export class AuthService {
     header: { accessToken: string; refreshToken: string };
     body: { message: string };
   }> {
-    // refreshToken 검증
     const payload = await this.verifyRefreshToken(refreshToken);
-    // payload.sub는 email임
-    const email = payload.sub;
+    // payload.sub는 userId
+    const userId = payload.sub;
 
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.refreshToken !== refreshToken) {
       throw new UnauthorizedException('재사용된 토큰입니다.');
     }
 
     // 기존 refreshToken 무효화
     await this.prisma.user.update({
-      where: { email },
+      where: { id: userId },
       data: { refreshToken: null },
     });
 
-    // 새 토큰 생성 (여기서 payload의 sub 값은 email)
-    const tokens = await this.generateToken(email);
+    const tokens = await this.generateToken(userId, user.createdAt);
 
-    // 널 체크: 생성된 토큰이 null이면 예외 발생
     if (!tokens.accessToken || !tokens.refreshToken) {
       throw new UnauthorizedException('토큰 생성에 실패했습니다.');
     }
 
-    // DB에 새 refreshToken 저장
     await this.prisma.user.update({
-      where: { email },
+      where: { id: userId },
       data: { refreshToken: tokens.refreshToken },
     });
 
