@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { OrderRequest, OrderRequestStatus, Prisma} from '@prisma/client';
+import { OrderRequest, OrderRequestStatus, Prisma } from '@prisma/client';
 import { CreateOrderRequestDto } from './dto/create-order-request.dto';
 import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
 import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
@@ -7,7 +7,7 @@ import { PrismaService } from '@src/shared/prisma/prisma.service';
 
 @Injectable()
 export class OrderRequestsService {
-  constructor(private readonly prisma: PrismaService) {} 
+  constructor(private readonly prisma: PrismaService) {}
   // ✅ 일반 사용자(user)의 구매 요청 내역 조회 (본인의 `userId` 기준)
   async getUserOrderRequests(userId: string) {
     return this.prisma.orderRequest.findMany({

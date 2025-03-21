@@ -7,7 +7,7 @@ export class CartsService {
   public constructor(private readonly prisma: PrismaService) {}
 
   public async addToCart(cartId: string, productId: string): Promise<CartItem> {
-    const userId: string = '11'; // 임시 userId 설정
+    const userId: string = 'xcl94l94lyb6dqceqi71r7z3'; // 임시 userId 설정
 
     const cart = (await this.prisma.cart.findUnique({
       where: { id: cartId },
