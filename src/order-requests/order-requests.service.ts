@@ -4,6 +4,7 @@ import { CreateOrderRequestDto } from './dto/create-order-request.dto';
 import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
 import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
+import { calculateShippingFee } from '@src/shared/utils/shipping.util';
 
 @Injectable()
 export class OrderRequestsService {
@@ -67,38 +68,38 @@ export class OrderRequestsService {
         where: { id: { in: dto.items.map(item => item.productId) } }, // 요청된 모든 상품 ID 조회
         select: { id: true, price: true },
       });
-
+  
       if (products.length !== dto.items.length) {
         throw new NotFoundException('존재하지 않는 상품이 포함되어 있습니다.');
       }
-
-      // 2. 주문 요청 아이템 생성 (가격과 수량 계산)
-      const orderRequestItems = dto.items.map(item => {
-        const product = products.find(p => p.id === item.productId);
-        if (!product) {
-          throw new NotFoundException(`상품 ${item.productId}을 찾을 수 없습니다.`);
-        }
-        return {
-          productId: product.id,
-          quantity: item.quantity,
-          price: product.price, // 상품 가격 (DB에서 조회된 값)
-          notes: item.notes,
-        };
-      });
-
-      // 3. 총액 계산
-      const totalAmount = orderRequestItems.reduce(
-        (sum, item) => sum + item.quantity * item.price,
+  
+      // 2. 상품 ID → 가격 매핑
+      const productPriceMap = new Map(products.map(p => [p.id, p.price]));
+  
+      // 3. 주문 요청 아이템 생성 (가격 제외)
+      const orderRequestItems = dto.items.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        notes: item.notes,
+      }));
+  
+      // 4. 총액 계산
+      const totalAmountWithoutShipping = dto.items.reduce(
+        (sum, item) => sum + item.quantity * (productPriceMap.get(item.productId) || 0),
         0,
       );
-
-      // 4. 주문 요청 생성 (트랜잭션 내에서 수행)
+  
+      // 5. 배송비 계산
+      const shippingFee = calculateShippingFee(totalAmountWithoutShipping);
+      const totalAmount = totalAmountWithoutShipping + shippingFee;
+  
+      // 6. 주문 요청 생성 (트랜잭션 내에서 수행)
       return tx.orderRequest.create({
         data: {
           requesterId: dto.requesterId,
           companyId: dto.companyId,
           status: OrderRequestStatus.PENDING, // 기본값 PENDING
-          totalAmount, // 총 수량 저장
+          totalAmount, // 총액 (배송비 포함)
           orderRequestItems: {
             create: orderRequestItems, // 주문 요청 아이템 생성
           },
@@ -107,7 +108,6 @@ export class OrderRequestsService {
       });
     });
   }
-
   // ✅ 주문 요청 상세 조회
   async getOrderRequestDetail(orderRequestId: string) {
     const orderRequest = await this.prisma.orderRequest.findUnique({
