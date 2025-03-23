@@ -1,16 +1,21 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-const timeString = new Date().getTime().toString();
-export class CreateCompanyDto {
+export class CompanyResponseDto {
+  @ApiProperty({
+    description: '기업 ID',
+    example: 'kmucb8i7durz6je49lpjj6un',
+  })
+  public id: string;
+
   @ApiProperty({
     description: '기업명',
-    example: '스낵' + timeString.slice(-2),
+    example: '스낵25',
   })
   public name: string;
 
   @ApiProperty({
     description: '사업자 등록번호',
-    example: timeString.slice(0, 10),
+    example: '1234567890',
   })
   public bizno: string;
 
@@ -26,5 +31,17 @@ export class CreateCompanyDto {
     example: '12345',
     required: false,
   })
-  public zipcode?: string;
+  public zipcode: string;
+
+  @ApiProperty({
+    description: '생성 일시',
+    example: '2023-01-01T00:00:00.000Z',
+  })
+  public createdAt: Date;
+
+  @ApiProperty({
+    description: '수정 일시',
+    example: '2023-01-01T00:00:00.000Z',
+  })
+  public updatedAt: Date;
 }
