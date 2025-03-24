@@ -44,6 +44,9 @@ export class ProductsService {
       },
       skip: (page - 1) * limit,
       take: limit,
+      include: {
+        orderItem: {},
+      },
     });
 
     return {
@@ -72,21 +75,25 @@ export class ProductsService {
   }
 
   public async create(createProductDto: CreateProductDto): Promise<ProductResponseDto> {
-    const product = await this.prismaService.product.create({
-      data: {
-        name: createProductDto.name,
-        price: createProductDto.price,
-        description: createProductDto.description,
-        categoryId: createProductDto.categoryId,
-        imageUrl: createProductDto.imageUrl,
-      },
+    const product = await this.prismaService.$transaction(async tx => {
+      return tx.product.create({
+        data: {
+          name: createProductDto.name,
+          price: createProductDto.price,
+          description: createProductDto.description,
+          categoryId: createProductDto.categoryId,
+          imageUrl: createProductDto.imageUrl,
+        },
+      });
     });
     return this.toResponseDto(product);
   }
 
   public async delete(id: string): Promise<string> {
     try {
-      await this.prismaService.product.delete({ where: { id } });
+      await this.prismaService.$transaction(async tx => {
+        return tx.product.delete({ where: { id } });
+      });
       return id;
     } catch {
       throw new NotFoundException(`상품 ${id}을 찾을 수 없습니다.`);
@@ -95,9 +102,11 @@ export class ProductsService {
 
   public async update(id: string, updateProductDto: UpdateProductDto): Promise<ProductResponseDto> {
     try {
-      const product = await this.prismaService.product.update({
-        where: { id },
-        data: updateProductDto,
+      const product = await this.prismaService.$transaction(async tx => {
+        return tx.product.update({
+          where: { id },
+          data: updateProductDto,
+        });
       });
       return this.toResponseDto(product);
     } catch {
