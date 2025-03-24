@@ -44,9 +44,9 @@ export class ProductsService {
       },
       skip: (page - 1) * limit,
       take: limit,
-      include: {
-        orderItem: {},
-      },
+      // include: {
+      //   orderItem: {},
+      // },
     });
 
     return {
