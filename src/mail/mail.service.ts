@@ -2,6 +2,9 @@ import { Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import * as dotenv from 'dotenv';
 import { Invitation } from '@prisma/client';
+import { join } from 'path';
+import { readFileSync } from 'fs';
+import * as handlebars from 'handlebars';
 
 dotenv.config(); // .env 파일에서 환경 변수를 로드
 
@@ -24,25 +27,50 @@ export class MailService {
 
   /**
    * 회원 초대 이메일 전송 함수
-   * @param to 수신자 이메일 주소
-   * @param token 회원 초대 토큰 (가입 URL에 포함)
+   * @param invite 초대 정보 (Invitation 객체)
    */
-  // 초대 이메일 전송 함수
   async sendInviteEmail(invite: Invitation) {
-    // 회원가입 페이지 URL에 초대 토큰 추가
-    const inviteUrl = `https://ocs.navy/signup?token=${invite.token}`; // 가입 링크
+    // 1. 초대 링크 생성 (회원가입 페이지 + 토큰 포함)
+    const inviteUrl = `https://ocs.navy/signup?token=${invite.token}`;
 
-    // Nodemailer를 이용하여 이메일 전송
+    // 2. 권한 정보를 한글로 변환
+    const roleMap = {
+      SUPERADMIN: '최고관리자',
+      ADMIN: '관리자',
+      USER: '일반 사용자',
+    };
+    const translatedRole = roleMap[invite.role];
+
+    // 3. 실행 환경에 따라 템플릿 경로 설정
+    const baseDir = __dirname.includes('dist')
+      ? join(process.cwd(), 'dist', 'views') // 배포 환경 (빌드된 dist/views)
+      : join(process.cwd(), 'src', 'mail', 'views'); // 개발 환경 (src/mail/views)
+
+    console.log(baseDir);
+
+    // 4. 이메일 템플릿 파일 경로 설정
+    // baseDir은 mail.service.ts의 실제 경로 → views 디렉토리의 invite.hbs 파일
+    const templatePath = join(baseDir, 'invite.hbs');
+
+    // 5. 템플릿 파일을 읽고 문자열로 로드
+    const source = readFileSync(templatePath, 'utf8');
+
+    // 6. Handlebars 컴파일 함수 생성
+    const template = handlebars.compile(source);
+
+    // 7. 템플릿에 데이터를 바인딩해서 HTML 이메일 본문 생성
+    const html = template({
+      name: invite.name,
+      translatedRole, // 한글 역할
+      inviteUrl, // 가입 링크
+    });
+
+    // 8. Nodemailer를 이용하여 이메일 전송
     await this.transporter.sendMail({
-      from: process.env.SMTP_FROM, /// 발신자 이메일 (ex: "Snack25 Team <your-email@example.com>")
-      to: invite.email, // 수신자 이메일
-      subject: 'Snack25 회원 초대',
-      html: `
-        <h1>${invite.name} 님, Snack25에 초대되었습니다.</h1>
-        <p>권한: <strong>${invite.role}</strong></p>
-        <p>아래 링크를 클릭하여 가입을 완료해주세요.</p>
-        <a href="${inviteUrl}">${inviteUrl}</a>
-      `,
+      from: process.env.SMTP_FROM,
+      to: invite.email,
+      subject: 'Snack25 회원 초대', // 메일 제목
+      html, // 템플릿으로 만든 본문
     });
 
     return { message: '초대 이메일이 성공적으로 전송되었습니다.' };

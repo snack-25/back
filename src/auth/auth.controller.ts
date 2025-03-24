@@ -1,4 +1,5 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Req } from '@nestjs/common';
+import { Request } from 'express';
 import { AuthService } from './auth.service';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { SignUpRequestDto } from './dto/auth.dto';
@@ -13,10 +14,23 @@ export class AuthController {
     return this.authService.signup(dto);
   }
 
+  /* 로그인 구현 후 JWT에서 유저 정보 추출
   // POST /auth/invite - 관리자 초대 기능
+  @UseGuards(AuthGuard('jwt'))
   @Post('invite')
-  async inviteUser(@Body() dto: InviteUserDto) {
-    return this.authService.inviteUser(dto);
+  async inviteUser(@Body() dto: InviteUserDto, @User() user: AuthUser) {
+    return this.authService.inviteUser(dto, user);
+  }
+*/
+  // POST /auth/invite - 관리자 초대 기능. 테스트용 (로그인 없이)
+  @Post('invite')
+  async inviteUser(@Body() dto: InviteUserDto, @Req() req: Request) {
+    const fakeUser = {
+      id: 'aetqn2jftkh2aqgdko9nf3ps', // 초대 관리자 ID
+      companyId: 'aetqn2jftkh2aqgdko9nf3ps', // 초대 관리자 회사 ID
+    };
+
+    return this.authService.inviteUser(dto, fakeUser);
   }
 
   // TODO: /auth/login (POST) 로그인

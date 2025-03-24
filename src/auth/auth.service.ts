@@ -1,11 +1,11 @@
 import { ConflictException, Injectable } from '@nestjs/common';
+import { InvitationStatus } from '@prisma/client';
 import { SignUpRequestDto } from './dto/auth.dto';
 import { UsersService } from '../users/users.service';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { randomUUID } from 'crypto';
 import { MailService } from '../mail/mail.service';
-import { InvitationStatus } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -26,15 +26,15 @@ export class AuthService {
     }
   }
 
-  // 회원 초대 처리
-  public async inviteUser(dto: InviteUserDto) {
-    const { name, email, role, companyId, inviterId } = dto;
+  // 회원 초대 처리. inviteUser에 로그인 유저 정보 전달 받도록 변경
+  public async inviteUser(dto: InviteUserDto, user: { id: string; companyId: string }) {
+    const { name, email, role } = dto;
 
-    // 1. 동일 이메일로 이미 초대된 상태인지 확인 (초대 상태가 PENDING인 경우만)
+    // 1. 이미 초대한 상태인지 확인
     const exists = await this.prisma.invitation.findFirst({
       where: {
         email,
-        companyId,
+        companyId: user.companyId,
         status: InvitationStatus.PENDING,
       },
     });
@@ -45,24 +45,25 @@ export class AuthService {
     // 2. 초대 토큰 생성
     const token = randomUUID();
 
-    // 3. 초대 정보 DB 저장
+    // 3. 초대 만료일 설정
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7일 후로 설정
 
+    // 4. 초대 정보 DB 저장
     const invitation = await this.prisma.invitation.create({
       data: {
         name,
         email,
         role,
         token,
-        companyId,
-        inviterId,
         status: InvitationStatus.PENDING,
+        inviterId: user.id,
+        companyId: user.companyId,
         expiresAt,
       },
     });
 
-    // 4. 초대 이메일 전송
+    // 5. 초대 메일 발송
     await this.mailService.sendInviteEmail(invitation);
     return { message: '초대 이메일이 전송되었습니다.', token };
   }
