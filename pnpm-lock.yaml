@@ -59,15 +59,15 @@ importers:
       cross-env:
         specifier: 7.0.3
         version: 7.0.3
-      dotenv-cli:
-        specifier: 8.0.0
-        version: 8.0.0
       multer:
         specifier: 1.4.5-lts.1
         version: 1.4.5-lts.1
       multer-s3:
         specifier: ^3.0.1
         version: 3.0.1(@aws-sdk/client-s3@3.758.0)
+      nodemailer:
+        specifier: 6.10.0
+        version: 6.10.0
       passport:
         specifier: ^0.7.0
         version: 0.7.0
@@ -135,6 +135,9 @@ importers:
       commitlint-config-gitmoji:
         specifier: 2.3.1
         version: 2.3.1
+      dotenv-cli:
+        specifier: 8.0.0
+        version: 8.0.0
       eslint:
         specifier: ^9.22.0
         version: 9.22.0(jiti@2.4.2)
@@ -3675,6 +3678,10 @@ packages:
 
   node-releases@2.0.19:
     resolution: {integrity: sha512-xxOWJsBKtzAq7DY0J+DTzuz58K8e7sJbdgwkbMWQe8UYB6ekmsQ45q0M/tJDsGaZmbC+l7n57UV8Hl5tHxO9uw==}
+
+  nodemailer@6.10.0:
+    resolution: {integrity: sha512-SQ3wZCExjeSatLE/HBaXS5vqUOQk6GtBdIIKxiFdmm01mOQZX/POJkO3SUX1wDiYcwUOJwT23scFSC9fY2H8IA==}
+    engines: {node: '>=6.0.0'}
 
   normalize-path@3.0.0:
     resolution: {integrity: sha512-6eZs5Ls3WtCisHWp9S2GUy8dqkpGi4BVSz3GaqiE6ezub0512ESztXUwUB6C6IKbQkY2Pnb/mD4WYojCRwcwLA==}
@@ -8937,6 +8944,8 @@ snapshots:
   node-int64@0.4.0: {}
 
   node-releases@2.0.19: {}
+
+  nodemailer@6.10.0: {}
 
   normalize-path@3.0.0: {}
 

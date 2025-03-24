@@ -14,6 +14,7 @@ import { OrderRequestsModule } from './order-requests/order-requests.module';
 import { BudgetsModule } from './budgets/budgets.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { WishlistsModule } from './wishlists/wishlists.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { WishlistsModule } from './wishlists/wishlists.module';
     BudgetsModule,
     InvitationsModule,
     WishlistsModule,
+    MailModule,
   ],
   controllers: [AppController],
   providers: [AppService],
