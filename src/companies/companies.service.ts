@@ -9,6 +9,32 @@ import { CreateCompanyDto } from './dto/create-company.dto';
 export class CompaniesService {
   public constructor(private readonly prismaService: PrismaService) {}
 
+  private handleError(operation: string, id: string | null = null, error: unknown): never {
+    const logger = new Logger(CompaniesService.name);
+    const idString = id ? ` with id ${id}` : '';
+    logger.error(
+      `Failed to ${operation} company${idString}`,
+      error instanceof Error ? error.stack : String(error),
+    );
+
+    if (error instanceof ConflictException || error instanceof NotFoundException) {
+      throw error;
+    }
+
+    if (error instanceof PrismaClientKnownRequestError) {
+      if (error.code === 'P2025') {
+        throw new NotFoundException(`기업 ${id}을 찾을 수 없습니다.`);
+      }
+      if (error.code === 'P2002') {
+        throw new ConflictException('기업이 이미 존재합니다.');
+      }
+    }
+
+    throw new Error(
+      `회사 ${operation} 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
   public async findAll(): Promise<CompanyResponseDto[]> {
     const companies = await this.prismaService.company.findMany();
     return companies.map(company => this.toResponseDto(company));
@@ -23,12 +49,7 @@ export class CompaniesService {
       });
       return this.toResponseDto(company);
     } catch (error: unknown) {
-      const logger = new Logger(CompaniesService.name);
-      logger.error(`Failed to find company with id ${id}`, (error as Error)?.stack);
-      if ((error as PrismaClientKnownRequestError)?.code === 'P2025') {
-        throw new NotFoundException(`기업 ${id}을 찾을 수 없습니다.`);
-      }
-      throw error;
+      this.handleError('find', id, error);
     }
   }
 
@@ -46,43 +67,33 @@ export class CompaniesService {
         );
       }
 
-      const company = await this.prismaService.$transaction(async tx => {
-        return tx.company.create({
-          data: createCompanyDto,
-        });
+      const company = await this.prismaService.company.create({
+        data: createCompanyDto,
       });
 
       return this.toResponseDto(company);
     } catch (error: unknown) {
-      const logger = new Logger(CompaniesService.name);
-      logger.error(`Failed to create company`, (error as Error)?.stack);
-
-      if ((error as PrismaClientKnownRequestError)?.code === 'P2002') {
-        throw new ConflictException('기업이 이미 존재합니다.');
-      }
-
-      if (error instanceof ConflictException) {
-        throw error;
-      }
-      throw new Error(`회사 생성 중 오류가 발생했습니다: ${(error as Error)?.message}`);
+      this.handleError('create', null, error);
     }
   }
 
   public async delete(id: string): Promise<string> {
     try {
-      await this.prismaService.$transaction(async tx => {
-        await tx.company.delete({
-          where: { id },
-        });
+      // 삭제 전에 회사가 존재하는지 확인
+      const company = await this.prismaService.company.findUnique({
+        where: { id },
+      });
+
+      if (!company) {
+        throw new NotFoundException(`기업 ${id}을 찾을 수 없습니다.`);
+      }
+
+      await this.prismaService.company.delete({
+        where: { id },
       });
       return id;
     } catch (error: unknown) {
-      const logger = new Logger(CompaniesService.name);
-      logger.error(`Failed to delete company with id ${id}`, (error as Error)?.stack);
-      if ((error as PrismaClientKnownRequestError)?.code === 'P2025') {
-        throw new NotFoundException(`기업 ${id}을 찾을 수 없습니다.`);
-      }
-      throw error;
+      this.handleError('delete', id, error);
     }
   }
 

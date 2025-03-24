@@ -1,4 +1,13 @@
-import { Controller, Get, Param, Body, Post, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Body,
+  Post,
+  Delete,
+  NotFoundException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { CompaniesService } from './companies.service';
 import { ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
 import { CompanyResponseDto } from './dto/company.response.dto';
@@ -17,12 +26,19 @@ export class CompaniesController {
   }
 
   @ApiOperation({ summary: '기업 정보 조회' })
-  @ApiParam({ name: 'id', description: '기업 ID', example: 'pqitr9luxsiblob165ayet8w' })
+  @ApiParam({ name: 'id', description: '기업 ID' })
   @ApiResponse({ status: 200, description: '기업 정보', type: CompanyResponseDto })
   @ApiResponse({ status: 404, description: '기업을 찾을 수 없습니다.' })
   @Get(':id')
   public async findCompanyById(@Param('id') id: string): Promise<CompanyResponseDto> {
-    return this.companiesService.findUniqueOrThrow(id);
+    try {
+      return this.companiesService.findUniqueOrThrow(id);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('기업 정보 조회 중 오류가 발생했습니다.');
+    }
   }
 
   @ApiOperation({ summary: '기업 생성' })
