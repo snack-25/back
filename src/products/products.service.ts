@@ -8,6 +8,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { OrderStatus } from '@src/orders/enums/order-status.enum';
 
 @Injectable()
 export class ProductsService {
@@ -46,8 +47,28 @@ export class ProductsService {
       take: limit,
     });
 
+    const productSales = await this.prismaService.orderItem.groupBy({
+      by: ['productId'],
+      where: {
+        order: {
+          status: OrderStatus.COMPLETED,
+        },
+      },
+      _sum: {
+        quantity: true,
+      },
+    });
+
+    const enrichedProducts = products.map(product => {
+      const sales = productSales.find(sale => sale.productId === product.id);
+      return {
+        ...this.toResponseDto(product),
+        totalSold: sales?._sum.quantity || 0,
+      };
+    });
+
     return {
-      items: products.map(product => this.toResponseDto(product)),
+      items: enrichedProducts,
       total,
       page,
       limit,
@@ -57,12 +78,27 @@ export class ProductsService {
     };
   }
 
-  public async findOne(id: string): Promise<ProductResponseDto> {
+  public async findOneProduct(id: string): Promise<ProductResponseDto> {
     try {
+      const totalSold = await this.prismaService.orderItem.groupBy({
+        by: ['productId'],
+        where: {
+          order: {
+            status: OrderStatus.COMPLETED,
+          },
+        },
+        _sum: {
+          quantity: true,
+        },
+      });
+      const sales = totalSold.find(sale => sale.productId === id);
       const product = await this.prismaService.product.findUniqueOrThrow({
         where: { id },
       });
-      return this.toResponseDto(product);
+      return {
+        ...this.toResponseDto(product),
+        totalSold: sales?._sum.quantity || 0,
+      };
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
         throw new NotFoundException(`상품 ${id}을 찾을 수 없습니다.`);
@@ -72,37 +108,48 @@ export class ProductsService {
   }
 
   public async create(createProductDto: CreateProductDto): Promise<ProductResponseDto> {
-    const product = await this.prismaService.product.create({
-      data: {
-        name: createProductDto.name,
-        price: createProductDto.price,
-        description: createProductDto.description,
-        categoryId: createProductDto.categoryId,
-        imageUrl: createProductDto.imageUrl,
-      },
+    const product = await this.prismaService.$transaction(async tx => {
+      return tx.product.create({
+        data: {
+          name: createProductDto.name,
+          price: createProductDto.price,
+          description: createProductDto.description,
+          categoryId: createProductDto.categoryId,
+          imageUrl: createProductDto.imageUrl,
+        },
+      });
     });
     return this.toResponseDto(product);
   }
 
   public async delete(id: string): Promise<string> {
     try {
-      await this.prismaService.product.delete({ where: { id } });
-      return id;
-    } catch {
-      throw new NotFoundException(`상품 ${id}을 찾을 수 없습니다.`);
+      await this.prismaService.product.delete({
+        where: { id },
+      });
+      return `상품 ${id}를 성공적으로 삭제했습니다.`;
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
+        throw new NotFoundException(`상품 ${id}을 찾을 수 없습니다.`);
+      }
+      throw e;
     }
   }
 
   public async update(id: string, updateProductDto: UpdateProductDto): Promise<ProductResponseDto> {
-    try {
-      const product = await this.prismaService.product.update({
+    const product = await this.prismaService.$transaction(async tx => {
+      return tx.product.update({
         where: { id },
-        data: updateProductDto,
+        data: {
+          name: updateProductDto.name,
+          price: updateProductDto.price,
+          description: updateProductDto.description,
+          categoryId: updateProductDto.categoryId,
+          imageUrl: updateProductDto.imageUrl,
+        },
       });
-      return this.toResponseDto(product);
-    } catch {
-      throw new NotFoundException(`상품 ${id}을 찾을 수 없습니다.`);
-    }
+    });
+    return this.toResponseDto(product);
   }
 
   private toResponseDto(product: Product): ProductResponseDto {
@@ -113,6 +160,7 @@ export class ProductsService {
       description: product.description ?? '',
       categoryId: product.categoryId,
       imageUrl: product.imageUrl ?? '',
+      totalSold: 0,
     };
   }
 }

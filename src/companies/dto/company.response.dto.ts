@@ -1,23 +1,26 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, Matches } from 'class-validator';
+import { IsString, IsDate, IsOptional } from 'class-validator';
 
-const timeString = new Date().getTime().toString();
-export class CreateCompanyDto {
+export class CompanyResponseDto {
   @ApiProperty({
-    description: '기업명',
-    example: '스낵' + timeString.slice(-2),
+    description: '기업 ID',
+    example: 'kmucb8i7durz6je49lpjj6un',
   })
   @IsString()
-  @IsNotEmpty()
+  public id: string;
+
+  @ApiProperty({
+    description: '기업명',
+    example: '스낵25',
+  })
+  @IsString()
   public name: string;
 
   @ApiProperty({
     description: '사업자 등록번호',
-    example: timeString.slice(0, 10),
+    example: '1234567890',
   })
   @IsString()
-  @IsNotEmpty()
-  @Matches(/^\d{10}$/, { message: '사업자 등록번호는 10자리 숫자여야 합니다' })
   public bizno: string;
 
   @ApiProperty({
@@ -36,6 +39,19 @@ export class CreateCompanyDto {
   })
   @IsString()
   @IsOptional()
-  @Matches(/^\d{5}$/, { message: '우편번호는 5자리 숫자여야 합니다' })
   public zipcode?: string;
+
+  @ApiProperty({
+    description: '생성 일시',
+    example: '2023-01-01T00:00:00.000Z',
+  })
+  @IsDate()
+  public createdAt: Date;
+
+  @ApiProperty({
+    description: '수정 일시',
+    example: '2023-01-01T00:00:00.000Z',
+  })
+  @IsDate()
+  public updatedAt: Date;
 }
