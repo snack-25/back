@@ -2,9 +2,6 @@ import { Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import * as dotenv from 'dotenv';
 import { Invitation } from '@prisma/client';
-import { join } from 'path';
-import { readFileSync } from 'fs';
-import * as handlebars from 'handlebars';
 
 dotenv.config(); // .env 파일에서 환경 변수를 로드
 
@@ -41,36 +38,26 @@ export class MailService {
     };
     const translatedRole = roleMap[invite.role];
 
-    // 3. 실행 환경에 따라 템플릿 경로 설정
-    const baseDir = __dirname.includes('dist')
-      ? join(process.cwd(), 'dist', 'views') // 배포 환경 (빌드된 dist/views)
-      : join(process.cwd(), 'src', 'mail', 'views'); // 개발 환경 (src/mail/views)
-
-    console.log(baseDir);
-
-    // 4. 이메일 템플릿 파일 경로 설정
-    // baseDir은 mail.service.ts의 실제 경로 → views 디렉토리의 invite.hbs 파일
-    const templatePath = join(baseDir, 'invite.hbs');
-
-    // 5. 템플릿 파일을 읽고 문자열로 로드
-    const source = readFileSync(templatePath, 'utf8');
-
-    // 6. Handlebars 컴파일 함수 생성
-    const template = handlebars.compile(source);
-
-    // 7. 템플릿에 데이터를 바인딩해서 HTML 이메일 본문 생성
-    const html = template({
-      name: invite.name,
-      translatedRole, // 한글 역할
-      inviteUrl, // 가입 링크
-    });
+    const html = `
+    <div style="font-family: Arial, sans-serif; padding: 24px; background-color: #f9f9f9;">
+      <div style="max-width: 600px; margin: auto; background: white; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+        <h2 style="color: #333;">Snack25 초대 메일</h2>
+        <p><strong>${invite.name}</strong> 님, Snack25에 초대되었습니다.</p>
+        <p>권한: <strong>${translatedRole}</strong></p>
+        <p>아래 버튼을 클릭하여 회원가입을 완료해 주세요.</p>
+        <a href="${inviteUrl}" style="display:inline-block; margin-top: 20px; padding: 12px 24px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 4px;">
+          가입하러 가기
+        </a>
+      </div>
+    </div>
+  `;
 
     // 8. Nodemailer를 이용하여 이메일 전송
     await this.transporter.sendMail({
       from: process.env.SMTP_FROM,
       to: invite.email,
       subject: 'Snack25 회원 초대', // 메일 제목
-      html, // 템플릿으로 만든 본문
+      html,
     });
 
     return { message: '초대 이메일이 성공적으로 전송되었습니다.' };
