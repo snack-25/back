@@ -97,3 +97,5 @@ export class CheckEmailResponseDto {
 }
 
 export class ProfileResponseDto extends PickType(UserDto, ['id', 'email', 'name']) {}
+
+export class CheckNameDto extends PickType(UserDto, ['name']) {}

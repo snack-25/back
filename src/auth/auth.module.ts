@@ -1,13 +1,25 @@
 import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { UsersService } from '../users/users.service';
+import { PrismaService } from '@src/shared/prisma/prisma.service';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
-import { UsersService } from '@src/users/users.service';
-import { PrismaModule } from '@src/shared/prisma/prisma.module';
-import { MailModule } from '@src/mail/mail.module';
 
 @Module({
-  controllers: [AuthController], // 인증 관련 라우트 담당
-  providers: [AuthService, UsersService], // 인증 서비스 + 유저 서비스 주입
-  imports: [PrismaModule, MailModule], // DB 연결 + 이메일 전송 모듈 주입
+  imports: [
+    ConfigModule, // 환경변수 사용 시 ConfigModule도 임포트
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: { expiresIn: configService.get<string>('JWT_EXPIRES_IN') },
+      }),
+      inject: [ConfigService],
+    }),
+  ],
+  controllers: [AuthController],
+  providers: [AuthService, UsersService, PrismaService],
+  exports: [AuthService],
 })
 export class AuthModule {}
