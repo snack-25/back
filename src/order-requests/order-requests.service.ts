@@ -80,6 +80,7 @@ export class OrderRequestsService {
       const orderRequestItems = dto.items.map(item => ({
         productId: item.productId,
         quantity: item.quantity,
+        price: productPriceMap.get(item.productId) || 0, // 🔹 가격 포함
         notes: item.notes,
       }));
   
@@ -108,6 +109,7 @@ export class OrderRequestsService {
       });
     });
   }
+
   // ✅ 주문 요청 상세 조회
   async getOrderRequestDetail(orderRequestId: string) {
     const orderRequest = await this.prisma.orderRequest.findUnique({
