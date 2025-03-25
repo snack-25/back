@@ -38,14 +38,12 @@ export class AuthService {
 
   public async getinfo(dto: InvitationCodeDto): Promise<Invitation | null> {
     const { token } = dto;
-    console.log('getinfo', token);
     try {
       const invitation = await this.prisma.invitation.findUnique({
         where: {
           token,
         },
       });
-      console.log('invitation', invitation);
       return invitation;
     } catch (err) {
       new BadRequestException('초대 코드가 유효하지 않습니다' + err);
@@ -55,7 +53,6 @@ export class AuthService {
 
   public async invitationSignup(dto: InvitationSignupDto): Promise<string> {
     const { token, password } = dto;
-    console.log(dto);
     try {
       const update = await this.prisma.invitation.updateManyAndReturn({
         where: { token },
@@ -73,12 +70,10 @@ export class AuthService {
       if (!update[0]) return 'update 실패';
       const { email, name, role, company } = update[0];
       // this.usersService.validatePassword(password);
-      console.log(password);
       const hashedPassword: string = await argon2.hash(password);
       const userAdd = await this.prisma.user.create({
         data: { email, name, role, password: hashedPassword, companyId: company.id },
       });
-      console.log(userAdd);
 
       if (userAdd) return '회원가입 성공';
       return '회원가입 실패';
@@ -160,8 +155,6 @@ export class AuthService {
     try {
       const { email, password } = dto;
 
-      console.log('프리즈마 찾기 직전', dto);
-
       const user = await this.prisma.user.findUnique({
         where: { email },
         select: {
@@ -185,7 +178,6 @@ export class AuthService {
 
       // JWT 토큰 생성 시, payload의 sub 대신 userId와 joinDate 사용
       const token = await this.generateToken(user.id, user.createdAt);
-      console.log('token', token);
 
       const response: SigninResponseDto = {
         token: {
@@ -260,8 +252,6 @@ export class AuthService {
   // accessToken 검증
   public async verifyAccessToken(accessToken: string): Promise<JwtPayload> {
     try {
-      console.log('너?accessToken', accessToken);
-
       return await this.jwtService.verifyAsync(accessToken, {
         secret: this.configService.getOrThrow<string>('JWT_SECRET'),
       });

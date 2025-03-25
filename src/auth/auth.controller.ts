@@ -26,8 +26,6 @@ export class AuthController {
   @Post('signup/invitationcode')
   @ApiResponse({ status: 200, description: '토큰 유저 정보 전달' })
   public async signupInfo(@Body() body: InvitationCodeDto): Promise<Invitation | null> {
-    console.log('body', body);
-    // console.log(rep)
     return await this.authService.getinfo(body);
   }
 
@@ -39,7 +37,6 @@ export class AuthController {
   ): Promise<void> {
     await this.authService.getinfo({ token: req.params.token });
     const password = body.password;
-    console.log(password);
     const result: string = await this.authService.invitationSignup({
       password,
       token: req.params.token,
@@ -53,9 +50,6 @@ export class AuthController {
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    // console.log('dto', dto);
-    console.log('Cookies:', req.cookies);
-
     const loginResult = await this.authService.login(dto);
 
     if (!loginResult) {
@@ -74,12 +68,7 @@ export class AuthController {
   @UseGuards(AuthGuard)
   @Post('logout')
   public async logout(@Req() req: Request, @Res() res: Response): Promise<void> {
-    // console.log('req', req);
-    console.log('123445435');
-
     const invalidateToken = req.cookies['refreshToken'];
-
-    console.log('invalidateToken', invalidateToken);
 
     if (!invalidateToken) {
       res.status(400).json({ message: 'Refresh Token이 없습니다.' });
@@ -113,15 +102,4 @@ export class AuthController {
   public findAll(): string {
     return 'guard';
   }
-
-  // TODO: /auth/login (POST) 로그인
-  // TODO: /auth/logout (POST) 로그아웃
-  // TODO: /auth/refresh (POST) 토큰 재발급
 }
-
-// 로그인 과정 (전체 흐름)
-// ✅ 1. 프론트에서 로그인 요청 보냄 (POST /auth/login)
-// ✅ 2. 백엔드에서 이메일/비밀번호 검증 후 Access Token, Refresh Token 생성
-// ✅ 3. Access Token은 JSON으로 응답하고, Refresh Token은 HttpOnly 쿠키로 설정
-// ✅ 4. 이후 API 요청 시 브라우저가 Refresh Token을 자동으로 포함하여 보냄
-// ✅ 5. Access Token이 만료되면 Refresh Token을 사용하여 새로운 Access Token을 발급받음
