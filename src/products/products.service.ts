@@ -1,13 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Product } from '@prisma/client';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma, Product } from '@prisma/client';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import { ProductResponseDto } from './dto/product.response.dto';
 import { ProductQueryDto } from './dto/product.query.dto';
 import { PaginatedProductsResponseDto } from './dto/paginated-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductDto } from './dto/create-product.dto';
-import { BadRequestException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { OrderStatus } from '@src/orders/enums/order-status.enum';
 
 @Injectable()
@@ -133,14 +131,11 @@ export class ProductsService {
 
   public async deleteProduct(id: string): Promise<string> {
     try {
-      const product = await this.prismaService.product.findUniqueOrThrow({
-        where: { id },
-      });
-      if (product) {
-        await this.prismaService.product.delete({
+      await this.prismaService.$transaction(async tx => {
+        await tx.product.delete({
           where: { id },
         });
-      }
+      });
       return `상품 ${id}를 성공적으로 삭제했습니다.`;
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
