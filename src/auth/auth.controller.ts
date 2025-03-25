@@ -1,8 +1,15 @@
 import { Controller, Body, Post, Get, Req, Res, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { SignUpRequestDto, SignInRequestDto, TokenResponseDto } from './dto/auth.dto';
+import {
+  SignUpRequestDto,
+  SignInRequestDto,
+  TokenResponseDto,
+  InvitationCodeDto,
+} from './dto/auth.dto';
 import { Request, Response } from 'express';
 import { AuthGuard } from './auth.guard';
+import { ApiResponse } from '@nestjs/swagger';
+import { type Invitation } from '@prisma/client';
 
 @Controller('auth')
 export class AuthController {
@@ -14,6 +21,28 @@ export class AuthController {
   public async signup(@Body() dto: SignUpRequestDto, @Res() res: Response): Promise<void> {
     const result = await this.authService.signup(dto);
     res.status(200).json({ msg: '회원가입에 성공했습니다.', data: result });
+  }
+
+  @Post('signup/invitationcode')
+  @ApiResponse({ status: 200, description: '토큰 유저 정보 전달' })
+  public async signupInfo(@Body() body: InvitationCodeDto): Promise<Invitation | null> {
+    return await this.authService.getinfo(body);
+  }
+
+  @Post('signup/:token')
+  public async signupToken(
+    @Body() body: { password: string },
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    await this.authService.getinfo({ token: req.params.token });
+    const password = body.password;
+    console.log(password);
+    const result: string = await this.authService.invitationSignup({
+      password,
+      token: req.params.token,
+    });
+    res.status(200).json({ msg: result });
   }
 
   @Post('login')
@@ -43,7 +72,6 @@ export class AuthController {
   @UseGuards(AuthGuard)
   @Post('logout')
   async logout(@Req() req, @Res() res) {
-    console.log('sj dks skdhk?');
     const invalidateToken = req.cookies['refreshToken'];
 
     return await this.authService.logout(invalidateToken, res);

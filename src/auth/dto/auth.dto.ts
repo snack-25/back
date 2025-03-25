@@ -45,6 +45,7 @@ export class SigninResponseDto {
 // 토큰 생성 요청 DTO
 export class TokenRequestDto {
   public sub: string;
+  public joinDate: string;
   public type: 'access' | 'refresh';
 }
 
@@ -62,9 +63,16 @@ export class TokenOptionsDto {
 }
 
 //
-export interface JwtPayload {
-  sub: string; // 사용자 ID
-  email: string; // 사용자 이메일 (필요하다면)
-  iat: number; // 토큰 발행 시간
-  exp: number; // 토큰 만료 시간 (필요하면)
+export class JwtPayload {
+  public sub: string; // 사용자 ID
+  public email: string; // 사용자 이메일 (필요하다면)
+  public iat: number; // 토큰 발행 시간
+  public exp: number; // 토큰 만료 시간 (필요하면)
+}
+
+export class InvitationCodeDto {
+  public token: string;
+}
+export class InvitationSignupDto extends PickType(UserDto, ['password']) {
+  public token: string;
 }

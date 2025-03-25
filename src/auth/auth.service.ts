@@ -9,12 +9,15 @@ import {
   TokenResponseDto,
   TokenRequestDto,
   JwtPayload,
+  InvitationCodeDto,
+  InvitationSignupDto,
 } from './dto/auth.dto';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import * as argon2 from 'argon2';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
+import { Invitation } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -24,6 +27,56 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
+
+  public async getinfo(dto: InvitationCodeDto): Promise<Invitation | null> {
+    const { token } = dto;
+    try {
+      const invitation = await this.prisma.invitation.findUnique({
+        where: {
+          token,
+        },
+      });
+      return invitation;
+    } catch (err) {
+      new BadRequestException('초대 코드가 유효하지 않습니다' + err);
+      return null;
+    }
+  }
+
+  public async invitationSignup(dto: InvitationSignupDto): Promise<string> {
+    const { token, password } = dto;
+    console.log(dto);
+    try {
+      const update = await this.prisma.invitation.updateManyAndReturn({
+        where: { token },
+        data: {
+          status: 'ACCEPTED',
+        },
+        include: {
+          company: {
+            select: {
+              id: true,
+            },
+          },
+        },
+      });
+      if (!update[0]) return 'update 실패';
+      const { email, name, role, company } = update[0];
+      // this.usersService.validatePassword(password);
+      console.log(password);
+      const hashedPassword: string = await argon2.hash(password);
+      const userAdd = await this.prisma.user.create({
+        data: { email, name, role, password: hashedPassword, companyId: company.id },
+      });
+      console.log(userAdd);
+
+      if (userAdd) return '회원가입 성공';
+      return '회원가입 실패';
+    } catch (err) {
+      console.error(err);
+      return '회원가입 실패';
+    }
+  }
 
   // 회원가입
   public async signup(dto: SignUpRequestDto): Promise<SignUpResponseDto> {
