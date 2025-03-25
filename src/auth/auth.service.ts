@@ -264,81 +264,9 @@ export class AuthService {
       res.clearCookie('refreshToken');
       return res.json({ message: '로그아웃 성공' });
     } catch (error) {
-      if (error instanceof UnauthorizedException) {
-        throw error;
+      if (error instanceof ConflictException) {
+        throw new ConflictException(`회원가입에 실패했습니다.`);
       }
-      throw new UnauthorizedException('로그아웃을 실패했습니다.');
     }
-  }
-
-  // 토큰 검증: accessToken
-  public async verifyAccessToken(accessToken: string): Promise<JwtPayload> {
-    try {
-      return await this.jwtService.verifyAsync(accessToken, {
-        secret: this.configService.getOrThrow<string>('JWT_SECRET'),
-      });
-    } catch (error: any) {
-      throw new UnauthorizedException('액세스 토큰 검증에 실패했습니다.', error.message);
-    }
-  }
-
-  // 토큰 검증: refreshToken
-  public async verifyRefreshToken(refreshToken: string): Promise<JwtPayload> {
-    try {
-      const storedRefreshToken = await this.prisma.user.findFirst({
-        where: { refreshToken },
-      });
-      if (!refreshToken || !storedRefreshToken) {
-        throw new UnauthorizedException('유효하지 않은 리프레시 토큰입니다.');
-      }
-      return await this.jwtService.verifyAsync(refreshToken, {
-        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
-      });
-    } catch (error) {
-      console.error(error);
-      throw new UnauthorizedException('리프레시 토큰 검증에 실패했습니다.');
-    }
-  }
-
-  // 토큰 갱신
-  public async refreshTokens(refreshToken: string): Promise<{
-    header: { accessToken: string; refreshToken: string };
-    body: { message: string };
-  }> {
-    const payload = await this.verifyRefreshToken(refreshToken);
-    // payload.sub는 userId
-    const userId = payload.sub;
-
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || user.refreshToken !== refreshToken) {
-      throw new UnauthorizedException('재사용된 토큰입니다.');
-    }
-
-    // 기존 refreshToken 무효화
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { refreshToken: null },
-    });
-
-    const tokens = await this.generateToken(userId, user.createdAt);
-
-    if (!tokens.accessToken || !tokens.refreshToken) {
-      throw new UnauthorizedException('토큰 생성에 실패했습니다.');
-    }
-
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { refreshToken: tokens.refreshToken },
-    });
-
-    return {
-      header: {
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-      },
-      body: {
-        message: '토큰 갱신 성공',
-      },
-    };
   }
 }

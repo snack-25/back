@@ -13,7 +13,7 @@ import { type Invitation } from '@prisma/client';
 
 @Controller('auth')
 export class AuthController {
-  public constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) {}
 
   // TODO: /auth/signup (POST) [최고관리자] 회원가입
 
