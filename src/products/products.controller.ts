@@ -27,7 +27,7 @@ export class ProductsController {
   @ApiResponse({ status: 200, description: '상품 생성 성공', type: ProductResponseDto })
   @ApiResponse({ status: 400, description: '상품 생성 실패' })
   public async create(@Body() createProductDto: CreateProductDto): Promise<ProductResponseDto> {
-    return this.productsService.create(createProductDto);
+    return this.productsService.createProduct(createProductDto);
   }
 
   @Get()
@@ -82,7 +82,7 @@ export class ProductsController {
     if (categoryId) {
       categoryId = decodeURIComponent(categoryId);
     }
-    return this.productsService.findAll({ page, limit, search, categoryId, sort });
+    return this.productsService.findAllProducts({ page, limit, search, categoryId, sort });
   }
 
   @Get(':id')
@@ -104,7 +104,7 @@ export class ProductsController {
     @Param('id') id: string,
     @Body() updateProductDto: UpdateProductDto,
   ): Promise<ProductResponseDto> {
-    return this.productsService.update(id, updateProductDto);
+    return this.productsService.updateProduct(id, updateProductDto);
   }
 
   @Delete(':id')
@@ -113,6 +113,6 @@ export class ProductsController {
   @ApiResponse({ status: 200, description: '상품 삭제 성공' })
   @ApiResponse({ status: 404, description: '상품을 찾을 수 없습니다.' })
   public remove(@Param('id') id: string): Promise<string> {
-    return this.productsService.delete(id);
+    return this.productsService.deleteProduct(id);
   }
 }
