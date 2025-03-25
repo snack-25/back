@@ -1,4 +1,11 @@
-import { Injectable, Res, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  Res,
+  Req,
+  BadRequestException,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import {
   SignUpComponeyRequestDto,
@@ -11,12 +18,13 @@ import {
   JwtPayload,
   InvitationCodeDto,
   InvitationSignupDto,
+  decodeAccessToken,
 } from './dto/auth.dto';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import * as argon2 from 'argon2';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { Invitation } from '@prisma/client';
 
 @Injectable()
@@ -30,12 +38,14 @@ export class AuthService {
 
   public async getinfo(dto: InvitationCodeDto): Promise<Invitation | null> {
     const { token } = dto;
+    console.log('getinfo', token);
     try {
       const invitation = await this.prisma.invitation.findUnique({
         where: {
           token,
         },
       });
+      console.log('invitation', invitation);
       return invitation;
     } catch (err) {
       new BadRequestException('초대 코드가 유효하지 않습니다' + err);
@@ -149,6 +159,9 @@ export class AuthService {
   public async login(dto: SignInRequestDto): Promise<SigninResponseDto | null> {
     try {
       const { email, password } = dto;
+
+      console.log('프리즈마 찾기 직전', dto);
+
       const user = await this.prisma.user.findUnique({
         where: { email },
         select: {
@@ -163,7 +176,6 @@ export class AuthService {
         },
       });
 
-      console.log('너가 user?', user);
       if (!user) return null;
 
       const isPasswordValid = await argon2.verify(user.password, password);
@@ -172,25 +184,27 @@ export class AuthService {
       }
 
       // JWT 토큰 생성 시, payload의 sub 대신 userId와 joinDate 사용
-      const tokens = await this.generateToken(user.id, user.createdAt);
-      console.log('token', tokens);
+      const token = await this.generateToken(user.id, user.createdAt);
+      console.log('token', token);
 
-      return {
+      const response: SigninResponseDto = {
         token: {
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
+          accessToken: token.accessToken, // 실제 토큰 로직을 넣어줘야 합니다.
+          refreshToken: token.refreshToken,
         },
         user: {
           email: user.email,
           name: user.name,
+          role: user.role,
           company: {
-            name: user.company.name,
+            name: user.company ? user.company.name : '',
             id: user.companyId,
           },
-          role: user.role,
           companyId: user.companyId,
         },
       };
+
+      return response;
     } catch (err) {
       console.error(err);
       return null;
@@ -205,11 +219,6 @@ export class AuthService {
         this.generateRefreshToken(userId, joinDate),
       ]);
 
-      // DB 업데이트: 사용자 email 대신 id를 이용해도 되지만,
-      // 토큰 생성 시에는 가입 시 제공된 userId와 joinDate로 생성되었으므로,
-      // 여기서는 백엔드에서 사용자 조회 시 id로 처리하는 경우에 맞게 수정하거나,
-      // 만약 기존 로직대로 이메일로 처리하고 싶다면, 별도로 이메일을 저장해야 합니다.
-      // 예시에서는 사용자를 id로 식별합니다.
       await this.prisma.user.update({
         where: { id: userId },
         data: { refreshToken },
@@ -248,6 +257,41 @@ export class AuthService {
     });
   }
 
+  // accessToken 검증
+  public async verifyAccessToken(accessToken: string): Promise<JwtPayload> {
+    try {
+      console.log('너?accessToken', accessToken);
+
+      return await this.jwtService.verifyAsync(accessToken, {
+        secret: this.configService.getOrThrow<string>('JWT_SECRET'),
+      });
+    } catch (error) {
+      console.error(error);
+      throw new UnauthorizedException('액세스 토큰 검증에 실패했습니다.');
+    }
+  }
+
+  // refreshToken 검증
+  public async verifyRefreshToken(refreshToken: string): Promise<JwtPayload> {
+    try {
+      // DB에서 저장된 refreshToken을 검증하여 리프레시토큰이 없거나
+      // 저장된 리프레시토큰이 비어있으면 예외 발생
+      const storedRefreshToken = await this.prisma.user.findFirst({
+        where: { refreshToken: refreshToken },
+      });
+
+      if (!refreshToken || !storedRefreshToken) {
+        throw new UnauthorizedException('유효하지 않은 리프레시 토큰입니다.');
+      }
+
+      return await this.jwtService.verifyAsync(refreshToken, {
+        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+      });
+    } catch (error) {
+      throw new UnauthorizedException('리프레시 토큰 검증에 실패했습니다.', error.message);
+    }
+  }
+
   // 로그아웃: 쿠키 삭제 및 DB 업데이트
   public async logout(refreshToken: string, @Res() res: Response): Promise<Response> {
     try {
@@ -267,6 +311,37 @@ export class AuthService {
       if (error instanceof ConflictException) {
         throw new ConflictException(`회원가입에 실패했습니다.`);
       }
+      // 예외 상황에 대한 HTTP 응답 반환
+      return res.status(400).json({ message: '로그아웃 실패', error: error.message });
     }
+  }
+
+  // accessToken 디코딩
+  public async decodeAccessToken(accessToken: string): Promise<decodeAccessToken> {
+    try {
+      const user = await this.verifyAccessToken(accessToken);
+      // 디코딩된 토큰은 payload와 iat, exp, sub 등의 정보를 포함
+      return {
+        sub: user['sub'],
+        exp: user['exp'],
+      };
+    } catch (error) {
+      throw new UnauthorizedException('액세스 토큰 디코딩에 실패했습니다.', error.message);
+    }
+  }
+  // 쿠키에서 사용자 정보 가져오기
+  public async getUserFromCookie(@Req() req: Request): Promise<decodeAccessToken> {
+    const accessToken: string | undefined = req.cookies.accessToken;
+    if (!accessToken) {
+      throw new BadRequestException('로그인이 필요합니다.');
+    }
+    if (typeof accessToken !== 'string') {
+      throw new BadRequestException('유효하지 않은 토큰 형식입니다.');
+    }
+    const decoded = await this.decodeAccessToken(accessToken);
+    if (decoded.exp * 1000 < Date.now()) {
+      throw new UnauthorizedException('토큰이 만료되었습니다.');
+    }
+    return decoded;
   }
 }

@@ -2,68 +2,43 @@
 model OrderRequest {
   /// 1. 기본 식별자 (Primary Identifiers)
   /// Primary Key로 CUID v2를 사용한다 (예: aetqn2jftkh2aqgdko9nf3ps)
-  id String @id @default(cuid(2)) @db.Text
-
+  id                String             @id @default(cuid(2))
   /// 2. 외래 키 필드 (Foreign Keys)
   /// 주문 요청을 받은 회사의 ID
-  companyId   String  @db.Text
+  companyId         String
   /// 주문 요청을 요청한 유저의 ID
-  requesterId String  @db.Text
+  requesterId       String
   /// 주문 요청을 승인/거절한 담당자의 ID(없을 수도 있으므로 nullable)
-  resolverId  String? @db.Text
+  resolverId        String?
   /// 승인된 요청으로부터 생성된 주문의 ID(없을 수도 있으므로 nullable)
-  orderId     String? @db.Text
-
+  orderId           String?
   /// 3. 필수 필드 (Required Fields)
   /// 주문 요청 상태(주문 요청이 수락되었는지, 거절되었는지, 아니면 대기 중인지)
-  status      OrderRequestStatus @default(PENDING)
-  totalAmount Int                @default(0)
-
+  status            OrderRequestStatus @default(PENDING)
+  totalAmount       Int                @default(0)
   /// 4. 선택적 필드 (Optional Fields)
   /// 주문 요청 처리 메시지 (관리자용, 주문 요청에 대한 처리 결과 설명이므로 nullable)
-  notes String? @db.Text
-
+  notes             String?
   /// 5. 타임스탬프 필드 (Timestamp Fields)
   /// 주문 요청 생성 시각
-  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
+  createdAt         DateTime           @default(now()) @db.Timestamptz(6)
   /// 주문 요청 수정 시각
-  updatedAt  DateTime  @updatedAt @db.Timestamptz(6)
+  updatedAt         DateTime           @updatedAt @db.Timestamptz(6)
   /// 주문 요청 처리 시각(주문 요청이 대기 중일때는 값이 없으므로 nullable)
-  resolvedAt DateTime? @db.Timestamptz(6)
-
-  /// 6. 관계 필드 (Relation Fields)
-  /// 주문 요청을 받은 회사(Company receives OrderRequest)
-  /// 한 회사당 여러 개의 주문 요청이 가능(Company has many OrderRequests)
-  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  /// 주문 요청을 소유하는 유저(User owns OrderRequest, 요청자를 의미하는 requester로 명시적으로 표시함)
-  /// 한 유저당 여러 개의 주문 요청이 가능(User has many OrderRequests)
-  requester User    @relation("requester", fields: [requesterId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  /// 주문 요청을 승인/거절한 담당자(요청에 대해 승인/거절을 해결하는 사람을 의미하는 resolver로 명시적으로 표시함)
-  /// 한 유저당 여러 개의 주문 요청을 승인/거절할 수 있음(User has many OrderRequests)
-  resolver  User?   @relation("resolver", fields: [resolverId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  /// 승인된 요청으로부터 생성된 주문 참조
-  order     Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
-
-  /// 7. 역참조 필드 (Reverse Relation Fields)
-  /// 주문 요청은 여러 개의 주문 요청 항목을 가진다(OrderRequest has many OrderRequestItems)
+  resolvedAt        DateTime?          @db.Timestamptz(6)
   orderRequestItems OrderRequestItem[]
+  company           Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  order             Order?             @relation(fields: [orderId], references: [id])
+  requester         User               @relation("requester", fields: [requesterId], references: [id], onDelete: Cascade)
+  resolver          User?              @relation("resolver", fields: [resolverId], references: [id])
 
-  /// 사용자별 주문 요청 조회를 위한 인덱스
   @@index([requesterId])
-  /// 회사별 주문 요청 조회를 위한 인덱스
   @@index([companyId])
-  /// 주문 상태 기준 조회를 위한 인덱스
   @@index([status])
-  /// 사용자+회사 기준 복합 인덱스
   @@index([requesterId, companyId])
-  /// 생성일시 기준 조회를 위한 인덱스
   @@index([createdAt])
-  /// 처리된 요청만 필터링하기 위한 인덱스
   @@index([resolvedAt])
-  /// 처리자 기준 조회를 위한 인덱스
   @@index([resolverId])
-  /// 8. 테이블명, 유니크 제약, 인덱스 설정 등
-  /// 테이블명을 명시적으로 지정(소문자, 복수형)
   @@map("order_requests")
 }
 

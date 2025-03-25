@@ -2,47 +2,36 @@
 model Invitation {
   /// 1. 기본 식별자 (Primary Identifiers)
   /// Primary Key로 CUID v2를 사용한다 (예: aetqn2jftkh2aqgdko9nf3ps)
-  id String @id @default(cuid(2)) @db.Text
-
+  id        String           @id @default(cuid(2))
   /// 2. 외래 키 필드 (Foreign Keys)
   /// 초대를 보낸 회사의 ID
-  companyId String @db.Text
+  companyId String
   /// 초대를 보낸 사용자의 ID(최고관리자)
-  inviterId String @db.Text
-
-  /// 3. 필수 필드 (Required Fields)
-  /// 초대 사용자 이름(사용자 이름은 중복될 수 있음)
-  name  String
+  inviterId String
   /// 초대를 보낼 이메일 주소(유니크를 지정하지 않은 이유는 초대 보낸 이후 사용자 토큰이 만료됐거나, 다시 초대할 수 있도록 하기 위함)
-  email  String
+  email     String
   /// 초대 토큰
-  token  String           @unique
+  token     String           @unique
   /// 초대받은 사용자의 유저 권한
-  role   UserRole         @default(USER)
+  role      UserRole         @default(USER)
   /// 초대 상태(대기, 수락, 거절, 토큰 만료)
-  status InvitationStatus @default(PENDING)
-
+  status    InvitationStatus @default(PENDING)
   /// 4. 선택적 필드 (Optional Fields)
   /// 초대 만료일시
-  expiresAt DateTime @db.Timestamptz(6)
-
+  expiresAt DateTime         @db.Timestamptz(6)
   /// 5. 타임스탬프 필드 (Timestamp Fields)
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @db.Timestamptz(6)
-
-  /// 6. 관계 필드 (Relation Fields)
-  /// 초대를 보낸 회사
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  /// 초대를 보낸 사용자(최고관리자)
-  inviter User    @relation("UserInvitations", fields: [inviterId], references: [id])
-
-  /// 7. 역참조 필드 (Reverse Relation Fields)
+  createdAt DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime         @updatedAt @db.Timestamptz(6)
+  /// 3. 필수 필드 (Required Fields)
+  /// 초대 사용자 이름(사용자 이름은 중복될 수 있음)
+  name      String
+  company   Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  inviter   User             @relation("UserInvitations", fields: [inviterId], references: [id])
 
   @@index([companyId])
   @@index([inviterId])
   @@index([email])
   @@index([token])
-  /// 8. 테이블명, 유니크 제약, 인덱스 설정 등
   @@map("invitations")
 }
 

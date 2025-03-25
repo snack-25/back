@@ -13,7 +13,7 @@ import { type Invitation } from '@prisma/client';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  public constructor(private readonly authService: AuthService) {}
 
   // TODO: /auth/signup (POST) [최고관리자] 회원가입
 
@@ -26,10 +26,12 @@ export class AuthController {
   @Post('signup/invitationcode')
   @ApiResponse({ status: 200, description: '토큰 유저 정보 전달' })
   public async signupInfo(@Body() body: InvitationCodeDto): Promise<Invitation | null> {
+    console.log('body', body);
+    // console.log(rep)
     return await this.authService.getinfo(body);
   }
 
-  @Post('signup/:token')
+  @Post('signup/invite/:token')
   public async signupToken(
     @Body() body: { password: string },
     @Req() req: Request,
@@ -71,10 +73,20 @@ export class AuthController {
   // 로그아웃
   @UseGuards(AuthGuard)
   @Post('logout')
-  async logout(@Req() req, @Res() res) {
+  public async logout(@Req() req: Request, @Res() res: Response): Promise<void> {
+    // console.log('req', req);
+    console.log('123445435');
+
     const invalidateToken = req.cookies['refreshToken'];
 
-    return await this.authService.logout(invalidateToken, res);
+    console.log('invalidateToken', invalidateToken);
+
+    if (!invalidateToken) {
+      res.status(400).json({ message: 'Refresh Token이 없습니다.' });
+      return;
+    }
+
+    await this.authService.logout(invalidateToken, res);
   }
 
   // 쿠키 인증 설정(accessToken, refreshToken 둘 다 설정)

@@ -76,3 +76,5 @@ export class InvitationCodeDto {
 export class InvitationSignupDto extends PickType(UserDto, ['password']) {
   public token: string;
 }
+
+export class decodeAccessToken extends PickType(JwtPayload, ['sub', 'exp']) {}
