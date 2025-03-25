@@ -21,10 +21,10 @@ model Invitation {
   role   UserRole         @default(USER)
   /// 초대 상태(대기, 수락, 거절, 토큰 만료)
   status InvitationStatus @default(PENDING)
+  /// 초대 만료일시(초대 토큰을 생성할 때 서비스 로직에서 24시간 후로 설정)
+  expiresAt DateTime @db.Timestamptz(6)
 
   /// 4. 선택적 필드 (Optional Fields)
-  /// 초대 만료일시
-  expiresAt DateTime @db.Timestamptz(6)
 
   /// 5. 타임스탬프 필드 (Timestamp Fields)
   createdAt DateTime @default(now()) @db.Timestamptz(6)
@@ -38,11 +38,11 @@ model Invitation {
 
   /// 7. 역참조 필드 (Reverse Relation Fields)
 
+  /// 8. 테이블명, 유니크 제약, 인덱스 설정 등
   @@index([companyId])
   @@index([inviterId])
   @@index([email])
   @@index([token])
-  /// 8. 테이블명, 유니크 제약, 인덱스 설정 등
   @@map("invitations")
 }
 

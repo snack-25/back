@@ -1,6 +1,9 @@
+import { BadRequestException } from '@nestjs/common';
 import { createId } from '@paralleldrive/cuid2';
 import { PrismaClient } from '@prisma/client';
 import { hash } from 'argon2';
+import fs from 'fs';
+import path from 'path';
 
 const prisma = new PrismaClient();
 
@@ -383,6 +386,48 @@ const main = async (): Promise<void> => {
         data: { totalAmount },
       });
     }
+
+    // 10. 우편번호(Zipcode) 추가(tsv로 불러오기)
+    // FeeType은 추후 적절한 위치로 옮겨서 단일 진실 공급원(Single Source of Truth) 준수
+    type FeeType = 'NOT_APPLICABLE' | 'JEJU' | 'ISOLATED';
+    // 우편번호 데이터 파일 경로(seed.ts와 같은 경로)
+    const filePath = path.join(__dirname, 'zipcodes.tsv');
+
+    // 파일 존재 여부 확인
+    if (!fs.existsSync(filePath)) {
+      console.error(`❌ zipcodes.tsv 파일을 찾을 수 없습니다: ${filePath}`);
+      return;
+    }
+    const zipCodesFile = fs.readFileSync(filePath, 'utf-8');
+
+    const lines = zipCodesFile.split('\n').slice(1); // 첫 줄(헤더) 제거
+    const zipcodes = lines
+      .map(line => {
+        const [postalCode, feeType, isActive, juso] = line.split('\t');
+
+        if (!postalCode || !feeType || !isActive) {
+          console.error(`❌ 잘못된 데이터 형식: ${line}`);
+          throw new BadRequestException(`❌ 잘못된 데이터 형식: ${line}`);
+        }
+
+        return {
+          postalCode: String(postalCode.trim()), // 숫자로 인식되지 않도록 문자열로 변환(0으로 시작하는 경우 앞글자가 없어지면 안되므로)
+          feeType: feeType.trim() as FeeType, // ENUM 변환(제주, 도서산간, 이외)
+          isActive: isActive.trim().toLowerCase() === 'true', // 현재 활성화 여부
+          juso: juso.trim(), // 주소 저장
+        };
+      })
+      .filter((zipcode): zipcode is NonNullable<typeof zipcode> => zipcode !== null);
+
+    console.log(`📄 TSV 데이터: ${zipcodes.length}개의 데이터 로드 완료`);
+
+    // 우편번호 데이터 추가(도서산간지역 배송비 추가 관련)
+    await tx.zipcode.createMany({
+      data: zipcodes,
+      skipDuplicates: true,
+    });
+
+    console.log(`📄 우편번호 데이터 추가 완료:`);
 
     console.log('🎉 Seeding complete!');
   });
