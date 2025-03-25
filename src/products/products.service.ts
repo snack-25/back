@@ -51,7 +51,9 @@ export class ProductsService {
       by: ['productId'],
       where: {
         order: {
-          status: OrderStatus.COMPLETED,
+          status: {
+            in: [OrderStatus.PENDING, OrderStatus.PROCESSING, OrderStatus.COMPLETED],
+          },
         },
       },
       _sum: {
@@ -84,7 +86,9 @@ export class ProductsService {
         by: ['productId'],
         where: {
           order: {
-            status: OrderStatus.COMPLETED,
+            status: {
+              in: [OrderStatus.PENDING, OrderStatus.PROCESSING, OrderStatus.COMPLETED],
+            },
           },
         },
         _sum: {

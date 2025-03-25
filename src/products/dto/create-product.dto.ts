@@ -22,7 +22,7 @@ export class CreateProductDto {
 
   @ApiProperty({
     description: '카테고리 ID',
-    example: 'sub-과자',
+    example: '',
   })
   public categoryId: string;
 
