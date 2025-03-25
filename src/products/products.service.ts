@@ -14,7 +14,13 @@ import { OrderStatus } from '@src/orders/enums/order-status.enum';
 export class ProductsService {
   public constructor(private readonly prismaService: PrismaService) {}
 
-  public async findAll({
+  private readonly COUNTED_ORDER_STATUS = [
+    OrderStatus.PENDING,
+    OrderStatus.PROCESSING,
+    OrderStatus.COMPLETED,
+  ];
+
+  public async findAllProducts({
     page,
     limit,
     search,
@@ -52,7 +58,7 @@ export class ProductsService {
       where: {
         order: {
           status: {
-            in: [OrderStatus.PENDING, OrderStatus.PROCESSING, OrderStatus.COMPLETED],
+            in: this.COUNTED_ORDER_STATUS,
           },
         },
       },
@@ -82,12 +88,12 @@ export class ProductsService {
 
   public async findOneProduct(id: string): Promise<ProductResponseDto> {
     try {
-      const totalSold = await this.prismaService.orderItem.groupBy({
-        by: ['productId'],
+      const totalSold = await this.prismaService.orderItem.aggregate({
         where: {
+          productId: id,
           order: {
             status: {
-              in: [OrderStatus.PENDING, OrderStatus.PROCESSING, OrderStatus.COMPLETED],
+              in: this.COUNTED_ORDER_STATUS,
             },
           },
         },
@@ -95,13 +101,12 @@ export class ProductsService {
           quantity: true,
         },
       });
-      const sales = totalSold.find(sale => sale.productId === id);
       const product = await this.prismaService.product.findUniqueOrThrow({
         where: { id },
       });
       return {
         ...this.toResponseDto(product),
-        totalSold: sales?._sum.quantity || 0,
+        totalSold: totalSold._sum.quantity || 0,
       };
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
@@ -111,7 +116,7 @@ export class ProductsService {
     }
   }
 
-  public async create(createProductDto: CreateProductDto): Promise<ProductResponseDto> {
+  public async createProduct(createProductDto: CreateProductDto): Promise<ProductResponseDto> {
     const product = await this.prismaService.$transaction(async tx => {
       return tx.product.create({
         data: {
@@ -126,11 +131,16 @@ export class ProductsService {
     return this.toResponseDto(product);
   }
 
-  public async delete(id: string): Promise<string> {
+  public async deleteProduct(id: string): Promise<string> {
     try {
-      await this.prismaService.product.delete({
+      const product = await this.prismaService.product.findUniqueOrThrow({
         where: { id },
       });
+      if (product) {
+        await this.prismaService.product.delete({
+          where: { id },
+        });
+      }
       return `상품 ${id}를 성공적으로 삭제했습니다.`;
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
@@ -140,7 +150,10 @@ export class ProductsService {
     }
   }
 
-  public async update(id: string, updateProductDto: UpdateProductDto): Promise<ProductResponseDto> {
+  public async updateProduct(
+    id: string,
+    updateProductDto: UpdateProductDto,
+  ): Promise<ProductResponseDto> {
     const product = await this.prismaService.$transaction(async tx => {
       return tx.product.update({
         where: { id },
