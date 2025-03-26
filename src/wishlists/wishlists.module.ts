@@ -2,10 +2,10 @@ import { Module } from '@nestjs/common';
 import { WishlistsService } from './wishlists.service';
 import { PrismaModule } from '../shared/prisma/prisma.module';
 import { WishlistsController } from './wishlists.controller';
-import { CartsService } from '@src/carts/carts.service';
+import { CartsModule } from '@src/carts/carts.module';
 
 @Module({
-  imports: [PrismaModule, CartsService],
+  imports: [PrismaModule, CartsModule],
   controllers: [WishlistsController],
   providers: [WishlistsService],
 })
