@@ -34,21 +34,21 @@ export class OrderRequestsController {
     required: false,
     type: Number,
     example: 1,
-    description: '페이지 번호'
+    description: '페이지 번호',
   })
   @ApiQuery({
     name: 'pageSize',
     required: false,
     type: Number,
     example: 6,
-    description: '페이지당 항목 개수'
+    description: '페이지당 항목 개수',
   })
   @ApiQuery({
     name: 'sort',
     required: false,
     enum: OrderSort,
     example: 'latest',
-    description: '정렬 기준 (latest: 최신순, lowPrice: 낮은 가격순, highPrice: 높은 가격순)'
+    description: '정렬 기준 (latest: 최신순, lowPrice: 낮은 가격순, highPrice: 높은 가격순)',
   })
   @Get()
   public async getOrderRequests(@Req() req: Request, @Query() query: GetOrderRequestsDto) {
