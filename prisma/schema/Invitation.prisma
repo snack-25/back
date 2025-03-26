@@ -2,23 +2,18 @@
 model Invitation {
   /// 1. 기본 식별자 (Primary Identifiers)
   /// Primary Key로 CUID v2를 사용한다 (예: aetqn2jftkh2aqgdko9nf3ps)
-  id String @id @default(cuid(2)) @db.Text
-
+  id        String           @id @default(cuid(2))
   /// 2. 외래 키 필드 (Foreign Keys)
   /// 초대를 보낸 회사의 ID
-  companyId String @db.Text
+  companyId String
   /// 초대를 보낸 사용자의 ID(최고관리자)
-  inviterId String @db.Text
-
-  /// 3. 필수 필드 (Required Fields)
-  /// 초대 사용자 이름(사용자 이름은 중복될 수 있음)
-  name  String
+  inviterId String
   /// 초대를 보낼 이메일 주소(유니크를 지정하지 않은 이유는 초대 보낸 이후 사용자 토큰이 만료됐거나, 다시 초대할 수 있도록 하기 위함)
-  email  String
+  email     String
   /// 초대 토큰
-  token  String           @unique
+  token     String           @unique
   /// 초대받은 사용자의 유저 권한
-  role   UserRole         @default(USER)
+  role      UserRole         @default(USER)
   /// 초대 상태(대기, 수락, 거절, 토큰 만료)
   status InvitationStatus @default(PENDING)
   /// 초대 만료일시(초대 토큰을 생성할 때 서비스 로직에서 24시간 후로 설정)

@@ -32,6 +32,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "prepare": "husky",
     "postinstall": "sh .husky/check-pnpm.sh",
+    "studio": "dotenv -e .env.local -- prisma studio",
+    "migrate:dev:local": "dotenv -e .env.local -- prisma migrate dev --name init",
     "prisma:generate:local": "dotenv -e .env.local -- npx prisma generate",
     "prisma:deploy:local": "dotenv -e .env.local -- npx prisma migrate deploy",
     "prisma:reset:local": "dotenv -e .env.local -- npx prisma migrate reset",

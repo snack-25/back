@@ -27,7 +27,7 @@ export class ProductsController {
   @ApiResponse({ status: 200, description: '상품 생성 성공', type: ProductResponseDto })
   @ApiResponse({ status: 400, description: '상품 생성 실패' })
   public async create(@Body() createProductDto: CreateProductDto): Promise<ProductResponseDto> {
-    return this.productsService.create(createProductDto);
+    return this.productsService.createProduct(createProductDto);
   }
 
   @Get()
@@ -58,7 +58,7 @@ export class ProductsController {
     description: '카테고리 ID',
     type: String,
     required: false,
-    example: 'cat-스낵',
+    example: '',
   })
   @ApiQuery({
     name: 'sort',
@@ -82,21 +82,21 @@ export class ProductsController {
     if (categoryId) {
       categoryId = decodeURIComponent(categoryId);
     }
-    return this.productsService.findAll({ page, limit, search, categoryId, sort });
+    return this.productsService.findAllProducts({ page, limit, search, categoryId, sort });
   }
 
   @Get(':id')
   @ApiOperation({ summary: '단일 상품 조회' })
-  @ApiParam({ name: 'id', description: '상품 ID', example: 'product_01' })
+  @ApiParam({ name: 'id', description: '상품 ID', example: 'ikhfu0ii0jt0e4ok8chaulpt' })
   @ApiResponse({ status: 200, description: '상품 정보', type: ProductResponseDto })
   @ApiResponse({ status: 404, description: '상품을 찾을 수 없습니다.' })
-  public findOne(@Param('id') id: string): Promise<ProductResponseDto> {
-    return this.productsService.findOne(id);
+  public async findOne(@Param('id') id: string): Promise<ProductResponseDto> {
+    return this.productsService.findOneProduct(id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: '상품 수정' })
-  @ApiParam({ name: 'id', description: '상품 ID', example: 'product_01' })
+  @ApiParam({ name: 'id', description: '상품 ID', example: 'ikhfu0ii0jt0e4ok8chaulpt' })
   @ApiBody({ type: UpdateProductDto })
   @ApiResponse({ status: 200, description: '상품 수정 성공', type: ProductResponseDto })
   @ApiResponse({ status: 404, description: '상품을 찾을 수 없습니다.' })
@@ -104,15 +104,15 @@ export class ProductsController {
     @Param('id') id: string,
     @Body() updateProductDto: UpdateProductDto,
   ): Promise<ProductResponseDto> {
-    return this.productsService.update(id, updateProductDto);
+    return this.productsService.updateProduct(id, updateProductDto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: '상품 삭제' })
-  @ApiParam({ name: 'id', description: '상품 ID', example: 'product_01' })
+  @ApiParam({ name: 'id', description: '상품 ID', example: 'ikhfu0ii0jt0e4ok8chaulpt' })
   @ApiResponse({ status: 200, description: '상품 삭제 성공' })
   @ApiResponse({ status: 404, description: '상품을 찾을 수 없습니다.' })
   public remove(@Param('id') id: string): Promise<string> {
-    return this.productsService.delete(id);
+    return this.productsService.deleteProduct(id);
   }
 }

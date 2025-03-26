@@ -15,6 +15,7 @@ import { ProductsModule } from './products/products.module';
 import { PrismaModule } from './shared/prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { WishlistsModule } from './wishlists/wishlists.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { WishlistsModule } from './wishlists/wishlists.module';
     BudgetsModule,
     InvitationsModule,
     WishlistsModule,
+    MailModule,
   ],
   controllers: [AppController],
   providers: [AppService],

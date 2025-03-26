@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsUUID, IsString, IsInt, Min, IsArray, ValidateNested, IsDate } from 'class-validator';
-import { Type } from 'class-transformer';
 import { OrderRequestStatus } from '@prisma/client';
+import { Type } from 'class-transformer';
+import { IsArray, IsInt, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
 
 class OrderRequestItemDto {
   @ApiProperty({ description: '상품 ID', example: 'product-uuid-1234' })
@@ -12,10 +12,6 @@ class OrderRequestItemDto {
   @IsInt()
   @Min(1)
   quantity: number;
-
-  // 상품 가격은 DB에서 자동으로 가져오므로, DTO에 포함시키지 않아도 됨
-  @ApiProperty({ description: '상품 가격', example: 10000 })
-  price?: number; // 필수값이 아니라 DB에서 자동으로 채워짐
 
   @ApiProperty({
     description: '요청 메시지 (사용자가 입력하는 메모)',
@@ -33,10 +29,6 @@ export class CreateOrderRequestDto {
   @ApiProperty({ description: '주문 요청을 보낸 사용자 ID', example: 'user-uuid-1234' })
   @IsUUID()
   requesterId: string;
-
-  @ApiProperty({ description: '주문 요청 생성 시간', example: '2025-03-11T12:00:00Z' })
-  @IsDate()
-  createdAt: Date = new Date();
 
   @ApiProperty({ description: '주문 요청 항목 리스트', type: [OrderRequestItemDto] })
   @IsArray()
