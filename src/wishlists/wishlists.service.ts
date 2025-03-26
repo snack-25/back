@@ -1,9 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { CartsService } from '@src/carts/carts.service';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 
 @Injectable()
 export class WishlistsService {
-  public constructor(private readonly prisma: PrismaService) {}
+  public constructor(
+    private readonly prisma: PrismaService,
+    private readonly cartsService: CartsService,
+  ) {}
 
   // 찜한 상품 ID 리스트 반환
   public async getWishlist(userId: string): Promise<string[]> {
@@ -47,39 +51,17 @@ export class WishlistsService {
     }
 
     return await this.prisma.$transaction(async tx => {
-      const cart = await tx.cart.findUnique({
-        where: { userId },
-      });
-
-      if (!cart) {
-        throw new NotFoundException('장바구니를 찾을 수 없습니다.');
-      }
-
+      const cart = await this.cartsService.getCartByUserId(userId);
       const cartId = cart.id;
 
-      const existingCartItems = await tx.cartItem.findMany({
-        where: {
-          cartId,
-          productId: { in: productIds },
-        },
-        select: { productId: true },
-      });
-
-      const existingCartProductIds = new Set(existingCartItems.map(item => item.productId));
-
-      const productsToMove = productIds.filter(productId => !existingCartProductIds.has(productId));
+      const existingProductIds = await this.cartsService.getCartProductIds(cartId, productIds);
+      const productsToMove = productIds.filter(id => !existingProductIds.includes(id));
 
       if (productsToMove.length === 0) {
         return { message: '상품이 이미 장바구니에 존재합니다.' };
       }
 
-      await tx.cartItem.createMany({
-        data: productsToMove.map(productId => ({
-          cartId,
-          productId,
-          quantity: 1,
-        })),
-      });
+      await this.cartsService.addProductsToCart(cartId, productsToMove);
 
       await tx.wishlist.deleteMany({
         where: {

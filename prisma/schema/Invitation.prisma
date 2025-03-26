@@ -10,24 +10,32 @@ model Invitation {
   inviterId String
   /// 초대를 보낼 이메일 주소(유니크를 지정하지 않은 이유는 초대 보낸 이후 사용자 토큰이 만료됐거나, 다시 초대할 수 있도록 하기 위함)
   email     String
+  /// 초대 받은 사용자의 이름
+  name      String
   /// 초대 토큰
   token     String           @unique
   /// 초대받은 사용자의 유저 권한
   role      UserRole         @default(USER)
   /// 초대 상태(대기, 수락, 거절, 토큰 만료)
-  status    InvitationStatus @default(PENDING)
-  /// 4. 선택적 필드 (Optional Fields)
-  /// 초대 만료일시
-  expiresAt DateTime         @db.Timestamptz(6)
-  /// 5. 타임스탬프 필드 (Timestamp Fields)
-  createdAt DateTime         @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime         @updatedAt @db.Timestamptz(6)
-  /// 3. 필수 필드 (Required Fields)
-  /// 초대 사용자 이름(사용자 이름은 중복될 수 있음)
-  name      String
-  company   Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  inviter   User             @relation("UserInvitations", fields: [inviterId], references: [id])
+  status InvitationStatus @default(PENDING)
+  /// 초대 만료일시(초대 토큰을 생성할 때 서비스 로직에서 24시간 후로 설정)
+  expiresAt DateTime @db.Timestamptz(6)
 
+  /// 4. 선택적 필드 (Optional Fields)
+
+  /// 5. 타임스탬프 필드 (Timestamp Fields)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  /// 6. 관계 필드 (Relation Fields)
+  /// 초대를 보낸 회사
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /// 초대를 보낸 사용자(최고관리자)
+  inviter User    @relation("UserInvitations", fields: [inviterId], references: [id])
+
+  /// 7. 역참조 필드 (Reverse Relation Fields)
+
+  /// 8. 테이블명, 유니크 제약, 인덱스 설정 등
   @@index([companyId])
   @@index([inviterId])
   @@index([email])

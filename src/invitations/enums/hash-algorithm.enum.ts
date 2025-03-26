@@ -1,0 +1,23 @@
+// node 22에서 지원하는 해시 알고리즘 중 안전하다고 알려진 알고리즘 목록
+export enum HashAlgorithm {
+  RSA_SHA256 = 'RSA-SHA256',
+  RSA_SHA384 = 'RSA-SHA384',
+  RSA_SHA512 = 'RSA-SHA512',
+  RSA_SM3 = 'RSA-SM3',
+  SHA256 = 'sha256',
+  SHA256WithRSAEncryption = 'sha256WithRSAEncryption',
+  SHA384 = 'sha384',
+  SHA384WithRSAEncryption = 'sha384WithRSAEncryption',
+  SHA512 = 'sha512',
+  SHA512WithRSAEncryption = 'sha512WithRSAEncryption',
+  SHA3_224 = 'sha3-224',
+  SHA3_256 = 'sha3-256',
+  SHA3_384 = 'sha3-384',
+  SHA3_512 = 'sha3-512',
+  SHA3_224WithRSAEncryption = 'sha3-224WithRSAEncryption',
+  SHA3_256WithRSAEncryption = 'sha3-256WithRSAEncryption',
+  SHA3_384WithRSAEncryption = 'sha3-384WithRSAEncryption',
+  SHA3_512WithRSAEncryption = 'sha3-512WithRSAEncryption',
+  BLAKE2B_512 = 'blake2b512',
+  BLAKE2S_256 = 'blake2s256',
+}

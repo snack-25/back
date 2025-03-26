@@ -111,4 +111,46 @@ export class CartsService {
 
     return { message: `${itemIds.length}개의 장바구니 항목이 삭제되었습니다.` };
   }
+
+  public async getCartByUserId(userId: string): Promise<Cart> {
+    const cart = await this.prisma.cart.findUnique({ where: { userId } });
+    if (!cart) throw new NotFoundException('장바구니를 찾을 수 없습니다.');
+    return cart;
+  }
+
+  public async getCartProductIds(cartId: string, productIds: string[]): Promise<string[]> {
+    const existingItems = await this.prisma.cartItem.findMany({
+      where: {
+        cartId,
+        productId: { in: productIds },
+      },
+      select: { productId: true },
+    });
+    return existingItems.map(item => item.productId);
+  }
+
+  public async addProductsToCart(cartId: string, productIds: string[]): Promise<{ count: number }> {
+    return this.prisma.cartItem.createMany({
+      data: productIds.map(productId => ({
+        cartId,
+        productId,
+        quantity: 1,
+      })),
+    });
+  }
+
+  public async clearCartItemsByUserId(userId: string): Promise<void> {
+    const cart = await this.prisma.cart.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    if (!cart) {
+      throw new NotFoundException('장바구니를 찾을 수 없습니다.');
+    }
+
+    await this.prisma.cartItem.deleteMany({
+      where: { cartId: cart.id },
+    });
+  }
 }

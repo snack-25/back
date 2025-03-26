@@ -3,9 +3,11 @@ model User {
   /// 1. 기본 식별자 (Primary Identifiers)
   /// Primary Key로 CUID v2를 사용한다 (예: aetqn2jftkh2aqgdko9nf3ps)
   id                    String         @id @default(cuid(2))
+
   /// 2. 외래 키 필드 (Foreign Keys)
   /// 유저가 속한 회사 ID
   companyId             String
+
   /// 3. 필수 필드 (Required Fields)
   /// 이메일 중복 방지 및 최대 길이 제한(5~255자)
   email                 String         @unique @db.VarChar(255)
@@ -13,30 +15,54 @@ model User {
   /// 24/08/21 개정된 NIST 디지털 신원 가이드라인(SP 800-63-4)에 따라
   /// 최소 8자리, 권장 15자리 길이 이상, 최소 64자리 최대 비밀번호 길이를 허용해야 함을 권고
   /// Ref: https://pages.nist.gov/800-63-4/sp800-63b.html#password
-  password              String         @db.VarChar(255)
+  password String   @db.VarChar(255)
+  /// 솔트 값(이후에 추가해서 optional하게 설정)
+  salt     String?  @db.VarChar(255)
   /// 유저 이름(2~255자)
   name                  String         @db.VarChar(255)
   /// 유저 권한 설정(최고관리자, 관리자, 유저)
   role                  UserRole       @default(USER)
+
   /// 4. 선택적 필드 (Optional Fields)
   /// JWT 리프레시 토큰(토큰 만료 확인을 위해 DB에 저장함)
   refreshToken          String?
+
   /// 5. 타임스탬프 필드 (Timestamp Fields)
   /// 생성일시, 갱신일시 등 날짜 관련 필드
   createdAt             DateTime       @default(now()) @db.Timestamptz(6)
   updatedAt             DateTime       @updatedAt @db.Timestamptz(6)
+
+  /// 6. 관계 필드 (Relation Fields)
+  /// 유저가 소유한 장바구니(장바구니는 없을 수 있지만 있다면 유저 당 하나의 장바구니만 가능)
   cart                  Cart?
+
+  /// 7. 역참조 필드 (Reverse Relation Fields)
+  /// 유저가 속한 회사
+  company               Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /// 유저가 초대한 초대장들
   invitations           Invitation[]   @relation("UserInvitations")
+  /// 유저가 요청한 주문 요청들
   orderRequests         OrderRequest[] @relation("requester")
+  /// 유저가 해결한 주문 요청들
   resolvedOrderRequests OrderRequest[] @relation("resolver")
+  /// 유저가 생성한 주문들
   createdOrders         Order[]        @relation("CreatedOrders")
+  /// 유저가 요청한 주문들
   requestedOrders       Order[]        @relation("RequestedOrders")
+  /// 유저가 수정한 주문들
   updatedOrders         Order[]        @relation("UpdatedOrders")
-  company               Company        @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  /// 관리자가 생성한 상품들
+  createdProducts       Product[]      @relation("CreatedProducts")
+  /// 관리자가 수정한 상품들
+  updatedProducts       Product[]      @relation("UpdatedProducts")
+  /// [발전과제] 유저가 찜한(Wishlist) 상품들
   wishlists             Wishlist[]
 
+  /// 8. 테이블명, 유니크 제약, 인덱스 설정 등
+  /// 유효성 검증을 위한 제약사항 추가
   @@index([companyId])
   @@index([email])
+  /// 테이블명을 명시적으로 지정(소문자, 복수형)
   @@map("users")
 }
 
