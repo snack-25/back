@@ -1,23 +1,22 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config'; // 환경변수 접근을 위한 서비스
 import * as nodemailer from 'nodemailer';
-import * as dotenv from 'dotenv';
 import { Invitation } from '@prisma/client';
-
-dotenv.config(); // .env 파일에서 환경 변수를 로드
 
 @Injectable() // NestJS 서비스로 등록하여 의존성 주입 가능하도록 설정
 export class MailService {
-  private transporter; // Nodemailer의 이메일 전송 객체
+  private transporter: nodemailer.Transporter; // Nodemailer의 이메일 전송 객체
 
   // Nodemailer 전송 객체 생성 (SMTP 설정)
-  constructor() {
+  constructor(private readonly configService: ConfigService) {
+    // 환경변수로부터 SMTP 정보 가져와 Nodemailer 전송 객체 생성
     this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST, // SMTP 서버 호스트
-      port: Number(process.env.SMTP_PORT), // SMTP 포트 (465, 587, 2525 중 선택)
-      secure: Number(process.env.SMTP_PORT) === 465, // 포트 465일 때만 true (TLS 사용)
+      host: this.configService.get<string>('SMTP_HOST'), // SMTP 서버 호스트
+      port: Number(this.configService.get<number>('SMTP_PORT')), // SMTP 포트 (465, 587, 2525 중 선택)
+      secure: Number(this.configService.get<number>('SMTP_PORT')) === 465, // 포트 465일 때만 true (TLS 사용)
       auth: {
-        user: process.env.SMTP_USER, // SMTP 로그인 이메일
-        pass: process.env.SMTP_PASS, // SMTP 로그인 비밀번호 또는 앱 비밀번호
+        user: this.configService.get<string>('SMTP_USER'), // 로그인 이메일
+        pass: this.configService.get<string>('SMTP_PASS'), // SMTP 로그인 비밀번호 또는 앱 비밀번호
       },
     });
   }
@@ -54,7 +53,7 @@ export class MailService {
 
     // 8. Nodemailer를 이용하여 이메일 전송
     await this.transporter.sendMail({
-      from: process.env.SMTP_FROM,
+      from: this.configService.get<string>('SMTP_FROM'),
       to: invite.email,
       subject: 'Snack25 회원 초대', // 메일 제목
       html,
