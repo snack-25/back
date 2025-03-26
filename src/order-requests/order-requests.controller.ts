@@ -28,8 +28,20 @@ export class OrderRequestsController {
   @ApiOperation({ summary: '주문 요청 목록 조회' })
   @ApiResponse({ status: 200, description: '주문 요청 목록 반환' })
   @ApiResponse({ status: 401, description: '인증되지 않은 사용자' })
-  @ApiQuery({ name: 'page', required: false, type: Number, example: 1, description: '페이지 번호' })
-  @ApiQuery({ name: 'pageSize', required: false, type: Number, example: 6, description: '페이지당 항목 개수' })
+  @ApiQuery({ 
+    name: 'page', 
+    required: false, 
+    type: Number, 
+    example: 1, 
+    description: '페이지 번호' 
+  })
+  @ApiQuery({ 
+    name: 'pageSize', 
+    required: false, 
+    type: Number, 
+    example: 6, 
+    description: '페이지당 항목 개수' 
+  })
   @ApiQuery({ 
     name: 'sort', 
     required: false, 
@@ -45,8 +57,8 @@ export class OrderRequestsController {
       throw new UnauthorizedException('인증되지 않은 사용자입니다.');
     }
 
-    const page = Number(query.page) || 1;
-    const pageSize = Number(query.pageSize) || 10;
+    const page = Math.max(1, Number(query.page) || 1); // 최소값 1 보장
+    const pageSize = Math.min(50, Math.max(1, Number(query.pageSize) || 10)); // 1~50 사이 값 보장
     const sort = query.sort || 'latest';
 
     if (user.role === UserRole.USER) {
