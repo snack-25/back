@@ -58,26 +58,14 @@ export class OrderRequestsController {
       throw new UnauthorizedException('인증되지 않은 사용자입니다.');
     }
 
-    const page = Math.max(1, Number(query.page) || 1); // 최소값 1 보장
-    const pageSize = Math.min(50, Math.max(1, Number(query.pageSize) || 10)); // 1~50 사이 값 보장
-    const sort: OrderSort = query.sort || OrderSort.LATEST;
-    
+    const { page = 1, pageSize = 10, sort = OrderSort.LATEST } = query;
+
     if (user.role === UserRole.USER) {
-      return this.orderRequestsService.getUserOrderRequests(
-        user.id,
-        page,
-        pageSize,
-        sort
-      );
+      return this.orderRequestsService.getUserOrderRequests(user.id, page, pageSize, sort);
     }
 
     if (user.role === UserRole.ADMIN || user.role === UserRole.SUPERADMIN) {
-      return this.orderRequestsService.getCompanyOrderRequests(
-        user.companyId,
-        page,
-        pageSize,
-        sort
-      );
+      return this.orderRequestsService.getCompanyOrderRequests(user.companyId, page, pageSize, sort);
     }
 
     throw new UnauthorizedException('인증되지 않은 사용자입니다.');
