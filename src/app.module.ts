@@ -11,7 +11,7 @@ import { InvitationsModule } from './invitations/invitations.module';
 import { OrderRequestsModule } from './order-requests/order-requests.module';
 import { OrdersModule } from './orders/orders.module';
 import { ProductsModule } from './products/products.module';
-import { AwsS3Module } from './shared/aws/s3.module';
+// import { AwsS3Module } from './shared/aws/s3.module';
 import { PrismaModule } from './shared/prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { WishlistsModule } from './wishlists/wishlists.module';
@@ -25,7 +25,7 @@ import { WishlistsModule } from './wishlists/wishlists.module';
       envFilePath: `.env.${process.env.NODE_ENV || 'local'}`,
     }),
     PrismaModule,
-    AwsS3Module,
+    // AwsS3Module,
     UsersModule,
     AuthModule,
     CompaniesModule,
