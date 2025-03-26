@@ -4,10 +4,16 @@ import { OrderRequestDto } from './dto/create-order.dto';
 import { Order } from '@prisma/client';
 import { OrderQueryDto } from './dto/update-order.dto';
 import { calculateShippingFee } from '@src/shared/utils/shipping.util';
+import { ProductsService } from '@src/products/products.service';
+import { CartsService } from '@src/carts/carts.service';
 
 @Injectable()
 export class OrdersService {
-  public constructor(private readonly prisma: PrismaService) {}
+  public constructor(
+    private readonly prisma: PrismaService,
+    private readonly productsService: ProductsService,
+    private readonly cartsService: CartsService,
+  ) {}
 
   //유저의 주문목록 조회
   public async getUserOrders(
@@ -66,13 +72,9 @@ export class OrdersService {
 
       // 주문 상품 정보 조회 (가격 포함)
       const productIds = orderData.items.map(item => item.productId);
-      const products = await prisma.product.findMany({
-        where: { id: { in: productIds } },
-        select: { id: true, price: true },
-      });
+      const productPriceMap = await this.productsService.getProductPricesByIds(productIds);
 
       // 상품 ID → 가격 매핑
-      const productPriceMap = new Map(products.map(p => [p.id, p.price]));
 
       let totalAmount = 0;
       const orderItems = orderData.items.map(item => {
@@ -120,10 +122,8 @@ export class OrdersService {
         })),
       });
 
-      // 장바구니 초기화 (해당 유저의 장바구니 삭제)
-      await prisma.cartItem.deleteMany({
-        where: { cart: { userId } },
-      });
+      // 장바구니 초기화 (해당 유저의 장바구니 아이템 삭제)
+      await this.cartsService.clearCartItemsByUserId(userId);
 
       return order;
     });
