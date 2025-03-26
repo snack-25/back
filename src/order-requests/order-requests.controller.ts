@@ -18,6 +18,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery } from 
 import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
 import { CreateOrderRequestDto } from './dto/create-order-request.dto';
 import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
+import { GetOrderRequestsDto } from './dto/getOrderRequest.dto';
 import { OrderRequestsService } from './order-requests.service';
 
 @ApiTags('OrderRequests') // Swagger 그룹 태그 추가
@@ -50,7 +51,7 @@ export class OrderRequestsController {
     description: '정렬 기준 (latest: 최신순, lowPrice: 낮은 가격순, highPrice: 높은 가격순)' 
   })
   @Get()
-  public async getOrderRequests(@Req() req: Request, @Query() query) {
+  public async getOrderRequests(@Req() req: Request,@Query() query: GetOrderRequestsDto) {
     const user = req.user as { id: string; role: UserRole; companyId: string };
 
     if (!user) {
