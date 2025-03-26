@@ -1,0 +1,40 @@
+/// S3 객체
+model S3Object {
+  /// 1. 기본 식별자 (Primary Identifiers)
+  /// Primary Key로 CUID v2를 사용한다 (예: aetqn2jftkh2aqgdko9nf3ps)
+  id String @id @default(cuid(2)) @db.Text
+
+  /// 2. 외래 키 필드 (Foreign Keys)
+
+  /// 3. 필수 필드 (Required Fields)
+  /// 원본 파일명
+  originalFileName String @db.VarChar(255)
+  /// 고유 파일명
+  uniqueFileName String @unique @db.VarChar(100)
+  /// 파일 크기
+  fileSize Int
+  /// 컨텐츠 타입
+  contentType String @db.VarChar(255)
+  /// 이미지 URL
+  imageUrl String @db.VarChar(512)
+  /// 사용 여부
+  isActive Boolean @default(true)
+
+  /// 4. 선택적 필드 (Optional Fields)
+
+  /// 5. 타임스탬프 필드 (Timestamp Fields)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  /// 6. 관계 필드 (Relation Fields)
+
+  /// 7. 역참조 필드 (Reverse Relation Fields)
+
+  /// 8. 테이블명, 유니크 제약, 인덱스 설정 등
+  /// 유효성 검증을 위한 제약사항 추가
+  @@index([originalFileName])
+  @@index([uniqueFileName])
+  @@index([contentType])
+  /// 테이블명을 명시적으로 지정(소문자, 복수형)
+  @@map("s3objects")
+}
