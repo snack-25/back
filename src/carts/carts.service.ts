@@ -1,6 +1,7 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import { Cart, CartItem } from './dto/cart.interface';
+import { calculateShippingFee } from '@src/shared/utils/shipping.util';
 
 @Injectable()
 export class CartsService {
@@ -43,7 +44,11 @@ export class CartsService {
   }
 
   //장바구니 전체조회
-  public async getCartItems(cartId: string): Promise<CartItem[]> {
+  public async getCartItems(cartId: string): Promise<{
+    items: CartItem[];
+    totalAmount: number;
+    shippingFee: number;
+  }> {
     const cart = await this.prisma.cart.findUnique({
       where: { id: cartId },
       include: {
@@ -57,7 +62,18 @@ export class CartsService {
       throw new NotFoundException('장바구니를 찾을 수 없습니다.');
     }
 
-    return cart.cartItems;
+    // 총 금액 계산 (수량 * 상품 가격)
+    const totalAmount = cart.cartItems.reduce((acc, item) => {
+      return acc + item.quantity * item.product.price;
+    }, 0);
+
+    const shippingFee = calculateShippingFee(totalAmount);
+
+    return {
+      items: cart.cartItems,
+      totalAmount,
+      shippingFee,
+    };
   }
 
   //장바구니 수량 변경
