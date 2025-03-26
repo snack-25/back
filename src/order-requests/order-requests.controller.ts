@@ -18,7 +18,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery } from 
 import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
 import { CreateOrderRequestDto } from './dto/create-order-request.dto';
 import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
-import { GetOrderRequestsDto } from './dto/getOrderRequest.dto';
+import { GetOrderRequestsDto, OrderSort } from './dto/getOrderRequest.dto';
 import { OrderRequestsService } from './order-requests.service';
 
 @ApiTags('OrderRequests') // Swagger 그룹 태그 추가
@@ -29,29 +29,29 @@ export class OrderRequestsController {
   @ApiOperation({ summary: '주문 요청 목록 조회' })
   @ApiResponse({ status: 200, description: '주문 요청 목록 반환' })
   @ApiResponse({ status: 401, description: '인증되지 않은 사용자' })
-  @ApiQuery({ 
-    name: 'page', 
-    required: false, 
-    type: Number, 
-    example: 1, 
-    description: '페이지 번호' 
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    example: 1,
+    description: '페이지 번호'
   })
-  @ApiQuery({ 
-    name: 'pageSize', 
-    required: false, 
-    type: Number, 
-    example: 6, 
-    description: '페이지당 항목 개수' 
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    type: Number,
+    example: 6,
+    description: '페이지당 항목 개수'
   })
-  @ApiQuery({ 
-    name: 'sort', 
-    required: false, 
-    enum: ['latest', 'lowPrice', 'highPrice'], 
-    example: 'latest', 
-    description: '정렬 기준 (latest: 최신순, lowPrice: 낮은 가격순, highPrice: 높은 가격순)' 
+  @ApiQuery({
+    name: 'sort',
+    required: false,
+    enum: OrderSort,
+    example: 'latest',
+    description: '정렬 기준 (latest: 최신순, lowPrice: 낮은 가격순, highPrice: 높은 가격순)'
   })
   @Get()
-  public async getOrderRequests(@Req() req: Request,@Query() query: GetOrderRequestsDto) {
+  public async getOrderRequests(@Req() req: Request, @Query() query: GetOrderRequestsDto) {
     const user = req.user as { id: string; role: UserRole; companyId: string };
 
     if (!user) {
@@ -60,14 +60,24 @@ export class OrderRequestsController {
 
     const page = Math.max(1, Number(query.page) || 1); // 최소값 1 보장
     const pageSize = Math.min(50, Math.max(1, Number(query.pageSize) || 10)); // 1~50 사이 값 보장
-    const sort = query.sort || 'latest';
-
+    const sort: OrderSort = query.sort || OrderSort.LATEST;
+    
     if (user.role === UserRole.USER) {
-      return this.orderRequestsService.getUserOrderRequests(user.id, page, pageSize, sort);
+      return this.orderRequestsService.getUserOrderRequests(
+        user.id,
+        page,
+        pageSize,
+        sort
+      );
     }
 
     if (user.role === UserRole.ADMIN || user.role === UserRole.SUPERADMIN) {
-      return this.orderRequestsService.getCompanyOrderRequests(user.companyId, page, pageSize, sort);
+      return this.orderRequestsService.getCompanyOrderRequests(
+        user.companyId,
+        page,
+        pageSize,
+        sort
+      );
     }
 
     throw new UnauthorizedException('인증되지 않은 사용자입니다.');
