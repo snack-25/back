@@ -7,7 +7,7 @@ import path from 'path';
 const prisma = new PrismaClient();
 
 const main = async (): Promise<void> => {
-  console.log('🚀 Seeding database...');
+  console.log('🚀 데이터베이스를 시딩중입니다...');
 
   await prisma.$transaction(async tx => {
     // 1. Company 데이터 추가(createId() 대신 직접 값 할당)
@@ -524,7 +524,7 @@ const main = async (): Promise<void> => {
 
     console.log(`📄 우편번호 데이터 추가 완료:`);
 
-    console.log('🎉 Seeding complete!');
+    console.log('🎉 데이터베이스 시딩이 완료되었습니다!');
   });
 };
 
