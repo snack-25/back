@@ -39,11 +39,8 @@ export class OrderRequestsController {
   })
   @Get()
   public async getOrderRequests(@Req() req: Request, @Query() query) {
-    const user = {
-      id: '11', // 시딩된 user11의 ID
-      role: UserRole.USER, // 시딩된 유저의 역할
-      companyId: 'comp-1', // 시딩된 유저의 회사 ID
-    };
+    const user = req.user as { id: string; role: UserRole; companyId: string };
+
     if (!user) {
       throw new UnauthorizedException('인증되지 않은 사용자입니다.');
     }
