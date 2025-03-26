@@ -1,17 +1,19 @@
-import { createId } from '@paralleldrive/cuid2';
+import { BadRequestException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { hash } from 'argon2';
+import fs from 'fs';
+import path from 'path';
 
 const prisma = new PrismaClient();
 
 const main = async (): Promise<void> => {
-  console.log('🚀 Seeding database...');
+  console.log('🚀 데이터베이스를 시딩중입니다...');
 
   await prisma.$transaction(async tx => {
-    // 1. Company 데이터 추가
-    const companyId = createId();
-    const userId = createId();
-    const cartId = createId();
+    // 1. Company 데이터 추가(createId() 대신 직접 값 할당)
+    const companyId = 'qsch6ljzbigconazqak4jsrr';
+    const userId = 'ffoilrrxetonmxiuwpcu0rqu';
+    const cartId = 'bhcxqfshp43wkskocodegc7x';
 
     const company = await tx.company.upsert({
       where: { id: companyId },
@@ -29,7 +31,17 @@ const main = async (): Promise<void> => {
 
     // 2. 메인 카테고리 추가
     const mainCategories = ['스낵', '음료', '생수', '간편식', '신선식품', '원두커피', '비품'];
-    const mainCategoryIds = mainCategories.map(() => createId());
+    // const mainCategoryIds = mainCategories.map(() => createId());
+    // createId() 대신 직접 값 할당
+    const mainCategoryIds = [
+      'hszid9zo4inokoj1jd7lpc1v',
+      'm30b3i48tfj6bxi8q6adzp7h',
+      'p7v2h0l9p9wwgq6s12o72kek',
+      'cyxofxsgl8j37gs5ljr68xh1',
+      'hvgtemwdz9m65bx1oulm9zit',
+      'o4rwoey2spokdon6s9o3eegx',
+      'vxtcfudytl32zphqp8znq6mk',
+    ];
 
     for (const [index, category] of mainCategories.entries()) {
       await tx.category.upsert({
@@ -108,8 +120,61 @@ const main = async (): Promise<void> => {
         continue;
       }
 
-      for (const subCategory of subCategoryList) {
-        const subCategoryId = createId();
+      // createId() 대신 직접 값 할당
+      const subCategoryIds = [
+        'd8031i1djxm1hh5rpmpv2smc',
+        'd92dkfhdgrzqew1mggqpi85i',
+        'q2u4n7gebefcl5x2c7y13izs',
+        'sqbfvc3xrvd5vyklz1zdek0u',
+        'dui1nl60on4l0oyauc626y91',
+        'er59nyxlspqnwo0zedqw4jb8',
+        'xc35phj5rxh4xwoyhpo3s22m',
+        'vnpbw49bk4zmg58jkqhkpy47',
+        'dms9un0uacysrr3bno0qrxqv',
+        'yojfdrj6g9vuc3okqy2khf7w',
+        'wfbn9rbjh5b3gak5vhxzbvsy',
+        'jvfkhtspnr4gvmtcue6xtjxf',
+        's3y6cgoyqmrll7e26re0r8t7',
+        'ddi7k2g15ae3ehhpeuz3vhp4',
+        'ydjk4xaq37gmm7aira2oshay',
+        'l359supopxue20xs21o689vb',
+        'kmlpfkmy0q2hqqyrf0m2zlj5',
+        'a96ulv2sn5odt70go375ktyg',
+        'k4jyuy7bspctpfe22fjbod9p',
+        'omqlmk2ixhihq7z8dczja2xn',
+        'jb13q0meuc71zwahw6dnmy3k',
+        'c7tg5vx2w9abx59qrrc5jl1h',
+        'si5qvq6vsqptcju91ur81w83',
+        'az2o6o95cgxi5qsygg8c9p5h',
+        'mjgygd3y3eiimd0ntot1bye4',
+        's27a1zkp5wsg59i351h5bp8o',
+        'c0zteiih7pxxspbq2zplkann',
+        'j1nnyu46ujhnj3ojq7uyoqat',
+        'j3vw47ajzq5oglc36p5j56cq',
+        'y3en4uxvcfrnp397ojzt4hfx',
+        'jg2dsmicc0tu9gu382g2quz2',
+        'nwyouqivjjpmkl8lv7nrbkrl',
+        'v6fr3fvgekxlik90tmap28rj',
+        'h7ess07as8obzrjcad55vjs5',
+        'dv94mxd5wo08gx29lfvub0km',
+        'xgrgbkb6uvbuu8jwec7sbc2b',
+        'exepgqlihw3nyiok95qn3cdx',
+        'x5y3larpz80szw057mjtk046',
+        'hnnz60j9vc5axx6pr34mkbvv',
+        'qypndg50wp8ntv6vvukv4hrg',
+        'dhwiahkj21yb0z4mr8zw6i9u',
+        'p39pzponrt99da2y0u4e05j6',
+        'bv6sxcr1a3ie7udxvpmrdpcb',
+        'kpvjyhn71phdqx00brbky0g7',
+        'ysux3yaep1960qmla0ebbb2v',
+        'p2xn9oepkbr77t1rc8cd5g8j',
+        'wxmdbjn1dh40bp9qrvto1ci2',
+        'umbzcgnuaju4wopjktmvwdz1',
+        'iymqun35enmpzd53bcmbbpc6',
+      ];
+      for (const [index, subCategory] of subCategoryList.entries()) {
+        // const subCategoryId = createId();
+        const subCategoryId = subCategoryIds[index];
         categoryIdMap.set(subCategory, subCategoryId);
 
         await tx.category.upsert({
@@ -159,7 +224,20 @@ const main = async (): Promise<void> => {
 
     // 6.상품 추가
 
-    const productIds = Array.from({ length: 10 }, () => createId());
+    // const productIds = Array.from({ length: 10 }, () => createId());
+    // createId() 대신 직접 값 할당
+    const productIds = [
+      'qbrpeogbp7bwzk57x2xed0v3',
+      'awyhmhs90zk403rzj1eyi158',
+      'nw02dbgfebqeqhrb8hnzvqzu',
+      'qohyrtyebwvxegjrum5akyys',
+      's12us3o662tyz6zqobgmadih',
+      'p29ya4n0j23meovjmoscabi0',
+      't5zkcght7zox4o8x7ujcsp7r',
+      'a3lhkbvzo8868yot73ofqu3s',
+      'ctwtlw3e6t7xebhogrii3rwe',
+      'nerlv4ugv3ng3do54zepa0ia',
+    ];
     const products = [
       {
         id: productIds[0],
@@ -266,7 +344,14 @@ const main = async (): Promise<void> => {
     });
 
     // 7. 주문 요청 추가 (User ID 11)
-    const orderRequestIds = Array.from({ length: 3 }, () => createId());
+
+    // const orderRequestIds = Array.from({ length: 3 }, () => createId());
+    // createId() 대신 직접 값 할당
+    const orderRequestIds = [
+      'nz2p1larko8dcbyr7ej08v98',
+      'xp569x8t45rbax2m2pqhqsnl',
+      'uc4os87dbme8k5gom16lqb6u',
+    ];
     await tx.orderRequest.createMany({
       data: [
         {
@@ -301,7 +386,16 @@ const main = async (): Promise<void> => {
     });
 
     // 8. 주문 요청 아이템 추가 (orderRequestItems.ts에서 import한 데이터 사용)
-    const orderRequestItemsIds = Array.from({ length: 6 }, () => createId());
+    // const orderRequestItemsIds = Array.from({ length: 6 }, () => createId());
+    // createId() 대신 직접 값 할당
+    const orderRequestItemsIds = [
+      'ux1idk821b5j1qmv6b30ncko',
+      'fugejwfmuo43d7po46psreto',
+      'vsqr28wsy0oxz1fzstc9s8l1',
+      'iurp3qr1rffhzj9lan7sbu6c',
+      'dirjv4wqu8fhb6up8n0frnzl',
+      'hfe0sszybej58jdqfmqtnpgi',
+    ];
     const orderRequestItems = [
       {
         id: orderRequestItemsIds[0],
@@ -384,7 +478,53 @@ const main = async (): Promise<void> => {
       });
     }
 
-    console.log('🎉 Seeding complete!');
+    // 10. 우편번호(Zipcode) 추가(tsv로 불러오기)
+    // FeeType은 추후 적절한 위치로 옮겨서 단일 진실 공급원(Single Source of Truth) 준수
+    type FeeType = 'NOT_APPLICABLE' | 'JEJU' | 'ISOLATED';
+    // 우편번호 데이터 파일 경로(seed.ts와 같은 경로)
+    const filePath = path.join(__dirname, 'zipcodes.tsv');
+
+    // 파일 존재 여부 확인
+    if (!fs.existsSync(filePath)) {
+      console.error(`❌ zipcodes.tsv 파일을 찾을 수 없습니다: ${filePath}`);
+      return;
+    }
+    const zipCodesFile = fs.readFileSync(filePath, 'utf-8');
+
+    const lines = zipCodesFile.split('\n').slice(1).filter(Boolean); // 첫 줄(헤더) 제거하고 빈 줄 필터링
+    const zipcodes = lines
+      .map(line => {
+        const [postalCode, feeType, isActive, juso] = line.split('\t');
+
+        // 한 줄 테스트
+        console.log(
+          `postalCode: ${postalCode}, feeType: ${feeType}, isActive: ${isActive}, juso: ${juso}`,
+        );
+        if (!postalCode || !feeType || !isActive) {
+          console.error(`❌ 잘못된 데이터 형식: ${line}`);
+          throw new BadRequestException(`❌ 잘못된 데이터 형식: ${line}`);
+        }
+
+        return {
+          postalCode: String(postalCode.trim()), // 숫자로 인식되지 않도록 문자열로 변환(0으로 시작하는 경우 앞글자가 없어지면 안되므로)
+          feeType: feeType.trim() as FeeType, // ENUM 변환(제주, 도서산간, 이외)
+          isActive: isActive.trim().toLowerCase() === 'true', // 현재 활성화 여부
+          juso: juso.trim(), // 주소 저장
+        };
+      })
+      .filter((zipcode): zipcode is NonNullable<typeof zipcode> => zipcode !== null);
+
+    console.log(`📄 TSV 데이터: ${zipcodes.length}개의 데이터 로드 완료`);
+
+    // 우편번호 데이터 추가(도서산간지역 배송비 추가 관련)
+    await tx.zipcode.createMany({
+      data: zipcodes,
+      skipDuplicates: true,
+    });
+
+    console.log(`📄 우편번호 데이터 추가 완료:`);
+
+    console.log('🎉 데이터베이스 시딩이 완료되었습니다!');
   });
 };
 

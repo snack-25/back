@@ -17,6 +17,9 @@ model Company {
   /// 5. 타임스탬프 필드 (Timestamp Fields)
   createdAt     DateTime       @default(now()) @db.Timestamptz(6)
   updatedAt     DateTime       @updatedAt @db.Timestamptz(6)
+  /// 6. 관계 필드 (Relation Fields)
+
+  /// 7. 역참조 필드 (Reverse Relation Fields)
   budgets       Budget[]
   categories    Category[]
   invitations   Invitation[]

@@ -1,15 +1,25 @@
-import { Controller, Body, Post, Get, Req, Res, UseGuards } from '@nestjs/common';
-import { AuthService } from './auth.service';
 import {
-  SignUpRequestDto,
-  SignInRequestDto,
-  TokenResponseDto,
-  InvitationCodeDto,
-} from './dto/auth.dto';
-import { Request, Response } from 'express';
-import { AuthGuard } from './auth.guard';
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiResponse } from '@nestjs/swagger';
 import { type Invitation } from '@prisma/client';
+import { Request, Response } from 'express';
+import { AuthGuard } from './auth.guard';
+import { AuthService } from './auth.service';
+import {
+  InvitationCodeDto,
+  SignInRequestDto,
+  SignUpRequestDto,
+  TokenResponseDto,
+} from './dto/auth.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -18,9 +28,22 @@ export class AuthController {
   // TODO: /auth/signup (POST) [최고관리자] 회원가입
 
   @Post('signup')
+  @ApiResponse({
+    status: 201,
+    description: '회원가입이 완료되었습니다.',
+  })
+  @ApiResponse({
+    status: 409,
+    description: '이미 사용 중인 이메일입니다.',
+  })
+  @ApiResponse({
+    status: 500,
+    description: '회원가입을 진행하는 중 오류가 발생했습니다.',
+  })
+  @HttpCode(HttpStatus.CREATED)
   public async signup(@Body() dto: SignUpRequestDto, @Res() res: Response): Promise<void> {
     const result = await this.authService.signup(dto);
-    res.status(200).json({ msg: '회원가입에 성공했습니다.', data: result });
+    res.status(201).json({ msg: '회원가입에 성공했습니다.', data: result });
   }
 
   @Post('signup/invitationcode')
@@ -84,7 +107,7 @@ export class AuthController {
       httpOnly: true, // XSS 공격 방지
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict', // CORS 문제 방지
-      maxAge: 60 * 1000 * 60 * 24, // 24시간 (24시간 × 60분 × 60초 × 1000밀리초)
+      maxAge: 1000 * 60 * 60 * 24, // 24시간 (24시간 × 60분 × 60초 × 1000밀리초)
     });
 
     res.cookie('refreshToken', token.refreshToken, {
