@@ -34,9 +34,11 @@
     "postinstall": "sh .husky/check-pnpm.sh",
     "prisma:generate:local": "dotenv -e .env.local -- npx prisma generate",
     "prisma:deploy:local": "dotenv -e .env.local -- npx prisma migrate deploy",
+    "prisma:reset:local": "dotenv -e .env.local -- npx prisma migrate reset",
     "prisma:seed:local": "dotenv -e .env.local -- ts-node prisma/seed.ts",
     "prisma:generate:prod": "dotenv -e .env.production -- npx prisma generate",
     "prisma:deploy:prod": "dotenv -e .env.production -- npx prisma migrate deploy",
+    "prisma:reset:prod": "dotenv -e .env.production -- npx prisma migrate reset",
     "prisma:seed:prod": "dotenv -e .env.production -- ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts",
     "db:seed": "ts-node prisma/seed.ts"
   },
@@ -49,6 +51,8 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.772.0",
     "@aws-sdk/lib-storage": "^3.772.0",
+    "@aws-sdk/s3-request-presigner": "3.774.0",
+    "@aws-sdk/types": "3.775.0",
     "@nestjs/common": "^11.0.12",
     "@nestjs/config": "^4.0.1",
     "@nestjs/core": "^11.0.12",
@@ -67,7 +71,6 @@
     "date-fns": "4.1.0",
     "dotenv-cli": "8.0.0",
     "multer": "1.4.5-lts.2",
-    "multer-s3": "^3.0.1",
     "nodemailer": "6.10.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
