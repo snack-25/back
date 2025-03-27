@@ -49,7 +49,7 @@ export class OrderRequestsService {
       },
     });
   }
-  
+
   // ✅ 관리자(admin) & 최고 관리자(superadmin)의 회사 구매 요청 내역 조회 (로그인한 사용자의 `companyId` 기준)
   async getCompanyOrderRequests(companyId: string, page: number, pageSize: number, sort: string) {
     return this.prisma.orderRequest.findMany({
