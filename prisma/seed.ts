@@ -1,6 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
-import { hash } from 'argon2';
 import fs from 'fs';
 import path from 'path';
 
@@ -218,7 +217,7 @@ const main = async (): Promise<void> => {
             id: userId,
             companyId: companyId,
             email: 'user11@example.com',
-            password: await hash('hashedpassword11'),
+            password: process.env.SEED_USER_HASHED_PASSWORD as string,
             name: '유저11호',
             role: 'USER',
             createdAt: new Date(),

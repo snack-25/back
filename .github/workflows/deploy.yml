@@ -134,6 +134,22 @@ jobs:
             echo "JWT_REFRESH_EXPIRES_IN is not set"
             exit 1
           fi
+          if [ -z "${{ secrets.NODE_MAILER_ID }}" ]; then
+            echo "NODE_MAILER_ID is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.NODE_MAILER_PW }}" ]; then
+            echo "NODE_MAILER_PW is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FRONTEND_HOST }}" ]; then
+            echo "FRONTEND_HOST is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SEED_USER_HASHED_PASSWORD }}" ]; then
+            echo "SEED_USER_HASHED_PASSWORD is not set"
+            exit 1
+          fi
           if [ -z "${{ secrets.GPG_PASSPHRASE }}" ]; then
             echo "GPG_PASSPHRASE is not set"
             exit 1
@@ -162,6 +178,7 @@ jobs:
           NODE_MAILER_ID: ${{ secrets.NODE_MAILER_ID }}
           NODE_MAILER_PW: ${{ secrets.NODE_MAILER_PW }}
           FRONTEND_HOST: ${{ secrets.FRONTEND_HOST }}
+          SEED_USER_HASHED_PASSWORD: ${{ secrets.SEED_USER_HASHED_PASSWORD }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           GIT_COMMIT_SHA: ${{ github.sha }}
         run: |
@@ -200,6 +217,8 @@ jobs:
           echo "::add-mask::NODE_MAILER_PW=${NODE_MAILER_PW}"
           echo "::add-mask::${FRONTEND_HOST}"
           echo "::add-mask::FRONTEND_HOST=${FRONTEND_HOST}"
+          echo "::add-mask::${SEED_USER_HASHED_PASSWORD}"
+          echo "::add-mask::SEED_USER_HASHED_PASSWORD=${SEED_USER_HASHED_PASSWORD}"
           echo "::add-mask::${GPG_PASSPHRASE}"
           echo "::add-mask::GPG_PASSPHRASE=${GPG_PASSPHRASE}"
 
@@ -219,7 +238,7 @@ jobs:
           echo "JWT_REFRESH_EXPIRES_IN=${JWT_REFRESH_EXPIRES_IN}" >> .env
           echo "DEPLOY_VERIFY_KEY=${DEPLOY_VERIFY_KEY}" >> .env
           echo "GIT_COMMIT_SHA=${GIT_COMMIT_SHA}" >> .env
-
+          echo "SEED_USER_HASHED_PASSWORD=${SEED_USER_HASHED_PASSWORD}" >> .env
           # 파일 암호화 및 전송
           cat .env | gpg --symmetric --batch --passphrase "${{ secrets.GPG_PASSPHRASE }}" > .env.gpg
           scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} .env.gpg ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
@@ -268,6 +287,18 @@ jobs:
           DEPLOY_VERIFY_KEY: ${{ secrets.DEPLOY_VERIFY_KEY }}
           GIT_COMMIT_SHA: ${{ github.sha }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          FRONTEND_HOST: ${{ secrets.FRONTEND_HOST }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_S3_REGION: ${{ secrets.AWS_S3_REGION }}
+          AWS_S3_BUCKET_NAME: ${{ secrets.AWS_S3_BUCKET_NAME }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_EXPIRES_IN: ${{ secrets.JWT_EXPIRES_IN }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          JWT_REFRESH_EXPIRES_IN: ${{ secrets.JWT_REFRESH_EXPIRES_IN }}
+          NODE_MAILER_ID: ${{ secrets.NODE_MAILER_ID }}
+          NODE_MAILER_PW: ${{ secrets.NODE_MAILER_PW }}
+          SEED_USER_HASHED_PASSWORD: ${{ secrets.SEED_USER_HASHED_PASSWORD }}
         run: |
           # 민감한 정보 마스킹
           echo "::add-mask::${EC2_KEY_PAIR_TYPE}"
@@ -288,7 +319,7 @@ jobs:
           echo "::add-mask::${JWT_REFRESH_EXPIRES_IN}"
           echo "::add-mask::${NODE_MAILER_ID}"
           echo "::add-mask::${NODE_MAILER_PW}"
-
+          echo "::add-mask::${SEED_USER_HASHED_PASSWORD}"
           echo "EC2로 배포 시작"
 
           # SSH 옵션 설정
