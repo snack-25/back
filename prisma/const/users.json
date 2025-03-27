@@ -1,0 +1,82 @@
+[
+  {
+    "id": "g7ygdoqelhbap4spcau95sbd",
+    "companyId": "qsch6ljzbigconazqak4jsrr",
+    "email": "user1@snacktopia.co",
+    "password": "$argon2id$v=19$m=65536,t=3,p=4$2Re3+zrDmvImF4BvwNvXXg$dKrSMI5qSBRS6YdLcFm86uwxv54kWh00fZPWbcV2P7Y",
+    "name": "Juan García",
+    "role": "USER",
+    "createdAt": "2024-01-15T09:30:00.000Z",
+    "updatedAt": "2025-03-15T14:45:00.000Z"
+  },
+  {
+    "id": "pl1e9af1h4iumjnajpwi1703",
+    "companyId": "qsch6ljzbigconazqak4jsrr",
+    "email": "user2@snacktopia.co",
+    "password": "$argon2id$v=19$m=65536,t=3,p=4$k7EITwp12jvWB9kl8IFPtg$jimB5sHcBlbVdC/+jGbHhFPcDlIty0Bft2ddzrvqSqw",
+    "name": "محمد علي",
+    "role": "USER",
+    "createdAt": "2025-03-15T09:30:00.000Z",
+    "updatedAt": "2025-03-15T14:45:00.000Z"
+  },
+  {
+    "id": "fkx9ee0iu3fz52gnrke1q2a6",
+    "companyId": "qsch6ljzbigconazqak4jsrr",
+    "email": "user3@snacktopia.co",
+    "password": "$argon2id$v=19$m=65536,t=3,p=4$nB441JJtSov9/g1s/uEU0Q$vhg5ongfNucadLagIZZYL4a6CnPS3CECH8a6mAmFiMo",
+    "name": "김민수",
+    "role": "USER",
+    "createdAt": "2024-02-20T14:00:00.000Z",
+    "updatedAt": "2025-03-18T16:30:00.000Z"
+  },
+  {
+    "id": "dutdmwicb4wlq28uk3sfvrm5",
+    "companyId": "qsch6ljzbigconazqak4jsrr",
+    "email": "user4@snacktopia.co",
+    "password": "$argon2id$v=19$m=65536,t=3,p=4$wyWdpp96NNZPUjjI8n6IOw$3KNbHnK3vZ2Vt8CW8NGkY82ZUYHVZUq9HcD6g0TOWVg",
+    "name": "Aisha Patel",
+    "role": "USER",
+    "createdAt": "2024-03-05T11:45:00.000Z",
+    "updatedAt": "2025-03-22T13:15:00.000Z"
+  },
+  {
+    "id": "cftmhyivb5in8tck9b77gthx",
+    "companyId": "qsch6ljzbigconazqak4jsrr",
+    "email": "user5@snacktopia.co",
+    "password": "$argon2id$v=19$m=65536,t=3,p=4$hgJPn1E69PeD6fEjNpof7A$Bvef+tPmWENSrQE5gsTUl6/lWqmy/Mhj99LyItqEwu4",
+    "name": "Fatima Diop",
+    "role": "USER",
+    "createdAt": "2024-04-10T13:30:00.000Z",
+    "updatedAt": "2025-03-25T15:45:00.000Z"
+  },
+  {
+    "id": "joa74jchflu84qdi1qjunn96",
+    "companyId": "qsch6ljzbigconazqak4jsrr",
+    "email": "admin1@snacktopia.co",
+    "password": "$argon2id$v=19$m=65536,t=3,p=4$RaJ1bj1Kl/FNnpvvvNK1gA$O2Z6HlYd81uXwMn7jElcm4Nrg1HfDhoDPOSZ4iiW8rY",
+    "name": "김민수",
+    "role": "ADMIN",
+    "createdAt": "2024-06-22T11:15:00.000Z",
+    "updatedAt": "2025-03-20T10:30:00.000Z"
+  },
+  {
+    "id": "rol83wd11avp6on3ny0rf7ds",
+    "companyId": "qsch6ljzbigconazqak4jsrr",
+    "email": "admin2@snacktopia.co",
+    "password": "$argon2id$v=19$m=65536,t=3,p=4$Koe1o0O0vpA8LeGQ2ctZmQ$uRM3IhiEEhIVpPx4/MS80768Tn42NdIVgxu9qeeBtdA",
+    "name": "Maria Sánchez",
+    "role": "ADMIN",
+    "createdAt": "2024-07-15T10:00:00.000Z",
+    "updatedAt": "2025-03-21T14:30:00.000Z"
+  },
+  {
+    "id": "p9ri9lsfyxy4k4juq9nw2jpa",
+    "companyId": "qsch6ljzbigconazqak4jsrr",
+    "email": "superadmin1@snacktopia.co",
+    "password": "$argon2id$v=19$m=65536,t=3,p=4$zdiRYLflsBBUWvzgIQ5cmQ$MSAhigt+R+CL1T/lkV4THZQcPRscD/ycOGZlGqVN/cE",
+    "name": "素菲陈",
+    "role": "SUPERADMIN",
+    "createdAt": "2023-12-05T16:45:00.000Z",
+    "updatedAt": "2025-03-27T07:37:48.000Z"
+  }
+]
