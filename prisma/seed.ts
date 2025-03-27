@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { hash } from 'argon2';
 import fs from 'fs';
@@ -7,7 +7,7 @@ import path from 'path';
 const prisma = new PrismaClient();
 
 const main = async (): Promise<void> => {
-  console.log('🚀 데이터베이스를 시딩중입니다...');
+  Logger.log('🚀 데이터베이스를 시딩중입니다...');
 
   await prisma.$transaction(async tx => {
     // 1. Company 데이터 추가(createId() 대신 직접 값 할당)
@@ -497,11 +497,11 @@ const main = async (): Promise<void> => {
         const [postalCode, feeType, isActive, juso] = line.split('\t');
 
         // 한 줄 테스트
-        console.log(
+        Logger.log(
           `postalCode: ${postalCode}, feeType: ${feeType}, isActive: ${isActive}, juso: ${juso}`,
         );
         if (!postalCode || !feeType || !isActive) {
-          console.error(`❌ 잘못된 데이터 형식: ${line}`);
+          Logger.error(`❌ 잘못된 데이터 형식: ${line}`);
           throw new BadRequestException(`❌ 잘못된 데이터 형식: ${line}`);
         }
 
@@ -514,7 +514,7 @@ const main = async (): Promise<void> => {
       })
       .filter((zipcode): zipcode is NonNullable<typeof zipcode> => zipcode !== null);
 
-    console.log(`📄 TSV 데이터: ${zipcodes.length}개의 데이터 로드 완료`);
+    Logger.log(`📄 TSV 데이터: ${zipcodes.length}개의 데이터 로드 완료`);
 
     // 우편번호 데이터 추가(도서산간지역 배송비 추가 관련)
     await tx.zipcode.createMany({
@@ -522,15 +522,15 @@ const main = async (): Promise<void> => {
       skipDuplicates: true,
     });
 
-    console.log(`📄 우편번호 데이터 추가 완료:`);
+    Logger.log(`📄 우편번호 데이터 추가 완료`);
 
-    console.log('🎉 데이터베이스 시딩이 완료되었습니다!');
+    Logger.log('🎉 데이터베이스 시딩이 완료되었습니다!');
   });
 };
 
 main()
   .catch(e => {
-    console.error('❌ Seeding failed:', e);
+    Logger.error('❌ Seeding failed:', e);
     process.exit(1);
   })
   .finally(() => {
