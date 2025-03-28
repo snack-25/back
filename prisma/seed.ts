@@ -86,7 +86,7 @@ const main = async (): Promise<void> => {
         update: {},
         create: {
           id: 'bhcxqfshp43wkskocodegc7x',
-          userId: users[4]?.id || '',
+          userId: users[4]?.id ?? (() => { throw new BadRequestException('사용자 ID가 존재하지 않습니다.'); })(),
           createdAt: new Date(),
           updatedAt: new Date(),
         },
