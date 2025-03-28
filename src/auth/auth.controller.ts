@@ -7,6 +7,7 @@ import {
   Post,
   Req,
   Res,
+  Param,
   UseGuards,
 } from '@nestjs/common';
 import { ApiResponse } from '@nestjs/swagger';
@@ -54,17 +55,24 @@ export class AuthController {
 
   @Post('signup/invite/:token')
   public async signupToken(
+    @Param('token') token: string,
     @Body() body: { password: string },
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    await this.authService.getinfo({ token: req.params.token });
+    console.log('body', body);
+    console.log('token', token);
+    const user = await this.authService.getinfo({ token: req.params.token });
+    if (!user) {
+      res.status(400).json({ msg: '유효하지 않은 초대 토큰입니다.' });
+    }
     const password = body.password;
     const result: string = await this.authService.invitationSignup({
       password,
-      token: req.params.token,
+      token,
     });
-    res.status(200).json({ msg: result });
+    console.log('result', result);
+    res.status(200).json({ msg: '회원가입에 성공했습니다', data: result });
   }
 
   @Post('login')

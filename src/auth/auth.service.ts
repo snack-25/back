@@ -51,10 +51,10 @@ export class AuthService {
     }
   }
 
-  public async invitationSignup(dto: InvitationSignupDto): Promise<string> {
-    const { token, password } = dto;
+  public async invitationSignup(dto: InvitationSignupDto): Promise<SignUpResponseDto | null> {
     try {
-      // 초대 토큰을 받아서 회원정보 획득
+      // 1. 초대 토큰을 받아서 회원정보 획득
+      const { token, password } = dto;
       const invitation = await this.prisma.invitation.findUnique({
         where: { token },
         select: {
@@ -64,50 +64,72 @@ export class AuthService {
           company: {
             select: {
               id: true,
+              name: true,
             },
           },
         },
       });
+
+      console.log('invitation', invitation);
+
+      // 2. 초대 코드가 유효하지 않으면 예외 처리
       if (!invitation) {
         throw new BadRequestException('초대 코드가 유효하지 않습니다.');
       }
-      const { email, name, role, company } = invitation;
-      // const update = await this.prisma.invitation.updateManyAndReturn({
-      //   where: { token },
-      //   data: {
-      //     status: 'ACCEPTED',
-      //   },
-      //   include: {
-      //     company: {
-      //       select: {
-      //         id: true,
-      //       },
-      //     },
-      //   },
-      //   select: {
-      //     email: true,
-      //     name: true,
-      //     role: true,
-      //     company: {
-      //       select: {
-      //         id: true,
-      //       },
-      //     },
-      //   },
-      // });
-      // if (!update[0]) return 'update 실패';
-      // const { email, name, role, company } = update[0];
-      // this.usersService.validatePassword(password);
+
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: invitation.email },
+      });
+      if (existingUser) {
+        throw new BadRequestException('이미 가입된 이메일입니다.');
+      }
+
+      // 3. 비밀번호 해싱
       const hashedPassword: string = await argon2.hash(password);
+
+      // 4. 유저 생성
       const userAdd = await this.prisma.user.create({
-        data: { email, name, role, password: hashedPassword, companyId: company.id },
+        data: {
+          email: invitation.email, // 초대 정보에서 이메일 가져오기
+          name: invitation.name, // 초대 정보에서 이름 가져오기
+          role: invitation.role, // 초대 정보에서 직급 가져오기
+          password: hashedPassword,
+          companyId: invitation.company.id, // 초대 정보에서 회사 아이디 가져오기
+        },
       });
 
-      if (userAdd) return '회원가입 성공';
-      return '회원가입 실패';
+      if (!userAdd) {
+        throw new BadRequestException('회원가입에 실패하였습니다');
+      }
+
+      // 5. 초대 상태를 ACCEPTED로 변경
+      const updateInvitation = await this.prisma.invitation.update({
+        where: { token },
+        data: {
+          status: 'ACCEPTED', // 상태를 ACCEPTED로 변경
+        },
+      });
+
+      if (!updateInvitation) {
+        throw new BadRequestException('초대 코드 상태 업데이트 실패');
+      }
+
+      // 6. 회원가입 성공, 유저 정보 프론트로 반환
+      const response = {
+        name: invitation.name,
+        company: invitation.company.name,
+        companyId: invitation.company.id,
+        email: invitation.email,
+        role: invitation.role,
+      };
+
+      console.log('response', response);
+
+      return response; // 프론트엔드로 유저 정보 반환
     } catch (err) {
       console.error(err);
-      return '회원가입 실패';
+      console.error('회원가입 실패');
+      return null;
     }
   }
 
