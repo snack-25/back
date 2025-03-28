@@ -25,8 +25,8 @@ jobs:
           version: '10'
           run_install: false
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install dependencies # 의존성 설치(dev 의존성 제외, pre/post 스크립트 실행 제외)
+        run: pnpm install --frozen-lockfile --prod --ignore-scripts
 
       - name: Set SHELL environment variable # SHELL 환경 변수 설정
         run: |
@@ -271,11 +271,9 @@ jobs:
           if [ -d dist ] || [ -d node_modules ]; then \
             backup_file="backup-$(date +%Y%m%d_%H%M%S).tar.gz" && \
             echo "Creating backup: $backup_file" && \
-            tar -czf "$backup_file" dist node_modules && \
-            echo "최신 백업 파일을 제외한 모든 backup-*.tar.gz 파일을 삭제합니다." && \
-            find . -name "backup-*.tar.gz" -type f -not -name "$backup_file" -delete; \
+            tar -czf "$backup_file" dist node_modules || true; \
           else \
-            echo "처음 배포하셨군요! 백업할 파일이 없습니다."; \
+            echo "No existing deployment to backup"; \
           fi'
 
       - name: Deploy to EC2 # EC2로 배포
@@ -445,7 +443,7 @@ jobs:
 
           # 의존성 설치
           echo "[INFO] Installing dependencies..."
-          if ! pnpm install --ignore-scripts; then
+          if ! pnpm install --frozen-lockfile --prod --ignore-scripts; then
             echo "❌ 의존성 설치 실패"
             exit 1
           fi
