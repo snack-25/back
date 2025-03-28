@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsUUID, IsString, IsInt, Min, IsArray, ValidateNested, IsDate } from 'class-validator';
-import { Type } from 'class-transformer';
 import { OrderRequestStatus } from '@prisma/client';
+import { Type } from 'class-transformer';
+import { IsArray, IsInt, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
 
 class OrderRequestItemDto {
   @ApiProperty({ description: '상품 ID', example: 'product-uuid-1234' })

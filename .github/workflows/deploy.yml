@@ -102,6 +102,54 @@ jobs:
             echo "DEPLOY_VERIFY_KEY is not set"
             exit 1
           fi
+          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+            echo "AWS_ACCESS_KEY_ID is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            echo "AWS_SECRET_ACCESS_KEY is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.AWS_S3_REGION }}" ]; then
+            echo "AWS_S3_REGION is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.AWS_S3_BUCKET_NAME }}" ]; then
+            echo "AWS_S3_BUCKET_NAME is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.JWT_SECRET }}" ]; then
+            echo "JWT_SECRET is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.JWT_EXPIRES_IN }}" ]; then
+            echo "JWT_EXPIRES_IN is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.JWT_REFRESH_SECRET }}" ]; then
+            echo "JWT_REFRESH_SECRET is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.JWT_REFRESH_EXPIRES_IN }}" ]; then
+            echo "JWT_REFRESH_EXPIRES_IN is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.NODE_MAILER_ID }}" ]; then
+            echo "NODE_MAILER_ID is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.NODE_MAILER_PW }}" ]; then
+            echo "NODE_MAILER_PW is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FRONTEND_HOST }}" ]; then
+            echo "FRONTEND_HOST is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SEED_USER_HASHED_PASSWORD }}" ]; then
+            echo "SEED_USER_HASHED_PASSWORD is not set"
+            exit 1
+          fi
           if [ -z "${{ secrets.GPG_PASSPHRASE }}" ]; then
             echo "GPG_PASSPHRASE is not set"
             exit 1
@@ -119,6 +167,18 @@ jobs:
           EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
           DEPLOY_VERIFY_KEY: ${{ secrets.DEPLOY_VERIFY_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_S3_REGION: ${{ secrets.AWS_S3_REGION }}
+          AWS_S3_BUCKET_NAME: ${{ secrets.AWS_S3_BUCKET_NAME }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_EXPIRES_IN: ${{ secrets.JWT_EXPIRES_IN }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          JWT_REFRESH_EXPIRES_IN: ${{ secrets.JWT_REFRESH_EXPIRES_IN }}
+          NODE_MAILER_ID: ${{ secrets.NODE_MAILER_ID }}
+          NODE_MAILER_PW: ${{ secrets.NODE_MAILER_PW }}
+          FRONTEND_HOST: ${{ secrets.FRONTEND_HOST }}
+          SEED_USER_HASHED_PASSWORD: ${{ secrets.SEED_USER_HASHED_PASSWORD }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           GIT_COMMIT_SHA: ${{ github.sha }}
         run: |
@@ -135,15 +195,50 @@ jobs:
           echo "::add-mask::EC2_HOST=${EC2_HOST}"
           echo "::add-mask::${DEPLOY_VERIFY_KEY}"
           echo "::add-mask::DEPLOY_VERIFY_KEY=${DEPLOY_VERIFY_KEY}"
+          echo "::add-mask::${AWS_ACCESS_KEY_ID}"
+          echo "::add-mask::AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}"
+          echo "::add-mask::${AWS_SECRET_ACCESS_KEY}"
+          echo "::add-mask::AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}"
+          echo "::add-mask::${AWS_S3_REGION}"
+          echo "::add-mask::AWS_S3_REGION=${AWS_S3_REGION}"
+          echo "::add-mask::${AWS_S3_BUCKET_NAME}"
+          echo "::add-mask::AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME}"
+          echo "::add-mask::${JWT_SECRET}"
+          echo "::add-mask::JWT_SECRET=${JWT_SECRET}"
+          echo "::add-mask::${JWT_EXPIRES_IN}"
+          echo "::add-mask::JWT_EXPIRES_IN=${JWT_EXPIRES_IN}"
+          echo "::add-mask::${JWT_REFRESH_SECRET}"
+          echo "::add-mask::JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}"
+          echo "::add-mask::${JWT_REFRESH_EXPIRES_IN}"
+          echo "::add-mask::JWT_REFRESH_EXPIRES_IN=${JWT_REFRESH_EXPIRES_IN}"
+          echo "::add-mask::${NODE_MAILER_ID}"
+          echo "::add-mask::NODE_MAILER_ID=${NODE_MAILER_ID}"
+          echo "::add-mask::${NODE_MAILER_PW}"
+          echo "::add-mask::NODE_MAILER_PW=${NODE_MAILER_PW}"
+          echo "::add-mask::${FRONTEND_HOST}"
+          echo "::add-mask::FRONTEND_HOST=${FRONTEND_HOST}"
+          echo "::add-mask::${SEED_USER_HASHED_PASSWORD}"
+          echo "::add-mask::SEED_USER_HASHED_PASSWORD=${SEED_USER_HASHED_PASSWORD}"
           echo "::add-mask::${GPG_PASSPHRASE}"
           echo "::add-mask::GPG_PASSPHRASE=${GPG_PASSPHRASE}"
 
           # .env 파일 생성
           echo "NODE_ENV=${NODE_ENV}" > .env
           echo "DATABASE_URL=${DATABASE_URL}" >> .env
+          echo "NODE_MAILER_ID=${NODE_MAILER_ID}" >> .env
+          echo "NODE_MAILER_PW=${NODE_MAILER_PW}" >> .env
+          echo "FRONTEND_HOST=${FRONTEND_HOST}" >> .env
+          echo "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}" >> .env
+          echo "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}" >> .env
+          echo "AWS_S3_REGION=${AWS_S3_REGION}" >> .env
+          echo "AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME}" >> .env
+          echo "JWT_SECRET=${JWT_SECRET}" >> .env
+          echo "JWT_EXPIRES_IN=${JWT_EXPIRES_IN}" >> .env
+          echo "JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}" >> .env
+          echo "JWT_REFRESH_EXPIRES_IN=${JWT_REFRESH_EXPIRES_IN}" >> .env
           echo "DEPLOY_VERIFY_KEY=${DEPLOY_VERIFY_KEY}" >> .env
           echo "GIT_COMMIT_SHA=${GIT_COMMIT_SHA}" >> .env
-
+          echo "SEED_USER_HASHED_PASSWORD=${SEED_USER_HASHED_PASSWORD}" >> .env
           # 파일 암호화 및 전송
           cat .env | gpg --symmetric --batch --passphrase "${{ secrets.GPG_PASSPHRASE }}" > .env.gpg
           scp -i ~/.ssh/id_${{ secrets.EC2_KEY_PAIR_TYPE }} .env.gpg ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/backend/
@@ -176,9 +271,11 @@ jobs:
           if [ -d dist ] || [ -d node_modules ]; then \
             backup_file="backup-$(date +%Y%m%d_%H%M%S).tar.gz" && \
             echo "Creating backup: $backup_file" && \
-            tar -czf "$backup_file" dist node_modules || true; \
+            tar -czf "$backup_file" dist node_modules && \
+            echo "최신 백업 파일을 제외한 모든 backup-*.tar.gz 파일을 삭제합니다." && \
+            find . -name "backup-*.tar.gz" -type f -not -name "$backup_file" -delete; \
           else \
-            echo "No existing deployment to backup"; \
+            echo "처음 배포하셨군요! 백업할 파일이 없습니다."; \
           fi'
 
       - name: Deploy to EC2 # EC2로 배포
@@ -192,6 +289,18 @@ jobs:
           DEPLOY_VERIFY_KEY: ${{ secrets.DEPLOY_VERIFY_KEY }}
           GIT_COMMIT_SHA: ${{ github.sha }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          FRONTEND_HOST: ${{ secrets.FRONTEND_HOST }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_S3_REGION: ${{ secrets.AWS_S3_REGION }}
+          AWS_S3_BUCKET_NAME: ${{ secrets.AWS_S3_BUCKET_NAME }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_EXPIRES_IN: ${{ secrets.JWT_EXPIRES_IN }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          JWT_REFRESH_EXPIRES_IN: ${{ secrets.JWT_REFRESH_EXPIRES_IN }}
+          NODE_MAILER_ID: ${{ secrets.NODE_MAILER_ID }}
+          NODE_MAILER_PW: ${{ secrets.NODE_MAILER_PW }}
+          SEED_USER_HASHED_PASSWORD: ${{ secrets.SEED_USER_HASHED_PASSWORD }}
         run: |
           # 민감한 정보 마스킹
           echo "::add-mask::${EC2_KEY_PAIR_TYPE}"
@@ -201,7 +310,18 @@ jobs:
           echo "::add-mask::${DATABASE_URL}"
           echo "::add-mask::${DEPLOY_VERIFY_KEY}"
           echo "::add-mask::${GPG_PASSPHRASE}"
-
+          echo "::add-mask::${FRONTEND_HOST}"
+          echo "::add-mask::${AWS_ACCESS_KEY_ID}"
+          echo "::add-mask::${AWS_SECRET_ACCESS_KEY}"
+          echo "::add-mask::${AWS_S3_REGION}"
+          echo "::add-mask::${AWS_S3_BUCKET_NAME}"
+          echo "::add-mask::${JWT_SECRET}"
+          echo "::add-mask::${JWT_EXPIRES_IN}"
+          echo "::add-mask::${JWT_REFRESH_SECRET}"
+          echo "::add-mask::${JWT_REFRESH_EXPIRES_IN}"
+          echo "::add-mask::${NODE_MAILER_ID}"
+          echo "::add-mask::${NODE_MAILER_PW}"
+          echo "::add-mask::${SEED_USER_HASHED_PASSWORD}"
           echo "EC2로 배포 시작"
 
           # SSH 옵션 설정

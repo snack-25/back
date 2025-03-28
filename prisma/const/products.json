@@ -1,0 +1,109 @@
+[
+  {
+    "id": "qbrpeogbp7bwzk57x2xed0v3",
+    "categoryId": "d8031i1djxm1hh5rpmpv2smc",
+    "name": "허니버터칩",
+    "createdById": "joa74jchflu84qdi1qjunn96",
+    "updatedById": "rol83wd11avp6on3ny0rf7ds",
+    "price": 1500,
+    "description": "달콤한 허니버터 맛이 일품인 과자",
+    "createdAt": "2023-12-05T16:45:00.000Z",
+    "updatedAt": "2024-12-05T16:45:00.000Z"
+  },
+  {
+    "id": "awyhmhs90zk403rzj1eyi158",
+    "categoryId": "m30b3i48tfj6bxi8q6adzp7h",
+    "name": "콜라",
+    "createdById": "p9ri9lsfyxy4k4juq9nw2jpa",
+    "price": 2000,
+    "description": "시원한 탄산음료",
+    "createdAt": "2024-12-05T16:45:00.000Z",
+    "updatedAt": "2025-02-20T16:45:00.000Z"
+  },
+  {
+    "id": "nw02dbgfebqeqhrb8hnzvqzu",
+    "categoryId": "p7v2h0l9p9wwgq6s12o72kek",
+    "name": "삼다수 2L",
+    "createdById": "rol83wd11avp6on3ny0rf7ds",
+    "updatedById": "joa74jchflu84qdi1qjunn96",
+    "price": 1200,
+    "description": "제주 화산암반수로 만든 생수",
+    "createdAt": "2023-12-05T16:45:00.000Z",
+    "updatedAt": "2023-12-10T16:45:00.000Z"
+  },
+  {
+    "id": "qohyrtyebwvxegjrum5akyys",
+    "categoryId": "ddi7k2g15ae3ehhpeuz3vhp4",
+    "name": "신라면 컵",
+    "createdById": "joa74jchflu84qdi1qjunn96",
+    "price": 1300,
+    "description": "매콤한 국물이 일품인 컵라면",
+    "createdAt": "2025-02-05T16:45:00.000Z",
+    "updatedAt": "2025-03-14T16:45:00.000Z"
+  },
+  {
+    "id": "s12us3o662tyz6zqobgmadih",
+    "categoryId": "cyxofxsgl8j37gs5ljr68xh1",
+    "name": "닭가슴살 샐러드",
+    "createdById": "p9ri9lsfyxy4k4juq9nw2jpa",
+    "updatedById": "rol83wd11avp6on3ny0rf7ds",
+    "price": 6500,
+    "description": "신선한 채소와 닭가슴살이 들어간 건강한 샐러드",
+    "createdAt": "2025-12-05T16:45:00.000Z",
+    "updatedAt": "2025-12-05T16:45:00.000Z"
+  },
+  {
+    "id": "p29ya4n0j23meovjmoscabi0",
+    "categoryId": "o4rwoey2spokdon6s9o3eegx",
+    "name": "에티오피아 예가체프",
+    "createdById": "rol83wd11avp6on3ny0rf7ds",
+    "updatedById": "p9ri9lsfyxy4k4juq9nw2jpa",
+    "price": 25000,
+    "description": "꽃향이 풍부한 에티오피아 원두",
+    "createdAt": "2024-12-05T16:45:00.000Z",
+    "updatedAt": "2025-12-05T16:45:00.000Z"
+  },
+  {
+    "id": "t5zkcght7zox4o8x7ujcsp7r",
+    "categoryId": "vxtcfudytl32zphqp8znq6mk",
+    "name": "종이컵 6.5oz (50개입)",
+    "createdById": "joa74jchflu84qdi1qjunn96",
+    "updatedById": "rol83wd11avp6on3ny0rf7ds",
+    "price": 3000,
+    "description": "무형광 친환경 종이컵",
+    "createdAt": "2024-12-05T16:45:00.000Z",
+    "updatedAt": "2025-03-10T16:45:00.000Z"
+  },
+  {
+    "id": "a3lhkbvzo8868yot73ofqu3s",
+    "categoryId": "hvgtemwdz9m65bx1oulm9zit",
+    "name": "제주 감귤 1kg",
+    "createdById": "p9ri9lsfyxy4k4juq9nw2jpa",
+    "price": 8900,
+    "description": "새콤달콤한 제주 감귤",
+    "createdAt": "2025-01-01T16:45:00.000Z",
+    "updatedAt": "2025-03-29T16:45:00.000Z"
+  },
+  {
+    "id": "ctwtlw3e6t7xebhogrii3rwe",
+    "categoryId": "sqbfvc3xrvd5vyklz1zdek0u",
+    "name": "다크초콜릿 70%",
+    "createdById": "rol83wd11avp6on3ny0rf7ds",
+    "updatedById": "joa74jchflu84qdi1qjunn96",
+    "price": 4500,
+    "description": "카카오 함량 70%의 프리미엄 다크초콜릿",
+    "createdAt": "2021-11-05T16:45:00.000Z",
+    "updatedAt": "2022-10-05T16:45:00.000Z"
+  },
+  {
+    "id": "nerlv4ugv3ng3do54zepa0ia",
+    "categoryId": "cyxofxsgl8j37gs5ljr68xh1",
+    "name": "캐모마일 티백 20개입",
+    "createdById": "p9ri9lsfyxy4k4juq9nw2jpa",
+    "updatedById": "p9ri9lsfyxy4k4juq9nw2jpa",
+    "price": 5500,
+    "description": "릴렉싱에 도움을 주는 캐모마일차",
+    "createdAt": "2023-12-05T16:45:00.000Z",
+    "updatedAt": "2023-12-06T16:45:00.000Z"
+  }
+]

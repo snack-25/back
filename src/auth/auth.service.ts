@@ -1,31 +1,32 @@
 import {
-  Injectable,
-  Res,
-  Req,
   BadRequestException,
-  UnauthorizedException,
   ConflictException,
+  Injectable,
+  Logger,
+  Req,
+  Res,
+  UnauthorizedException,
 } from '@nestjs/common';
-import { UsersService } from '../users/users.service';
-import {
-  SignUpComponeyRequestDto,
-  SignUpRequestDto,
-  SignInRequestDto,
-  SigninResponseDto,
-  SignUpResponseDto,
-  TokenResponseDto,
-  TokenRequestDto,
-  JwtPayload,
-  InvitationCodeDto,
-  InvitationSignupDto,
-  decodeAccessToken,
-} from './dto/auth.dto';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import { Invitation } from '@prisma/client';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import * as argon2 from 'argon2';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
-import { Response, Request } from 'express';
-import { Invitation } from '@prisma/client';
+import { Request, Response } from 'express';
+import { UsersService } from '../users/users.service';
+import {
+  decodeAccessToken,
+  InvitationCodeDto,
+  InvitationSignupDto,
+  JwtPayload,
+  SignInRequestDto,
+  SigninResponseDto,
+  SignUpComponeyRequestDto,
+  SignUpRequestDto,
+  SignUpResponseDto,
+  TokenRequestDto,
+  TokenResponseDto,
+} from './dto/auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -54,12 +55,13 @@ export class AuthService {
   public async invitationSignup(dto: InvitationSignupDto): Promise<string> {
     const { token, password } = dto;
     try {
-      const update = await this.prisma.invitation.updateManyAndReturn({
+      // 초대 토큰을 받아서 회원정보 획득
+      const invitation = await this.prisma.invitation.findUnique({
         where: { token },
-        data: {
-          status: 'ACCEPTED',
-        },
-        include: {
+        select: {
+          email: true,
+          name: true,
+          role: true,
           company: {
             select: {
               id: true,
@@ -67,8 +69,35 @@ export class AuthService {
           },
         },
       });
-      if (!update[0]) return 'update 실패';
-      const { email, name, role, company } = update[0];
+      if (!invitation) {
+        throw new BadRequestException('초대 코드가 유효하지 않습니다.');
+      }
+      const { email, name, role, company } = invitation;
+      // const update = await this.prisma.invitation.updateManyAndReturn({
+      //   where: { token },
+      //   data: {
+      //     status: 'ACCEPTED',
+      //   },
+      //   include: {
+      //     company: {
+      //       select: {
+      //         id: true,
+      //       },
+      //     },
+      //   },
+      //   select: {
+      //     email: true,
+      //     name: true,
+      //     role: true,
+      //     company: {
+      //       select: {
+      //         id: true,
+      //       },
+      //     },
+      //   },
+      // });
+      // if (!update[0]) return 'update 실패';
+      // const { email, name, role, company } = update[0];
       // this.usersService.validatePassword(password);
       const hashedPassword: string = await argon2.hash(password);
       const userAdd = await this.prisma.user.create({
@@ -171,7 +200,12 @@ export class AuthService {
 
       if (!user) return null;
 
+      Logger.log('User found: ', user);
+
       const isPasswordValid = await argon2.verify(user.password, password);
+
+      Logger.log('Password verification result: ', isPasswordValid);
+
       if (!isPasswordValid) {
         throw new BadRequestException('이메일 또는 비밀번호가 잘못되었습니다.');
       }

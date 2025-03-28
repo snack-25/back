@@ -8,39 +8,68 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
 import { OrderRequestStatus, UserRole } from '@prisma/client';
 import type { Request } from 'express';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
 import { CreateOrderRequestDto } from './dto/create-order-request.dto';
 import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
+import { GetOrderRequestsDto, OrderSort } from './dto/getOrderRequest.dto';
 import { OrderRequestsService } from './order-requests.service';
 
 @ApiTags('OrderRequests') // Swagger 그룹 태그 추가
 @Controller('order-requests')
 export class OrderRequestsController {
   public constructor(private readonly orderRequestsService: OrderRequestsService) {}
-
   @ApiOperation({ summary: '주문 요청 목록 조회' })
   @ApiResponse({ status: 200, description: '주문 요청 목록 반환' })
   @ApiResponse({ status: 401, description: '인증되지 않은 사용자' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    example: 1,
+    description: '페이지 번호',
+  })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    type: Number,
+    example: 6,
+    description: '페이지당 항목 개수',
+  })
+  @ApiQuery({
+    name: 'sort',
+    required: false,
+    enum: OrderSort,
+    example: 'latest',
+    description: '정렬 기준 (latest: 최신순, lowPrice: 낮은 가격순, highPrice: 높은 가격순)',
+  })
   @Get()
-  public async getOrderRequests(@Req() req: Request) {
+  public async getOrderRequests(@Req() req: Request, @Query() query: GetOrderRequestsDto) {
     const user = req.user as { id: string; role: UserRole; companyId: string };
 
     if (!user) {
       throw new UnauthorizedException('인증되지 않은 사용자입니다.');
     }
 
+    const { page = 1, pageSize = 10, sort = OrderSort.LATEST } = query;
+
     if (user.role === UserRole.USER) {
-      return this.orderRequestsService.getUserOrderRequests(user.id);
+      return this.orderRequestsService.getUserOrderRequests(user.id, page, pageSize, sort);
     }
 
     if (user.role === UserRole.ADMIN || user.role === UserRole.SUPERADMIN) {
-      return this.orderRequestsService.getCompanyOrderRequests(user.companyId);
+      return this.orderRequestsService.getCompanyOrderRequests(
+        user.companyId,
+        page,
+        pageSize,
+        sort,
+      );
     }
 
     throw new UnauthorizedException('인증되지 않은 사용자입니다.');
