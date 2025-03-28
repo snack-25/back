@@ -570,8 +570,8 @@ jobs:
           SSH_OPTS="-o ConnectTimeout=10 -o StrictHostKeyChecking=yes -o ServerAliveInterval=60"
 
           # 검증 대기 시간
-          echo "서버 시작 대기 중... (30초)"
-          sleep 30
+          echo "서버 시작 대기 중... (15초)"
+          sleep 15
 
           # 건강 검사
           echo "서버 상태 확인 (EC2 내부에서)..."
