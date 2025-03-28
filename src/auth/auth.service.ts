@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   Req,
   Res,
   UnauthorizedException,
@@ -199,7 +200,12 @@ export class AuthService {
 
       if (!user) return null;
 
+      Logger.log('User found: ', user);
+
       const isPasswordValid = await argon2.verify(user.password, password);
+
+      Logger.log('Password verification result: ', isPasswordValid);
+
       if (!isPasswordValid) {
         throw new BadRequestException('이메일 또는 비밀번호가 잘못되었습니다.');
       }
