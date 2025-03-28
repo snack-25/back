@@ -6,12 +6,14 @@ import { extname } from 'path';
 import * as multer from 'multer';
 import { PRODUCTS_IMAGE_PATH } from 'src/shared/const/path';
 import { createId } from '@paralleldrive/cuid2';
+import { AuthModule } from '@src/auth/auth.module';
 
 @Module({
   controllers: [ProductsController],
   providers: [ProductsService],
   exports: [ProductsService],
   imports: [
+    AuthModule,
     MulterModule.register({
       limits: {
         fileSize: 1024 * 1024 * 5, // 바이트 단위로 입력 = 5MB (파일 크기 제한, 5MB 이하만 업로드 가능. 5MB 넘는 파일 업로드 시 에러 발생),

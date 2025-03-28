@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
@@ -16,12 +17,14 @@ import { PaginatedProductsResponseDto } from './dto/paginated-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { SortOption } from './enums/sort-options.enum';
+import { AuthGuard } from '@src/auth/auth.guard';
 
 @Controller('products')
 export class ProductsController {
   public constructor(private readonly productsService: ProductsService) {}
 
   @Post()
+  @UseGuards(AuthGuard)
   @ApiOperation({ summary: '상품 생성' })
   @ApiBody({ type: CreateProductDto })
   @ApiResponse({ status: 200, description: '상품 생성 성공', type: ProductResponseDto })
