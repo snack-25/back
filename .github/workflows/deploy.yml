@@ -446,7 +446,7 @@ jobs:
 
           # 의존성 설치
           echo "[INFO] Installing dependencies..."
-          if ! pnpm install --frozen-lockfile --prod --ignore-scripts; then
+          if ! pnpm install --prod --ignore-scripts; then
             echo "❌ 의존성 설치 실패"
             exit 1
           fi
