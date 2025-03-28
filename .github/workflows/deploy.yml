@@ -271,9 +271,11 @@ jobs:
           if [ -d dist ] || [ -d node_modules ]; then \
             backup_file="backup-$(date +%Y%m%d_%H%M%S).tar.gz" && \
             echo "Creating backup: $backup_file" && \
-            tar -czf "$backup_file" dist node_modules || true; \
+            tar -czf "$backup_file" dist node_modules && \
+            echo "최신 백업 파일을 제외한 모든 backup-*.tar.gz 파일을 삭제합니다." && \
+            find . -name "backup-*.tar.gz" -type f -not -name "$backup_file" -delete; \
           else \
-            echo "No existing deployment to backup"; \
+            echo "처음 배포하셨군요! 백업할 파일이 없습니다."; \
           fi'
 
       - name: Deploy to EC2 # EC2로 배포
