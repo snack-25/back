@@ -1,8 +1,7 @@
-import { Logger, BadRequestException } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { BadRequestException, Logger } from '@nestjs/common';
+import { Category, Company, PrismaClient, Product, User } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
-import { Company, Category, Product, User } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -231,7 +230,7 @@ const main = async (): Promise<void> => {
         });
       }
 
-      console.log('🎉 데이터베이스 시딩이 완료되었습니다!');
+      Logger.log('🎉 데이터베이스 시딩이 완료되었습니다!');
     },
     { timeout: 30000 }, // 트랜잭션 타임아웃 30초 설정
   );

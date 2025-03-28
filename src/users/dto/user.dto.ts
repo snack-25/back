@@ -25,7 +25,7 @@ export class UserDto {
   @ApiProperty({
     nullable: false,
     description: '이메일(최소 5자, 최대 254자, 이메일 형식)',
-    example: 'user1@snacktopia.co',
+    example: 'superadmin1@snacktopia.co',
     type: String,
   })
   @IsEmail({}, { message: '올바른 이메일 형식이어야 합니다.' })
@@ -38,18 +38,7 @@ export class UserDto {
   @ApiProperty({
     nullable: false,
     description: '비밀번호(해싱 전, 최소 8자, 최대 128자, 영문, 숫자, 특수문자 포함 문자열)',
-    example: `비밀번호가 이메일 아이디와 동일하게 설정되어 있습니다:
-              일반 사용자:
-                user1: "user1"
-                user2: "user2"
-                user3: "user3"
-                user4: "user4"
-                user5: "user5"
-              관리자:
-                admin1: "admin1"
-                admin2: "admin2"
-              슈퍼 관리자:
-              superadmin1: "superadmin1"`,
+    example: 'superadmin1',
     type: String,
   })
   @IsString({ message: '비밀번호는 문자열이어야 합니다.' })
