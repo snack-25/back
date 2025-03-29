@@ -19,6 +19,7 @@ import {
   InvitationCodeDto,
   SignInRequestDto,
   SignUpRequestDto,
+  SignUpResponseDto,
   TokenResponseDto,
 } from './dto/auth.dto';
 
@@ -63,18 +64,26 @@ export class AuthController {
     console.log('body', body);
     console.log('token', token);
     const user = await this.authService.getinfo({ token: req.params.token });
+
     if (!user) {
-      res.status(400).json({ msg: '유효하지 않은 초대 토큰입니다.' });
+      res.status(400).json({ ok: false, message: '유효하지 않은 초대 토큰입니다.' });
     }
     const password = body.password;
-    const result: string = await this.authService.invitationSignup({
+
+    const result: SignUpResponseDto | null = await this.authService.invitationSignup({
       password,
       token,
     });
-    console.log('result', result);
-    res.status(200).json({ msg: '회원가입에 성공했습니다', data: result });
+
+    if (!result) {
+      res.status(500).json({ ok: false, message: '회원가입 처리 중 문제가 발생했습니다.' });
+      return;
+    }
+
+    res.status(200).json({ ok: true, message: '회원가입에 성공했습니다' });
   }
 
+  // 로그인
   @Post('login')
   public async login(
     @Body() dto: SignInRequestDto,
