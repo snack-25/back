@@ -1,5 +1,13 @@
 import { BadRequestException, Logger } from '@nestjs/common';
-import { Category, Company, PrismaClient, Product, User } from '@prisma/client';
+import {
+  Category,
+  Company,
+  CompanyAddress,
+  FeeType,
+  PrismaClient,
+  Product,
+  User,
+} from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
 
@@ -8,6 +16,10 @@ const prisma = new PrismaClient();
 const companies = JSON.parse(
   fs.readFileSync(path.join(__dirname, 'const/companies.json'), 'utf-8'),
 ) as Company[];
+
+const companyAddresses = JSON.parse(
+  fs.readFileSync(path.join(__dirname, 'const/company-addresses.json'), 'utf-8'),
+) as CompanyAddress[];
 
 const categories = JSON.parse(
   fs.readFileSync(path.join(__dirname, 'const/categories.json'), 'utf-8'),
@@ -34,19 +46,39 @@ const main = async (): Promise<void> => {
        * 변경된 데이터
        */
       // 1. Company 데이터 추가
+      const companyIds = companies.map(company => company.id);
       const testCompany: Company = companies[0];
-      if (!testCompany) {
-        throw new BadRequestException('Test company not found');
-      } else {
-        await tx.company.upsert({
-          where: { id: testCompany.id },
+      const existingCompanies = await tx.company.findMany({
+        where: { id: { in: companyIds } },
+      });
+
+      // Company 데이터가 없는 경우에만 생성
+      for (const company of companies) {
+        if (!existingCompanies.find(ec => ec.id === company.id)) {
+          await tx.company.create({
+            data: company,
+          });
+        }
+      }
+
+      // 2. CompanyAddress 데이터 추가
+      const companyAddressIds = companyAddresses.map(companyAddress => companyAddress.id);
+      const existingCompanyAddresses = await tx.companyAddress.findMany({
+        where: { id: { in: companyAddressIds } },
+      });
+      for (const companyAddress of existingCompanyAddresses) {
+        await tx.companyAddress.upsert({
+          where: { id: companyAddress.id },
           update: {},
-          create: testCompany,
+          create: companyAddress,
         });
       }
 
       // 2. Category 데이터 추가
-      const parentCategories: Category[] = categories;
+      const parentCategories: Category[] = categories.map(category => ({
+        ...category,
+        companyId: testCompany.id,
+      }));
       if (categories.length === 0) {
         throw new BadRequestException('Categories not found');
       }
@@ -56,11 +88,15 @@ const main = async (): Promise<void> => {
       });
 
       // 3. SubCategory 데이터 추가
+      const subCategoriesWithCompany: Category[] = subCategories.map(category => ({
+        ...category,
+        companyId: testCompany.id,
+      }));
       if (subCategories.length === 0) {
         throw new BadRequestException('SubCategories not found');
       }
       await tx.category.createMany({
-        data: subCategories,
+        data: subCategoriesWithCompany,
         skipDuplicates: true,
       });
 
@@ -86,7 +122,11 @@ const main = async (): Promise<void> => {
         update: {},
         create: {
           id: 'bhcxqfshp43wkskocodegc7x',
-          userId: users[4]?.id ?? (() => { throw new BadRequestException('사용자 ID가 존재하지 않습니다.'); })(),
+          userId:
+            users[4]?.id ??
+            (() => {
+              throw new BadRequestException('사용자 ID가 존재하지 않습니다.');
+            })(),
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -102,8 +142,16 @@ const main = async (): Promise<void> => {
         data: [
           {
             id: orderRequestIds[0],
-            requesterId: users[0]?.id ?? (() => { throw new BadRequestException('요청자 ID가 존재하지 않습니다.'); })(),
-            companyId: testCompany?.id ?? (() => { throw new BadRequestException('회사 ID가 존재하지 않습니다.'); })(),
+            requesterId:
+              users[0]?.id ??
+              (() => {
+                throw new BadRequestException('요청자 ID가 존재하지 않습니다.');
+              })(),
+            companyId:
+              testCompany?.id ??
+              (() => {
+                throw new BadRequestException('회사 ID가 존재하지 않습니다.');
+              })(),
             status: 'PENDING',
             totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
             createdAt: new Date(),
@@ -111,8 +159,16 @@ const main = async (): Promise<void> => {
           },
           {
             id: orderRequestIds[1],
-            requesterId: users[6]?.id ?? (() => { throw new BadRequestException('요청자 ID가 존재하지 않습니다.'); })(),
-            companyId: testCompany?.id ?? (() => { throw new BadRequestException('회사 ID가 존재하지 않습니다.'); })(),
+            requesterId:
+              users[6]?.id ??
+              (() => {
+                throw new BadRequestException('요청자 ID가 존재하지 않습니다.');
+              })(),
+            companyId:
+              testCompany?.id ??
+              (() => {
+                throw new BadRequestException('회사 ID가 존재하지 않습니다.');
+              })(),
             status: 'APPROVED',
             totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
             createdAt: new Date(),
@@ -120,8 +176,16 @@ const main = async (): Promise<void> => {
           },
           {
             id: orderRequestIds[2],
-            requesterId: users[1]?.id ?? (() => { throw new BadRequestException('요청자 ID가 존재하지 않습니다.'); })(),
-            companyId: testCompany?.id ?? (() => { throw new BadRequestException('회사 ID가 존재하지 않습니다.'); })(),
+            requesterId:
+              users[1]?.id ??
+              (() => {
+                throw new BadRequestException('요청자 ID가 존재하지 않습니다.');
+              })(),
+            companyId:
+              testCompany?.id ??
+              (() => {
+                throw new BadRequestException('회사 ID가 존재하지 않습니다.');
+              })(),
             status: 'REJECTED',
             totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
             createdAt: new Date(),
@@ -238,8 +302,6 @@ const main = async (): Promise<void> => {
   // 10. 우편번호(Zipcode) 추가(데이터가 많아 별도 트랜잭션으로 처리함)
   await prisma.$transaction(
     async tx => {
-      // FeeType은 추후 적절한 위치로 옮겨서 단일 진실 공급원(Single Source of Truth) 준수
-      type FeeType = 'NOT_APPLICABLE' | 'JEJU' | 'ISOLATED';
       // 우편번호 데이터 파일 경로(seed.ts와 같은 경로)
       const filePath = path.join(__dirname, 'zipcodes.tsv');
 
@@ -266,7 +328,7 @@ const main = async (): Promise<void> => {
 
           return {
             postalCode: String(postalCode.trim()), // 숫자로 인식되지 않도록 문자열로 변환(0으로 시작하는 경우 앞글자가 없어지면 안되므로)
-            feeType: feeType.trim() as FeeType, // ENUM 변환(제주, 도서산간, 이외)
+            feeType: feeType.trim() as FeeType, // 배송비 유형(제주, 도서산간, 이외), @prisma/client에 정의된 타입 사용
             isActive: isActive.trim().toLowerCase() === 'true', // 현재 활성화 여부
             juso: juso.trim(), // 주소 저장
           };

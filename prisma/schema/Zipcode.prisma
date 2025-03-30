@@ -19,6 +19,8 @@ model Zipcode {
   /// 6. 관계 (Relations)
 
   /// 7. 역참조 필드 (Reverse Relation Fields)
+  /// 우편번호는 여러 기업 주소에 속할 수 있음
+  companyAddresses CompanyAddress[]
 
   /// 8. 테이블명, 유니크 제약, 인덱스 설정 등
   @@index([postalCode])

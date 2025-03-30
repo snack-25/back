@@ -1,0 +1,35 @@
+model CompanyAddress {
+  /// 1. 기본 식별자 (Primary Identifiers)
+  /// Primary Key로 CUID v2를 사용한다 (예: aetqn2jftkh2aqgdko9nf3ps)
+  id        String   @id @default(cuid(2))
+  /// 2. 외래 키 필드 (Foreign Keys)
+  companyId String
+  zipcodeId String
+  /// 3. 필수 필드 (Required Fields)
+  /// 우편번호
+  postalCode String @db.VarChar(5)
+  /// 주소
+  address   String   @db.VarChar(255)
+  /// 배송비 유형
+  feeType FeeType @default(NOT_APPLICABLE)
+
+  /// 4. 선택적 필드 (Optional Fields)
+
+  /// 5. 타임스탬프 필드 (Timestamp Fields)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  /// 6. 관계 필드 (Relation Fields)
+  /// 기업 주소는 하나의 기업에 속할 수 있으며, 기업이 삭제되면 기업 주소도 삭제됨
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /// 우편번호는 여러 기업 주소에 속할 수 있으며, 기업 주소가 삭제되더라도 우편번호는 삭제되지 않음
+  zipcode   Zipcode  @relation(fields: [zipcodeId], references: [id], onDelete: Restrict)
+
+  /// 7. 역참조 필드 (Reverse Relation Fields)
+
+  /// 8. 테이블명, 유니크 제약, 인덱스 설정 등
+  @@unique([companyId])
+  @@index([companyId])
+  @@index([zipcodeId])
+  @@map("company_addresses")
+}
