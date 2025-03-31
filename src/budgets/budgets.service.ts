@@ -35,4 +35,36 @@ export class BudgetsService {
       return null;
     }
   }
+
+  // public async update(dto: BudgetsRequestDto): Promise<BudgetsResponseDto> {
+  //   console.log('updateDto', dto);
+  //   try {
+  //     // 우선 수정하려는 레코드가 있는지 확인합니다.
+  //     const existingBudget = await this.prisma.budgetLedger.findUnique({
+  //       where: { id: dto.companyId },
+  //     });
+  //     console.log('existingBudget', existingBudget);
+
+  //     if (!existingBudget) {
+  //       throw new Error('수정하려는 예산이 존재하지 않습니다.');
+  //     }
+
+  //     // 레코드가 있으면 수정
+  //     const updatedBudget = await this.prisma.budgetLedger.update({
+  //       where: { id: dto.companyId },
+  //       data: {
+  //         beforeAmount: dto.year,
+  //         afterAmount: dto.month,
+  //       },
+  //     });
+
+  //     return {
+  //       year: updatedBudget.beforeAmount,
+  //       month: updatedBudget.afterAmount,
+  //     };
+  //   } catch (err) {
+  //     console.error('예산 수정 에러남', err);
+  //     throw new Error('예산 수정 중 오류 발생');
+  //   }
+  // }
 }
