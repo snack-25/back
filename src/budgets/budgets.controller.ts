@@ -11,9 +11,7 @@ export class BudgetsController {
 
   @Post('/inquiry')
   public async inquiry(@Body() dto: BudgetsRequestDto, @Req() req: Request, @Res() res: Response) {
-    console.log('실행되는 중');
     const inquiry = await this.budgetsService.getinfo(dto);
-    console.log('inquiry', inquiry);
 
     res.status(200).json({ ok: true, data: inquiry, message: '예산 조회에 성공했습니다' });
   }

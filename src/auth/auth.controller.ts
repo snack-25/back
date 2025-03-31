@@ -61,8 +61,6 @@ export class AuthController {
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    console.log('body', body);
-    console.log('token', token);
     const user = await this.authService.getinfo({ token: req.params.token });
 
     if (!user) {
@@ -107,7 +105,6 @@ export class AuthController {
   // 로그아웃
   @Post('logout')
   public async logout(@Req() req: Request, @Res() res: Response): Promise<void> {
-    console.log('로그아웃 요청');
     const invalidateToken = req.cookies['refreshToken'];
 
     if (!invalidateToken) {

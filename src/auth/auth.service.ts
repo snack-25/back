@@ -70,8 +70,6 @@ export class AuthService {
         },
       });
 
-      console.log('invitation', invitation);
-
       // 2. 초대 코드가 유효하지 않으면 예외 처리
       if (!invitation) {
         throw new BadRequestException('초대 코드가 유효하지 않습니다.');
@@ -122,8 +120,6 @@ export class AuthService {
         email: invitation.email,
         role: invitation.role,
       };
-
-      console.log('response', response);
 
       return response; // 프론트엔드로 유저 정보 반환
     } catch (err) {
