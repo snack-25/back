@@ -114,15 +114,19 @@ export class ProductsService {
     }
   }
 
-  public async createProduct(createProductDto: CreateProductDto): Promise<ProductResponseDto> {
+  public async createProduct(
+    price: number,
+    createProductDto: CreateProductDto,
+    file: Express.Multer.File,
+  ): Promise<ProductResponseDto> {
     const product = await this.prismaService.$transaction(async tx => {
       return tx.product.create({
         data: {
           name: createProductDto.name,
-          price: createProductDto.price,
+          price: price,
           description: createProductDto.description,
           categoryId: createProductDto.categoryId,
-          imageUrl: createProductDto.imageUrl,
+          imageUrl: file ? file.filename : createProductDto.imageUrl,
         },
       });
     });
