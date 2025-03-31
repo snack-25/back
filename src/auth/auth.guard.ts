@@ -13,7 +13,8 @@ export class AuthGuard implements CanActivate {
     if (
       request.path.startsWith('/api/auth/signup') ||
       request.path.startsWith('/api/auth/login') ||
-      request.path.startsWith('/api/auth/logout')
+      request.path.startsWith('/api/auth/logout') ||
+      request.path.startsWith('/api/health')
     ) {
       return true;
     }
