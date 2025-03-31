@@ -1,23 +1,25 @@
 import {
   Body,
   Controller,
-  Get,
+  // Get,
   HttpCode,
   HttpStatus,
   Post,
   Req,
   Res,
-  UseGuards,
+  Param,
+  // UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { type Invitation } from '@prisma/client';
 import { Request, Response } from 'express';
-import { AuthGuard } from './auth.guard';
+// import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import {
   InvitationCodeDto,
   SignInRequestDto,
   SignUpRequestDto,
+  SignUpResponseDto,
   TokenResponseDto,
 } from './dto/auth.dto';
 
@@ -54,19 +56,32 @@ export class AuthController {
 
   @Post('signup/invite/:token')
   public async signupToken(
+    @Param('token') token: string,
     @Body() body: { password: string },
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    await this.authService.getinfo({ token: req.params.token });
+    const user = await this.authService.getinfo({ token: req.params.token });
+
+    if (!user) {
+      res.status(400).json({ ok: false, message: '유효하지 않은 초대 토큰입니다.' });
+    }
     const password = body.password;
-    const result: string = await this.authService.invitationSignup({
+
+    const result: SignUpResponseDto | null = await this.authService.invitationSignup({
       password,
-      token: req.params.token,
+      token,
     });
-    res.status(200).json({ msg: result });
+
+    if (!result) {
+      res.status(500).json({ ok: false, message: '회원가입 처리 중 문제가 발생했습니다.' });
+      return;
+    }
+
+    res.status(200).json({ ok: true, message: '회원가입에 성공했습니다' });
   }
 
+  // 로그인
   @Post('login')
   @ApiOperation({
     summary: '유저 로그인',
@@ -93,7 +108,6 @@ export class AuthController {
   }
 
   // 로그아웃
-  @UseGuards(AuthGuard)
   @Post('logout')
   public async logout(@Req() req: Request, @Res() res: Response): Promise<void> {
     const invalidateToken = req.cookies['refreshToken'];
@@ -125,9 +139,9 @@ export class AuthController {
 
   // 아래와 같이 사용하려는 API Endpoint위에 @UseGuards(AuthGuard) 데코레이터를 추가하면
   // 쿠키 기반 인증을 검사합니다. 권한이 없으면 에러를 반환합니다.
-  @UseGuards(AuthGuard)
-  @Get('guard')
-  public findAll(): string {
-    return 'guard';
-  }
+  // @UseGuards(AuthGuard)
+  // @Get('guard')
+  // public findAll(): string {
+  //   return 'guard';
+  // }
 }
