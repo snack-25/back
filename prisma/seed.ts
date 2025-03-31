@@ -86,7 +86,11 @@ const main = async (): Promise<void> => {
         update: {},
         create: {
           id: 'bhcxqfshp43wkskocodegc7x',
-          userId: users[4]?.id ?? (() => { throw new BadRequestException('사용자 ID가 존재하지 않습니다.'); })(),
+          userId:
+            users[4]?.id ??
+            (() => {
+              throw new BadRequestException('사용자 ID가 존재하지 않습니다.');
+            })(),
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -102,8 +106,16 @@ const main = async (): Promise<void> => {
         data: [
           {
             id: orderRequestIds[0],
-            requesterId: users[0]?.id ?? (() => { throw new BadRequestException('요청자 ID가 존재하지 않습니다.'); })(),
-            companyId: testCompany?.id ?? (() => { throw new BadRequestException('회사 ID가 존재하지 않습니다.'); })(),
+            requesterId:
+              users[0]?.id ??
+              (() => {
+                throw new BadRequestException('요청자 ID가 존재하지 않습니다.');
+              })(),
+            companyId:
+              testCompany?.id ??
+              (() => {
+                throw new BadRequestException('회사 ID가 존재하지 않습니다.');
+              })(),
             status: 'PENDING',
             totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
             createdAt: new Date(),
@@ -111,8 +123,16 @@ const main = async (): Promise<void> => {
           },
           {
             id: orderRequestIds[1],
-            requesterId: users[6]?.id ?? (() => { throw new BadRequestException('요청자 ID가 존재하지 않습니다.'); })(),
-            companyId: testCompany?.id ?? (() => { throw new BadRequestException('회사 ID가 존재하지 않습니다.'); })(),
+            requesterId:
+              users[6]?.id ??
+              (() => {
+                throw new BadRequestException('요청자 ID가 존재하지 않습니다.');
+              })(),
+            companyId:
+              testCompany?.id ??
+              (() => {
+                throw new BadRequestException('회사 ID가 존재하지 않습니다.');
+              })(),
             status: 'APPROVED',
             totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
             createdAt: new Date(),
@@ -120,8 +140,16 @@ const main = async (): Promise<void> => {
           },
           {
             id: orderRequestIds[2],
-            requesterId: users[1]?.id ?? (() => { throw new BadRequestException('요청자 ID가 존재하지 않습니다.'); })(),
-            companyId: testCompany?.id ?? (() => { throw new BadRequestException('회사 ID가 존재하지 않습니다.'); })(),
+            requesterId:
+              users[1]?.id ??
+              (() => {
+                throw new BadRequestException('요청자 ID가 존재하지 않습니다.');
+              })(),
+            companyId:
+              testCompany?.id ??
+              (() => {
+                throw new BadRequestException('회사 ID가 존재하지 않습니다.');
+              })(),
             status: 'REJECTED',
             totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
             createdAt: new Date(),
