@@ -10,7 +10,7 @@ import {
   Param,
   // UseGuards,
 } from '@nestjs/common';
-import { ApiResponse } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { type Invitation } from '@prisma/client';
 import { Request, Response } from 'express';
 // import { AuthGuard } from './auth.guard';
@@ -83,6 +83,11 @@ export class AuthController {
 
   // 로그인
   @Post('login')
+  @ApiOperation({
+    summary: '유저 로그인',
+    description:
+      '모든 테스트용 계정(user1~5,admin1~2,superadmin1)의 비밀번호는 아이디(user1)과 동일합니다',
+  })
   public async login(
     @Body() dto: SignInRequestDto,
     @Req() req: Request,

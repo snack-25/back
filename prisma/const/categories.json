@@ -1,0 +1,65 @@
+[
+  {
+    "id": "cyxofxsgl8j37gs5ljr68xh1",
+    "parentId": null,
+    "companyId": "qsch6ljzbigconazqak4jsrr",
+    "name": "간편식",
+    "isActive": true,
+    "createdAt": "2025-02-01T00:00:00+09:00",
+    "updatedAt": "2025-03-27T15:05:31+09:00"
+  },
+  {
+    "id": "hszid9zo4inokoj1jd7lpc1v",
+    "parentId": null,
+    "companyId": "qsch6ljzbigconazqak4jsrr",
+    "name": "스낵",
+    "isActive": true,
+    "createdAt": "2025-02-01T00:00:00+09:00",
+    "updatedAt": "2025-03-20T15:05:31+09:00"
+  },
+  {
+    "id": "hvgtemwdz9m65bx1oulm9zit",
+    "parentId": null,
+    "companyId": "qsch6ljzbigconazqak4jsrr",
+    "name": "신선식품",
+    "isActive": true,
+    "createdAt": "2025-01-01T00:00:00+09:00",
+    "updatedAt": "2025-02-22T15:05:31+09:00"
+  },
+  {
+    "id": "m30b3i48tfj6bxi8q6adzp7h",
+    "parentId": null,
+    "companyId": "qsch6ljzbigconazqak4jsrr",
+    "name": "음료",
+    "isActive": true,
+    "createdAt": "2025-02-01T00:00:00+09:00",
+    "updatedAt": "2025-03-20T15:05:31+09:00"
+  },
+  {
+    "id": "o4rwoey2spokdon6s9o3eegx",
+    "parentId": null,
+    "companyId": "qsch6ljzbigconazqak4jsrr",
+    "name": "원두커피",
+    "isActive": true,
+    "createdAt": "2025-02-01T00:00:00+09:00",
+    "updatedAt": "2025-03-20T15:05:31+09:00"
+  },
+  {
+    "id": "p7v2h0l9p9wwgq6s12o72kek",
+    "parentId": null,
+    "companyId": "qsch6ljzbigconazqak4jsrr",
+    "name": "생수",
+    "isActive": true,
+    "createdAt": "2025-02-01T00:00:00+09:00",
+    "updatedAt": "2025-03-20T15:05:31+09:00"
+  },
+  {
+    "id": "vxtcfudytl32zphqp8znq6mk",
+    "parentId": null,
+    "companyId": "qsch6ljzbigconazqak4jsrr",
+    "name": "비품",
+    "isActive": false,
+    "createdAt": "2025-02-01T00:00:00+09:00",
+    "updatedAt": "2025-03-01T15:05:31+09:00"
+  }
+]

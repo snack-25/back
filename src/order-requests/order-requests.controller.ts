@@ -64,7 +64,12 @@ export class OrderRequestsController {
     }
 
     if (user.role === UserRole.ADMIN || user.role === UserRole.SUPERADMIN) {
-      return this.orderRequestsService.getCompanyOrderRequests(user.companyId, page, pageSize, sort);
+      return this.orderRequestsService.getCompanyOrderRequests(
+        user.companyId,
+        page,
+        pageSize,
+        sort,
+      );
     }
 
     throw new UnauthorizedException('인증되지 않은 사용자입니다.');

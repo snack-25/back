@@ -25,8 +25,8 @@ jobs:
           version: '10'
           run_install: false
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install dependencies # 의존성 설치(dev 의존성 제외, pre/post 스크립트 실행 제외)
+        run: pnpm install --prod --ignore-scripts
 
       - name: Set SHELL environment variable # SHELL 환경 변수 설정
         run: |
@@ -271,10 +271,13 @@ jobs:
           if [ -d dist ] || [ -d node_modules ]; then \
             backup_file="backup-$(date +%Y%m%d_%H%M%S).tar.gz" && \
             echo "Creating backup: $backup_file" && \
-            tar -czf "$backup_file" dist node_modules || true; \
+            tar -czf "$backup_file" dist node_modules && \
+            echo "최신 백업 파일을 제외한 모든 backup-*.tar.gz 파일을 삭제합니다." && \
+            find . -name "backup-*.tar.gz" -type f -not -name "$backup_file" -delete; \
           else \
-            echo "No existing deployment to backup"; \
+            echo "처음 배포하셨군요! 백업할 파일이 없습니다."; \
           fi'
+
 
       - name: Deploy to EC2 # EC2로 배포
         timeout-minutes: 5 # 타임아웃 시간 설정
@@ -443,7 +446,7 @@ jobs:
 
           # 의존성 설치
           echo "[INFO] Installing dependencies..."
-          if ! pnpm install --ignore-scripts; then
+          if ! pnpm install --prod --ignore-scripts; then
             echo "❌ 의존성 설치 실패"
             exit 1
           fi
@@ -567,8 +570,8 @@ jobs:
           SSH_OPTS="-o ConnectTimeout=10 -o StrictHostKeyChecking=yes -o ServerAliveInterval=60"
 
           # 검증 대기 시간
-          echo "서버 시작 대기 중... (30초)"
-          sleep 30
+          echo "서버 시작 대기 중... (15초)"
+          sleep 15
 
           # 건강 검사
           echo "서버 상태 확인 (EC2 내부에서)..."
