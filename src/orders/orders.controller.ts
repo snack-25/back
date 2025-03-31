@@ -27,7 +27,7 @@ export class OrdersController {
     @Query('pageSize') pageSize: string = '6',
     @Query('sort') sort: string = 'latest',
   ): Promise<{ orders: Order[]; totalOrders: number; totalPages: number }> {
-    const userId = '11';
+    const userId = 'p9ri9lsfyxy4k4juq9nw2jpa';
     const pageNumber = parseInt(page, 10);
     const pageSizeNumber = parseInt(pageSize, 10);
 
@@ -42,7 +42,7 @@ export class OrdersController {
   @ApiResponse({ status: 201, description: '주문 생성 성공' })
   @Post()
   public async adminPurchase(@Body() orderData: OrderRequestDto): Promise<Order> {
-    const userId = '11';
+    const userId = 'p9ri9lsfyxy4k4juq9nw2jpa';
     return await this.ordersService.createOrder(userId, orderData);
   }
 
@@ -56,7 +56,7 @@ export class OrdersController {
   public async getOrderDetail(
     @Param('orderId') orderId: string,
   ): Promise<{ order: Order; totalItems: number }> {
-    const userId = '11';
+    const userId = 'p9ri9lsfyxy4k4juq9nw2jpa';
     return await this.ordersService.getOrderDetail(userId, orderId);
   }
 }
