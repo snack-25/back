@@ -7,10 +7,17 @@ import { PaginatedProductsResponseDto } from './dto/paginated-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { OrderStatus } from '@src/orders/enums/order-status.enum';
+import { extname } from 'path';
+import { createId } from '@paralleldrive/cuid2';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 @Injectable()
 export class ProductsService {
   public constructor(private readonly prismaService: PrismaService) {}
+
+  private readonly s3Client = new S3Client({
+    region: process.env.AWS_REGION,
+  });
 
   private readonly COUNTED_ORDER_STATUS = [
     OrderStatus.PENDING,
@@ -119,6 +126,21 @@ export class ProductsService {
     createProductDto: CreateProductDto,
     file: Express.Multer.File,
   ): Promise<ProductResponseDto> {
+    // TODO: 실패시 로직, 예외 처리, 커스텀 데코레이터로 생성한 유저 정보 추가 필요함(2025-03-31 19:40)
+    const filename = `${createId()}${extname(file.originalname)}`;
+
+    const uploadParams = {
+      Bucket: process.env.AWS_S3_BUCKET_NAME,
+      Key: `original/${filename}`,
+      Body: file.buffer,
+    };
+    const command = new PutObjectCommand(uploadParams);
+
+    await this.s3Client.send(command);
+
+    const getS3ImgUrl = (filename: string): string =>
+      `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/original/${filename}`;
+
     const product = await this.prismaService.$transaction(async tx => {
       return tx.product.create({
         data: {
@@ -126,7 +148,7 @@ export class ProductsService {
           price: price,
           description: createProductDto.description,
           categoryId: createProductDto.categoryId,
-          imageUrl: file ? file.filename : createProductDto.imageUrl,
+          imageUrl: getS3ImgUrl(filename),
         },
       });
     });

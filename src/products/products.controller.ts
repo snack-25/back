@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -22,10 +21,6 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { SortOption } from './enums/sort-options.enum';
 import { AuthGuard } from '@src/auth/auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { PRODUCTS_IMAGE_PATH } from 'src/shared/const/path';
-import { extname } from 'path';
-import { createId } from '@paralleldrive/cuid2';
 
 @Controller('products')
 export class ProductsController {
@@ -35,18 +30,6 @@ export class ProductsController {
   @UseGuards(AuthGuard)
   @UseInterceptors(
     FileInterceptor('imageUrl', {
-      storage: diskStorage({
-        destination(req, file, cb): void {
-          cb(null, PRODUCTS_IMAGE_PATH);
-        },
-        filename(req, file, cb: (error: Error | null, filename: string) => void) {
-          if (!file || !file.originalname) {
-            return cb(new BadRequestException('Invalid file information'), '');
-          }
-          const filename = `${createId()}${extname(file.originalname)}`;
-          cb(null, filename);
-        },
-      }),
       limits: { fileSize: 1024 * 1024 * 5 }, //TODO: 상수화 필요
     }),
   )
@@ -56,10 +39,10 @@ export class ProductsController {
   @ApiResponse({ status: 400, description: '상품 생성 실패' })
   public async create(
     @Body('price', ParseIntPipe) price: number,
-    @Body()
-    createProductDto: CreateProductDto,
+    @Body() createProductDto: CreateProductDto,
     @UploadedFile() file: Express.Multer.File,
   ): Promise<ProductResponseDto> {
+    //TODO : 권한 인증 추가(role = ADMIN, SUPERADMIN 일 때만)
     return this.productsService.createProduct(price, createProductDto, file);
   }
 
