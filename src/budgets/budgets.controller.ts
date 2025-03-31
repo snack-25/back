@@ -7,10 +7,11 @@ import { BudgetsRequestDto } from './dto/budgets.dto';
 export class BudgetsController {
   public constructor(private readonly budgetsService: BudgetsService) {}
 
-  //TODO: /budgets/{budgetId} (GET) 예산 정보 조회(이번 달 예산, 매달 시작 예산)
+  // //TODO: /budgets/{budgetId} (GET) 예산 정보 조회(이번 달 예산, 매달 시작 예산)
+
   @Post('/inquiry')
   public async inquiry(@Body() dto: BudgetsRequestDto, @Req() req: Request, @Res() res: Response) {
-    console.log('req', req);
+    console.log('실행되는 중');
     const inquiry = await this.budgetsService.getinfo(dto);
     console.log('inquiry', inquiry);
 

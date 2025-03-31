@@ -1,19 +1,19 @@
 import {
   Body,
   Controller,
-  Get,
+  // Get,
   HttpCode,
   HttpStatus,
   Post,
   Req,
   Res,
   Param,
-  UseGuards,
+  // UseGuards,
 } from '@nestjs/common';
 import { ApiResponse } from '@nestjs/swagger';
 import { type Invitation } from '@prisma/client';
 import { Request, Response } from 'express';
-import { AuthGuard } from './auth.guard';
+// import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import {
   InvitationCodeDto,
@@ -105,9 +105,9 @@ export class AuthController {
   }
 
   // 로그아웃
-  @UseGuards(AuthGuard)
   @Post('logout')
   public async logout(@Req() req: Request, @Res() res: Response): Promise<void> {
+    console.log('로그아웃 요청');
     const invalidateToken = req.cookies['refreshToken'];
 
     if (!invalidateToken) {
@@ -137,9 +137,9 @@ export class AuthController {
 
   // 아래와 같이 사용하려는 API Endpoint위에 @UseGuards(AuthGuard) 데코레이터를 추가하면
   // 쿠키 기반 인증을 검사합니다. 권한이 없으면 에러를 반환합니다.
-  @UseGuards(AuthGuard)
-  @Get('guard')
-  public findAll(): string {
-    return 'guard';
-  }
+  // @UseGuards(AuthGuard)
+  // @Get('guard')
+  // public findAll(): string {
+  //   return 'guard';
+  // }
 }

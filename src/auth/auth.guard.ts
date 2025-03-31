@@ -8,6 +8,16 @@ export class AuthGuard implements CanActivate {
 
   public async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>(); // ✅ 불필요한 타입 단언 제거
+
+    // 로그인, 회원가입 페이지는 가드 검사 생략
+    if (
+      request.path.startsWith('/api/auth/signup') ||
+      request.path.startsWith('/api/auth/login') ||
+      request.path.startsWith('/api/auth/logout')
+    ) {
+      return true;
+    }
+
     return await this.validateRequest(request);
   }
 
@@ -15,6 +25,9 @@ export class AuthGuard implements CanActivate {
     const cookies = request.cookies as Record<string, string>; // ✅ 명확한 타입 지정
     const accessToken: string | undefined = cookies?.accessToken;
     const refreshToken: string | undefined = cookies?.refreshToken;
+
+    console.log('accessToken', accessToken);
+    console.log('refreshToken', refreshToken);
 
     if (!accessToken || !refreshToken) {
       throw new UnauthorizedException('로그인이 필요합니다.(토큰 없음)');
