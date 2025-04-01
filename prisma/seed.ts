@@ -131,38 +131,24 @@ const main = async (): Promise<void> => {
       });
 
       // 1-2. 기업 주소 생성
-      for (const address of companyAddresses) {
-        // Logic: 도서산간 우편번호라면 CompanyAddress에 zipcodeId를 추가하고, 아니면 추가하지 않는다.
-        // 아래 zipcode 변수가 address.postalCode와 같은 우편번호를 가진 데이터가 여러개인 경우 첫 번째 우편번호를 사용함
-        // 주소가 일치하는 경우에만 추가
+      // 우편번호 데이터를 한 번에 가져와서 메모리에 캐싱
+      const allZipcodes = await tx.zipcode.findMany();
+      const zipCodeMap = new Map(allZipcodes.map(z => [`${z.postalCode}-${z.juso}`, z]));
 
-        // 우편번호 테이블에서 입력받은 우편번호와 일치하는 데이터 조회
-        const zipcode = await tx.zipcode.findMany({
-          where: { postalCode: address.postalCode },
-        });
+      // 배치 처리를 위한 데이터 준비
+      const addressesToCreate = companyAddresses.map(address => {
+        const { companyId, zipcodeId: _zipcodeId, ...rest } = address;
+        const key = `${address.postalCode}-${address.address}`;
+        const matchingZipcode = zipCodeMap.get(key);
 
-        // 기업 주소 테이블에서 입력받은 우편번호와 주소가 일치하는 데이터 조회
-        const juso = zipcode.find(z => z.juso === address.address);
-        // 주소가 일치하지 않으면 zipcodeId를 추가하지 않고, 주소가 일치하면 zipcodeId를 추가
-        if (!juso) {
-          const { companyId, zipcodeId: _zipcodeId, ...rest } = address;
-          await tx.companyAddress.create({
-            data: {
-              ...rest,
-              company: { connect: { id: companyId } },
-            },
-          });
-        } else {
-          const { companyId, zipcodeId: _zipcodeId, ...rest } = address;
-          await tx.companyAddress.create({
-            data: {
-              ...rest,
-              company: { connect: { id: companyId } },
-              zipcode: { connect: { id: juso.id } },
-            },
-          });
-        }
-      }
+        return {
+          ...rest,
+          company: { connect: { id: companyId } },
+          ...(matchingZipcode ? { zipcode: { connect: { id: matchingZipcode.id } } } : {}),
+        };
+      });
+      // 배치 생성 또는 createMany를 지원하지 않는 경우 효율적인 방식으로 처리
+      await Promise.all(addressesToCreate.map(data => tx.companyAddress.create({ data })));
 
       // 2. Category 데이터 추가
       const parentCategories: Category[] = categories.map(category => ({
