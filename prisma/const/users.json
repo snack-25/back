@@ -78,5 +78,15 @@
     "role": "SUPERADMIN",
     "createdAt": "2023-12-05T16:45:00.000Z",
     "updatedAt": "2025-03-27T07:37:48.000Z"
+  },
+  {
+    "id": "y53rvrch7cvtx3re3a9054e1",
+    "companyId": "dmctf6ymohg7gfsy43ls4vae",
+    "email": "superadmin@poongdo.kr",
+    "password": "$argon2id$v=19$m=65536,t=3,p=4$ihBGhIcMg4N2OOExLwcLiQ$jeDMYhf+G+etPW7dybtEpPosN3fvd5lGIKkoe4iaiQs",
+    "name": "김주현",
+    "role": "SUPERADMIN",
+    "createdAt": "2023-12-05T16:45:00.000Z",
+    "updatedAt": "2025-03-27T07:37:48.000Z"
   }
 ]
