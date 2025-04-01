@@ -1,17 +1,24 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { WishlistsService } from './wishlists.service';
 import { MoveToCartDto, ToggleWishlistDto } from './dto/create-wishlist.dto';
 import { ApiTags, ApiOperation, ApiBody } from '@nestjs/swagger';
+import { Request } from 'express';
+import { AuthService } from '@src/auth/auth.service';
+import { AuthGuard } from '@src/auth/auth.guard';
 
+@UseGuards(AuthGuard)
 @ApiTags('Wishlists')
 @Controller('wishlists')
 export class WishlistsController {
-  public constructor(private readonly wishlistsService: WishlistsService) {}
+  public constructor(
+    private readonly wishlistsService: WishlistsService,
+    private readonly authService: AuthService,
+  ) {}
 
   @ApiOperation({ summary: '찜한 상품 목록 조회' })
   @Get()
-  public async getWishlist(): Promise<string[]> {
-    const userId = 'xcl94l94lyb6dqceqi71r7z3'; // 테스트용 고정 userId
+  public async getWishlist(@Req() req: Request): Promise<string[]> {
+    const { sub: userId } = await this.authService.getUserFromCookie(req);
     return await this.wishlistsService.getWishlist(userId);
   }
 
@@ -19,16 +26,20 @@ export class WishlistsController {
   @Post()
   public async toggleWishlist(
     @Body() { productId }: ToggleWishlistDto,
+    @Req() req: Request,
   ): Promise<{ message: string }> {
-    const userId = 'xcl94l94lyb6dqceqi71r7z3'; // 테스트용 고정 userId
+    const { sub: userId } = await this.authService.getUserFromCookie(req);
     return await this.wishlistsService.toggleWishlist(userId, productId);
   }
 
   @Post('move-to-cart')
   @ApiOperation({ summary: '찜한 상품을 장바구니로 이동' })
   @ApiBody({ type: MoveToCartDto })
-  public async moveToCart(@Body() { productIds }: MoveToCartDto): Promise<{ message: string }> {
-    const userId = 'xcl94l94lyb6dqceqi71r7z3'; // 테스트용 고정 userId
+  public async moveToCart(
+    @Body() { productIds }: MoveToCartDto,
+    @Req() req: Request,
+  ): Promise<{ message: string }> {
+    const { sub: userId } = await this.authService.getUserFromCookie(req);
     return await this.wishlistsService.moveWishlistToCart(userId, productIds);
   }
 }
