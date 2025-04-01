@@ -5,6 +5,7 @@ import { Prisma } from '@prisma/client';
  * @param sort 정렬 기준 (latest, lowPrice, highPrice)
  * @returns Prisma 정렬 객체
  */
+
 export function getOrderBy(sort: string): Prisma.OrderRequestOrderByWithRelationInput {
   switch (sort) {
     case 'latest': // 최신순
