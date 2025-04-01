@@ -68,10 +68,12 @@ const main = async (): Promise<void> => {
           const [postalCode, feeType, isActive, juso] = line.split('\t');
 
           // 한 줄 테스트
-          // Logger.log(
-          //   `postalCode: ${postalCode}, feeType: ${feeType}, isActive: ${isActive}, juso: ${juso}`,
-          // );
-          if (!postalCode || !feeType || !isActive) {
+          if (process.env.NODE_ENV === 'local') {
+            Logger.debug(
+              `우편번호 데이터: ${postalCode}, 배송비 유형: ${feeType}, 활성 상태: ${isActive}`,
+            );
+          }
+          if (!postalCode || !feeType || !isActive || !juso) {
             Logger.error(`❌ 잘못된 데이터 형식: ${line}`);
             throw new BadRequestException(`❌ 잘못된 데이터 형식: ${line}`);
           }
@@ -117,12 +119,16 @@ const main = async (): Promise<void> => {
           });
 
           // 샘플 데이터 비교 (간단한 비교 로직)
-          const hasChanges = sample.some(
-            (item, index) =>
-              item.postalCode !== existingSample[index].postalCode ||
-              item.feeType !== existingSample[index].feeType ||
-              item.isActive !== existingSample[index].isActive,
-          );
+          const existingSampleMap = new Map(existingSample.map(item => [item.postalCode, item]));
+
+          const hasChanges = sample.some(item => {
+            const existingItem = existingSampleMap.get(item.postalCode);
+            return (
+              !existingItem ||
+              existingItem.feeType !== item.feeType ||
+              existingItem.isActive !== item.isActive
+            );
+          });
 
           if (hasChanges) {
             await tx.zipcode.deleteMany();
@@ -154,229 +160,234 @@ const main = async (): Promise<void> => {
 
   await prisma.$transaction(
     async tx => {
-      // 1. 기업 데이터 및 기업 주소 데이터 추가
-      // 아래 다른 테이블 입력을 위해 테스트 기업 선택
-      const testCompany: Company = companies[0];
+      try {
+        // 1. 기업 데이터 및 기업 주소 데이터 추가
+        // 아래 다른 테이블 입력을 위해 테스트 기업 선택
+        const testCompany: Company = companies[0];
 
-      // 1-1. 기업 생성
-      await tx.company.createMany({
-        data: companies,
-        skipDuplicates: true,
-      });
-
-      // 1-2. 기업 주소 생성
-      // 우편번호 데이터를 한 번에 가져와서 메모리에 캐싱
-      const allZipcodes = await tx.zipcode.findMany();
-      const zipCodeMap = new Map(allZipcodes.map(z => [`${z.postalCode}-${z.juso}`, z]));
-
-      // 배치 처리를 위한 데이터 준비
-      const addressesToCreate = companyAddresses.map(address => {
-        const { companyId, zipcodeId: _zipcodeId, ...rest } = address;
-        const key = `${address.postalCode}-${address.address}`;
-        const matchingZipcode = zipCodeMap.get(key);
-
-        return {
-          ...rest,
-          company: { connect: { id: companyId } },
-          ...(matchingZipcode ? { zipcode: { connect: { id: matchingZipcode.id } } } : {}),
-        };
-      });
-      // 배치 생성 또는 createMany를 지원하지 않는 경우 효율적인 방식으로 처리
-      await Promise.all(addressesToCreate.map(data => tx.companyAddress.create({ data })));
-
-      // 2. Category 데이터 추가
-      const parentCategories: Category[] = categories.map(category => ({
-        ...category,
-        companyId: testCompany.id,
-      }));
-      if (categories.length === 0) {
-        throw new BadRequestException('Categories not found');
-      }
-      await tx.category.createMany({
-        data: parentCategories,
-        skipDuplicates: true,
-      });
-
-      // 3. SubCategory 데이터 추가
-      const subCategoriesWithCompany: Category[] = subCategories.map(category => ({
-        ...category,
-        companyId: testCompany.id,
-      }));
-      if (subCategories.length === 0) {
-        throw new BadRequestException('SubCategories not found');
-      }
-      await tx.category.createMany({
-        data: subCategoriesWithCompany,
-        skipDuplicates: true,
-      });
-
-      // 4. User 데이터 추가
-      await tx.user.createMany({
-        data: users,
-        skipDuplicates: true,
-      });
-
-      // 5. Product 데이터 추가
-      await tx.product.createMany({
-        data: products,
-        skipDuplicates: true,
-      });
-
-      /**
-       * 기존 데이터
-       */
-
-      // 6. 장바구니 추가
-      await tx.cart.upsert({
-        where: { id: 'bhcxqfshp43wkskocodegc7x' },
-        update: {},
-        create: {
-          id: 'bhcxqfshp43wkskocodegc7x',
-          userId: getRequiredId(users[4], '사용자 ID가 존재하지 않습니다.'),
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      });
-
-      // 7. 주문 요청 추가
-      const orderRequestIds = [
-        'nz2p1larko8dcbyr7ej08v98',
-        'xp569x8t45rbax2m2pqhqsnl',
-        'uc4os87dbme8k5gom16lqb6u',
-      ];
-      await tx.orderRequest.createMany({
-        data: [
-          {
-            id: orderRequestIds[0],
-            requesterId: getRequiredId(users[0], '요청자 ID가 존재하지 않습니다.'),
-            companyId: getRequiredId(testCompany, '회사 ID가 존재하지 않습니다.'),
-            status: 'PENDING',
-            totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-          {
-            id: orderRequestIds[1],
-            requesterId: getRequiredId(users[6], '요청자 ID가 존재하지 않습니다.'),
-            companyId: getRequiredId(testCompany, '회사 ID가 존재하지 않습니다.'),
-            status: 'APPROVED',
-            totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-          {
-            id: orderRequestIds[2],
-            requesterId: getRequiredId(users[1], '요청자 ID가 존재하지 않습니다.'),
-            companyId: getRequiredId(testCompany, '회사 ID가 존재하지 않습니다.'),
-            status: 'REJECTED',
-            totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-        ],
-        skipDuplicates: true,
-      });
-
-      // 8. 주문 요청 아이템 추가
-      // createId() 대신 직접 값 할당
-      const orderRequestItemsIds = [
-        'ux1idk821b5j1qmv6b30ncko',
-        'fugejwfmuo43d7po46psreto',
-        'vsqr28wsy0oxz1fzstc9s8l1',
-        'iurp3qr1rffhzj9lan7sbu6c',
-        'dirjv4wqu8fhb6up8n0frnzl',
-        'hfe0sszybej58jdqfmqtnpgi',
-      ];
-      const orderRequestItems = [
-        {
-          id: orderRequestItemsIds[0],
-          orderRequestId: orderRequestIds[0],
-          productId: products[0].id,
-          quantity: 2,
-          price: products[0].price,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: orderRequestItemsIds[1],
-          orderRequestId: orderRequestIds[0],
-          productId: products[1].id,
-          quantity: 3,
-          price: products[1].price,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: orderRequestItemsIds[2],
-          orderRequestId: orderRequestIds[1],
-          productId: products[1].id,
-          quantity: 1,
-          price: products[1].price,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: orderRequestItemsIds[3],
-          orderRequestId: orderRequestIds[1],
-          productId: products[2].id,
-          quantity: 3,
-          price: products[2].price,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: orderRequestItemsIds[4],
-          orderRequestId: orderRequestIds[1],
-          productId: products[3].id,
-          quantity: 4,
-          price: products[3].price,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: orderRequestItemsIds[5],
-          orderRequestId: orderRequestIds[2],
-          productId: products[1].id,
-          quantity: 2,
-          price: products[1].price,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ].map((item, index) => ({
-        ...item,
-        id: orderRequestItemsIds[index],
-      }));
-
-      for (const item of orderRequestItems) {
-        const existingOrderRequestItem = await tx.orderRequestItem.findUnique({
-          where: { id: item.id },
+        // 1-1. 기업 생성
+        await tx.company.createMany({
+          data: companies,
+          skipDuplicates: true,
         });
 
-        if (!existingOrderRequestItem) {
-          await tx.orderRequestItem.create({
-            data: item,
+        // 1-2. 기업 주소 생성
+        // 우편번호 데이터를 한 번에 가져와서 메모리에 캐싱
+        const allZipcodes = await tx.zipcode.findMany();
+        const zipCodeMap = new Map(allZipcodes.map(z => [`${z.postalCode}-${z.juso}`, z]));
+
+        // 배치 처리를 위한 데이터 준비
+        const addressesToCreate = companyAddresses.map(address => {
+          const { companyId, zipcodeId: _zipcodeId, ...rest } = address;
+          const key = `${address.postalCode}-${address.address}`;
+          const matchingZipcode = zipCodeMap.get(key);
+
+          return {
+            ...rest,
+            company: { connect: { id: companyId } },
+            ...(matchingZipcode ? { zipcode: { connect: { id: matchingZipcode.id } } } : {}),
+          };
+        });
+        // 배치 생성 또는 createMany를 지원하지 않는 경우 효율적인 방식으로 처리
+        await Promise.all(addressesToCreate.map(data => tx.companyAddress.create({ data })));
+
+        // 2. Category 데이터 추가
+        const parentCategories: Category[] = categories.map(category => ({
+          ...category,
+          companyId: testCompany.id,
+        }));
+        if (categories.length === 0) {
+          throw new BadRequestException('Categories not found');
+        }
+        await tx.category.createMany({
+          data: parentCategories,
+          skipDuplicates: true,
+        });
+
+        // 3. SubCategory 데이터 추가
+        const subCategoriesWithCompany: Category[] = subCategories.map(category => ({
+          ...category,
+          companyId: testCompany.id,
+        }));
+        if (subCategories.length === 0) {
+          throw new BadRequestException('SubCategories not found');
+        }
+        await tx.category.createMany({
+          data: subCategoriesWithCompany,
+          skipDuplicates: true,
+        });
+
+        // 4. User 데이터 추가
+        await tx.user.createMany({
+          data: users,
+          skipDuplicates: true,
+        });
+
+        // 5. Product 데이터 추가
+        await tx.product.createMany({
+          data: products,
+          skipDuplicates: true,
+        });
+
+        /**
+         * 기존 데이터
+         */
+
+        // 6. 장바구니 추가
+        await tx.cart.upsert({
+          where: { id: 'bhcxqfshp43wkskocodegc7x' },
+          update: {},
+          create: {
+            id: 'bhcxqfshp43wkskocodegc7x',
+            userId: getRequiredId(users[4], '사용자 ID가 존재하지 않습니다.'),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+
+        // 7. 주문 요청 추가
+        const orderRequestIds = [
+          'nz2p1larko8dcbyr7ej08v98',
+          'xp569x8t45rbax2m2pqhqsnl',
+          'uc4os87dbme8k5gom16lqb6u',
+        ];
+        await tx.orderRequest.createMany({
+          data: [
+            {
+              id: orderRequestIds[0],
+              requesterId: getRequiredId(users[0], '요청자 ID가 존재하지 않습니다.'),
+              companyId: getRequiredId(testCompany, '회사 ID가 존재하지 않습니다.'),
+              status: 'PENDING',
+              totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+            {
+              id: orderRequestIds[1],
+              requesterId: getRequiredId(users[6], '요청자 ID가 존재하지 않습니다.'),
+              companyId: getRequiredId(testCompany, '회사 ID가 존재하지 않습니다.'),
+              status: 'APPROVED',
+              totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+            {
+              id: orderRequestIds[2],
+              requesterId: getRequiredId(users[1], '요청자 ID가 존재하지 않습니다.'),
+              companyId: getRequiredId(testCompany, '회사 ID가 존재하지 않습니다.'),
+              status: 'REJECTED',
+              totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          ],
+          skipDuplicates: true,
+        });
+
+        // 8. 주문 요청 아이템 추가
+        // createId() 대신 직접 값 할당
+        const orderRequestItemsIds = [
+          'ux1idk821b5j1qmv6b30ncko',
+          'fugejwfmuo43d7po46psreto',
+          'vsqr28wsy0oxz1fzstc9s8l1',
+          'iurp3qr1rffhzj9lan7sbu6c',
+          'dirjv4wqu8fhb6up8n0frnzl',
+          'hfe0sszybej58jdqfmqtnpgi',
+        ];
+        const orderRequestItems = [
+          {
+            id: orderRequestItemsIds[0],
+            orderRequestId: orderRequestIds[0],
+            productId: products[0].id,
+            quantity: 2,
+            price: products[0].price,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+          {
+            id: orderRequestItemsIds[1],
+            orderRequestId: orderRequestIds[0],
+            productId: products[1].id,
+            quantity: 3,
+            price: products[1].price,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+          {
+            id: orderRequestItemsIds[2],
+            orderRequestId: orderRequestIds[1],
+            productId: products[1].id,
+            quantity: 1,
+            price: products[1].price,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+          {
+            id: orderRequestItemsIds[3],
+            orderRequestId: orderRequestIds[1],
+            productId: products[2].id,
+            quantity: 3,
+            price: products[2].price,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+          {
+            id: orderRequestItemsIds[4],
+            orderRequestId: orderRequestIds[1],
+            productId: products[3].id,
+            quantity: 4,
+            price: products[3].price,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+          {
+            id: orderRequestItemsIds[5],
+            orderRequestId: orderRequestIds[2],
+            productId: products[1].id,
+            quantity: 2,
+            price: products[1].price,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ].map((item, index) => ({
+          ...item,
+          id: orderRequestItemsIds[index],
+        }));
+
+        for (const item of orderRequestItems) {
+          const existingOrderRequestItem = await tx.orderRequestItem.findUnique({
+            where: { id: item.id },
+          });
+
+          if (!existingOrderRequestItem) {
+            await tx.orderRequestItem.create({
+              data: item,
+            });
+          }
+        }
+
+        // 9. 각 주문 요청에 대해 totalAmount 계산 후 업데이트
+        for (const orderRequestId of orderRequestIds) {
+          // 해당 주문 요청의 아이템 조회
+          const items = await tx.orderRequestItem.findMany({
+            where: { orderRequestId },
+          });
+
+          // totalAmount 계산 (각 아이템의 price * quantity 합산)
+          const totalAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+          // 주문 요청의 totalAmount 업데이트
+          await tx.orderRequest.update({
+            where: { id: orderRequestId },
+            data: { totalAmount },
           });
         }
+
+        Logger.log('🎉 데이터베이스 시딩이 완료되었습니다!');
+      } catch (error) {
+        Logger.error('❌ 데이터베이스 시딩 중 오류가 발생했습니다:', error);
+        throw error;
       }
-
-      // 9. 각 주문 요청에 대해 totalAmount 계산 후 업데이트
-      for (const orderRequestId of orderRequestIds) {
-        // 해당 주문 요청의 아이템 조회
-        const items = await tx.orderRequestItem.findMany({
-          where: { orderRequestId },
-        });
-
-        // totalAmount 계산 (각 아이템의 price * quantity 합산)
-        const totalAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
-        // 주문 요청의 totalAmount 업데이트
-        await tx.orderRequest.update({
-          where: { id: orderRequestId },
-          data: { totalAmount },
-        });
-      }
-
-      Logger.log('🎉 데이터베이스 시딩이 완료되었습니다!');
     },
     { timeout: 30000 }, // 트랜잭션 타임아웃 30초 설정
   );
