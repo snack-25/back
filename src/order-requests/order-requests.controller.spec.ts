@@ -5,8 +5,10 @@ import { PrismaService } from '@src/shared/prisma/prisma.service';
 import { OrderRequestStatus, UserRole } from '@prisma/client';
 import { UnauthorizedException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { Request } from 'express';
+import { AuthGuard } from '../auth/auth.guard';
+import { AuthService } from '../auth/auth.service';
 
-describe('OrderRequestsService', () => {
+describe('OrderRequestsController', () => {
   let service: OrderRequestsService;
   let controller: OrderRequestsController;
   let prisma: PrismaService;
@@ -51,8 +53,19 @@ describe('OrderRequestsService', () => {
             ),
           },
         },
+        {
+          provide: AuthService,
+          useValue: {
+            validateUser: jest.fn(),
+          },
+        },
       ],
-    }).compile();
+    })
+      .overrideGuard(AuthGuard) // AuthGuard를 Mock 처리
+      .useValue({
+        canActivate: jest.fn().mockResolvedValue(true),
+      })
+      .compile();
 
     service = module.get<OrderRequestsService>(OrderRequestsService);
     controller = module.get<OrderRequestsController>(OrderRequestsController);

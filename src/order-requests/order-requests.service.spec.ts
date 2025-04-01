@@ -11,7 +11,7 @@ describe('OrderRequestsService', () => {
 
   beforeEach(async () => {
     const mockPrismaService = {
-      $transaction: jest.fn(), // $transaction 메서드 모의(mock)
+      $transaction: jest.fn(), // $transaction 메서드 모의
       orderRequest: {
         create: jest.fn(), // orderRequest.create 메서드 모의(mock)
       },
