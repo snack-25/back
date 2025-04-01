@@ -2,11 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { CartsController } from './carts.controller';
 import { CartsService } from './carts.service';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
+import { AuthService } from '@src/auth/auth.service';
 import { CartItem } from '@prisma/client';
+import { Request } from 'express';
 
 describe('CartsController', () => {
   let controller: CartsController;
   let service: CartsService;
+  let authService: AuthService;
 
   const mockPrismaService = {
     cart: { findUnique: jest.fn() },
@@ -17,6 +20,10 @@ describe('CartsController', () => {
       deleteMany: jest.fn(),
     },
     product: { findUnique: jest.fn() },
+  };
+
+  const mockAuthService = {
+    getUserFromCookie: jest.fn(),
   };
 
   const mockCart = {
@@ -47,6 +54,12 @@ describe('CartsController', () => {
     updatedAt: new Date(),
   };
 
+  const mockRequest = (): Partial<Request> => ({
+    cookies: {
+      accessToken: 'mock-token',
+    },
+  });
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [CartsController],
@@ -56,14 +69,17 @@ describe('CartsController', () => {
           provide: PrismaService,
           useValue: mockPrismaService,
         },
+        {
+          provide: AuthService,
+          useValue: mockAuthService,
+        },
       ],
     }).compile();
 
     controller = module.get<CartsController>(CartsController);
     service = module.get<CartsService>(CartsService);
-  });
+    authService = module.get<AuthService>(AuthService);
 
-  afterEach(() => {
     jest.clearAllMocks();
   });
 
@@ -75,24 +91,30 @@ describe('CartsController', () => {
         shippingFee: 2500,
       };
 
+      jest
+        .spyOn(authService, 'getUserFromCookie')
+        .mockResolvedValue({ sub: mockCart.userId, exp: Date.now() + 10000 });
       const spy = jest.spyOn(service, 'getCartItems').mockResolvedValue(result);
 
-      const response = await controller.getCartItems(mockCart.id);
+      const req = mockRequest() as Request;
+      const response = await controller.getCartItems(mockCart.id, req);
 
-      expect(spy).toHaveBeenCalledWith(mockCart.id);
+      expect(spy).toHaveBeenCalledWith(mockCart.userId, mockCart.id);
       expect(response).toEqual(result);
     });
   });
 
   describe('addToCart', () => {
     it('should add product to cart', async () => {
+      jest
+        .spyOn(authService, 'getUserFromCookie')
+        .mockResolvedValue({ sub: mockCart.userId, exp: Date.now() + 10000 });
       const spy = jest.spyOn(service, 'addToCart').mockResolvedValue(mockCartItem);
 
-      const response = await controller.addToCart(mockCart.id, {
-        productId: mockProduct.id,
-      });
+      const req = mockRequest() as Request;
+      const response = await controller.addToCart(mockCart.id, { productId: mockProduct.id }, req);
 
-      expect(spy).toHaveBeenCalledWith(mockCart.id, mockProduct.id);
+      expect(spy).toHaveBeenCalledWith(mockCart.userId, mockCart.id, mockProduct.id);
       expect(response).toEqual(mockCartItem);
     });
   });
@@ -100,13 +122,20 @@ describe('CartsController', () => {
   describe('updateCartItem', () => {
     it('should update cart item quantity', async () => {
       const updatedItem = { ...mockCartItem, quantity: 3 };
+      jest
+        .spyOn(authService, 'getUserFromCookie')
+        .mockResolvedValue({ sub: mockCart.userId, exp: Date.now() + 10000 });
       const spy = jest.spyOn(service, 'updateCartItem').mockResolvedValue(updatedItem);
 
-      const response = await controller.updateCartItem(mockCart.id, mockCartItem.id, {
-        quantity: 3,
-      });
+      const req = mockRequest() as Request;
+      const response = await controller.updateCartItem(
+        mockCart.id,
+        mockCartItem.id,
+        { quantity: 3 },
+        req,
+      );
 
-      expect(spy).toHaveBeenCalledWith(mockCart.id, mockCartItem.id, 3);
+      expect(spy).toHaveBeenCalledWith(mockCart.userId, mockCart.id, 3, mockCartItem.id);
       expect(response).toEqual(updatedItem);
     });
   });
@@ -114,13 +143,19 @@ describe('CartsController', () => {
   describe('deleteCartItems', () => {
     it('should delete selected items from cart', async () => {
       const result = { message: '1개의 장바구니 항목이 삭제되었습니다.' };
+      jest
+        .spyOn(authService, 'getUserFromCookie')
+        .mockResolvedValue({ sub: mockCart.userId, exp: Date.now() + 10000 });
       const spy = jest.spyOn(service, 'deleteCartItems').mockResolvedValue(result);
 
-      const response = await controller.deleteCartItems(mockCart.id, {
-        itemIds: [mockCartItem.id],
-      });
+      const req = mockRequest() as Request;
+      const response = await controller.deleteCartItems(
+        mockCart.id,
+        { itemIds: [mockCartItem.id] },
+        req,
+      );
 
-      expect(spy).toHaveBeenCalledWith(mockCart.id, [mockCartItem.id]);
+      expect(spy).toHaveBeenCalledWith(mockCart.userId, mockCart.id, [mockCartItem.id]);
       expect(response).toEqual(result);
     });
   });

@@ -5,7 +5,7 @@ import { NotFoundException, ForbiddenException } from '@nestjs/common';
 
 const mockCart = {
   id: 'test-cart-id',
-  userId: 'xcl94l94lyb6dqceqi71r7z3', // 임시 고정 userid
+  userId: 'xcl94l94lyb6dqceqi71r7z3',
   cartItems: [],
 };
 
@@ -66,20 +66,20 @@ describe('CartsService', () => {
       mockPrismaService.cartItem.findUnique.mockResolvedValue(null);
       mockPrismaService.cartItem.create.mockResolvedValue(mockCartItem);
 
-      const result = await service.addToCart(mockCart.id, mockProduct.id);
+      const result = await service.addToCart(mockCart.userId, mockCart.id, mockProduct.id);
       expect(result).toEqual(mockCartItem);
     });
 
     it('should throw if cart not found', async () => {
       mockPrismaService.cart.findUnique.mockResolvedValue(null);
-      await expect(service.addToCart(mockCart.id, mockProduct.id)).rejects.toThrow(
+      await expect(service.addToCart(mockCart.userId, mockCart.id, mockProduct.id)).rejects.toThrow(
         NotFoundException,
       );
     });
 
     it('should throw if cart userId mismatches', async () => {
       mockPrismaService.cart.findUnique.mockResolvedValue({ ...mockCart, userId: 'wrong-id' });
-      await expect(service.addToCart(mockCart.id, mockProduct.id)).rejects.toThrow(
+      await expect(service.addToCart(mockCart.userId, mockCart.id, mockProduct.id)).rejects.toThrow(
         ForbiddenException,
       );
     });
@@ -98,7 +98,7 @@ describe('CartsService', () => {
       };
       mockPrismaService.cart.findUnique.mockResolvedValue(cartWithItems);
 
-      const result = await service.getCartItems(mockCart.id);
+      const result = await service.getCartItems(mockCart.userId, mockCart.id);
 
       expect(result.totalAmount).toBe(1000);
       expect(result.items.length).toBe(1);
@@ -108,10 +108,13 @@ describe('CartsService', () => {
 
   describe('updateCartItem', () => {
     it('should update the cart item quantity', async () => {
-      mockPrismaService.cartItem.findUnique.mockResolvedValue(mockCartItem);
+      mockPrismaService.cartItem.findUnique.mockResolvedValue({
+        ...mockCartItem,
+        cart: { userId: mockCart.userId },
+      });
       mockPrismaService.cartItem.update.mockResolvedValue({ ...mockCartItem, quantity: 2 });
 
-      const result = await service.updateCartItem(mockCart.id, mockCartItem.id, 2);
+      const result = await service.updateCartItem(mockCart.userId, mockCart.id, 2, mockCartItem.id);
       expect(result.quantity).toBe(2);
     });
   });
@@ -121,7 +124,7 @@ describe('CartsService', () => {
       mockPrismaService.cart.findUnique.mockResolvedValue(mockCart);
       mockPrismaService.cartItem.deleteMany.mockResolvedValue({ count: 1 });
 
-      const result = await service.deleteCartItems(mockCart.id, [mockCartItem.id]);
+      const result = await service.deleteCartItems(mockCart.userId, mockCart.id, [mockCartItem.id]);
       expect(result.message).toContain('1개의');
     });
   });

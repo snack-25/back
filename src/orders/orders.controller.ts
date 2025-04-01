@@ -1,14 +1,22 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam, ApiBody } from '@nestjs/swagger';
 import { OrderRequestDto } from './dto/create-order.dto';
 import { Order } from '@prisma/client';
 import { OrderQueryDto } from './dto/update-order.dto';
 import { OrdersService } from './orders.service';
+import { Request } from 'express';
+import { AuthGuard } from '@src/auth/auth.guard';
+import { AuthService } from '@src/auth/auth.service';
 
+@UseGuards(AuthGuard)
 @ApiTags('Orders')
+@UseGuards(AuthGuard)
 @Controller('orders')
 export class OrdersController {
-  public constructor(private readonly ordersService: OrdersService) {}
+  public constructor(
+    private readonly ordersService: OrdersService,
+    private readonly authService: AuthService,
+  ) {}
 
   @ApiOperation({ summary: '주문 목록 조회', description: '사용자의 주문 목록을 조회합니다.' })
   @ApiQuery({ name: 'page', required: false, description: '페이지 번호 (기본값: 1)' })
@@ -22,12 +30,13 @@ export class OrdersController {
   @ApiResponse({ status: 200, description: '주문 목록 조회 성공' })
   @Get()
   public async getUserOrders(
+    @Req() req: Request,
     @Query() query: OrderQueryDto,
     @Query('page') page: string = '1',
     @Query('pageSize') pageSize: string = '6',
     @Query('sort') sort: string = 'latest',
   ): Promise<{ orders: Order[]; totalOrders: number; totalPages: number }> {
-    const userId = 'p9ri9lsfyxy4k4juq9nw2jpa';
+    const { sub: userId } = await this.authService.getUserFromCookie(req);
     const pageNumber = parseInt(page, 10);
     const pageSizeNumber = parseInt(pageSize, 10);
 
@@ -41,8 +50,11 @@ export class OrdersController {
   @ApiBody({ type: OrderRequestDto, description: '주문할 상품 목록' })
   @ApiResponse({ status: 201, description: '주문 생성 성공' })
   @Post()
-  public async adminPurchase(@Body() orderData: OrderRequestDto): Promise<Order> {
-    const userId = 'p9ri9lsfyxy4k4juq9nw2jpa';
+  public async adminPurchase(
+    @Req() req: Request,
+    @Body() orderData: OrderRequestDto,
+  ): Promise<Order> {
+    const { sub: userId } = await this.authService.getUserFromCookie(req);
     return await this.ordersService.createOrder(userId, orderData);
   }
 
@@ -54,9 +66,10 @@ export class OrdersController {
   @ApiResponse({ status: 200, description: '주문 상세 조회 성공' })
   @Get(':orderId')
   public async getOrderDetail(
+    @Req() req: Request,
     @Param('orderId') orderId: string,
   ): Promise<{ order: Order; totalItems: number }> {
-    const userId = 'p9ri9lsfyxy4k4juq9nw2jpa';
+    const { sub: userId } = await this.authService.getUserFromCookie(req);
     return await this.ordersService.getOrderDetail(userId, orderId);
   }
 }
