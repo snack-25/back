@@ -8,6 +8,7 @@ import {
   Product,
   User,
 } from '@prisma/client';
+import { createHash } from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
@@ -110,25 +111,27 @@ const main = async (): Promise<void> => {
       } else {
         // 만약 시딩할 데이터가 DB에 모두 있는 경우 deleteMany() 패스
         if (existingZipcode._count.id === zipcodes.length) {
-          // 우편번호 데이터의 변경 여부 확인 (샘플링)
-          const sampleSize = Math.min(100, zipcodes.length);
-          const sample = zipcodes.slice(0, sampleSize);
-          const existingSample = await tx.zipcode.findMany({
-            take: sampleSize,
-            orderBy: { id: 'asc' },
-          });
+          // 데이터 해시 함수
+          const hashData = (
+            data: { postalCode: string; feeType: FeeType; isActive: boolean }[],
+          ): string => {
+            return createHash('sha256')
+              .update(
+                JSON.stringify(
+                  data.map(d => ({
+                    postalCode: d.postalCode,
+                    feeType: d.feeType,
+                    isActive: d.isActive,
+                  })),
+                ),
+              )
+              .digest('hex');
+          };
 
-          // 샘플 데이터 비교 (간단한 비교 로직)
-          const existingSampleMap = new Map(existingSample.map(item => [item.postalCode, item]));
-
-          const hasChanges = sample.some(item => {
-            const existingItem = existingSampleMap.get(item.postalCode);
-            return (
-              !existingItem ||
-              existingItem.feeType !== item.feeType ||
-              existingItem.isActive !== item.isActive
-            );
-          });
+          // DB 데이터와 새 데이터의 해시 비교
+          const existingDataHash = hashData(await tx.zipcode.findMany());
+          const newDataHash = hashData(zipcodes);
+          const hasChanges = existingDataHash !== newDataHash;
 
           if (hasChanges) {
             await tx.zipcode.deleteMany();
