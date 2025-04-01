@@ -58,8 +58,7 @@ const main = async (): Promise<void> => {
 
       // 파일 존재 여부 확인
       if (!fs.existsSync(filePath)) {
-        console.error(`❌ zipcodes.tsv 파일을 찾을 수 없습니다: ${filePath}`);
-        return;
+        throw new BadRequestException(`❌ zipcodes.tsv 파일을 찾을 수 없습니다: ${filePath}`);
       }
       const zipCodesFile = fs.readFileSync(filePath, 'utf-8');
 
@@ -109,7 +108,32 @@ const main = async (): Promise<void> => {
       } else {
         // 만약 시딩할 데이터가 DB에 모두 있는 경우 deleteMany() 패스
         if (existingZipcode._count.id === zipcodes.length) {
-          zipcodeResultMessage = allExistsMessage;
+          // 우편번호 데이터의 변경 여부 확인 (샘플링)
+          const sampleSize = Math.min(100, zipcodes.length);
+          const sample = zipcodes.slice(0, sampleSize);
+          const existingSample = await tx.zipcode.findMany({
+            take: sampleSize,
+            orderBy: { id: 'asc' },
+          });
+
+          // 샘플 데이터 비교 (간단한 비교 로직)
+          const hasChanges = sample.some(
+            (item, index) =>
+              item.postalCode !== existingSample[index].postalCode ||
+              item.feeType !== existingSample[index].feeType ||
+              item.isActive !== existingSample[index].isActive,
+          );
+
+          if (hasChanges) {
+            await tx.zipcode.deleteMany();
+            await tx.zipcode.createMany({
+              data: zipcodes,
+              skipDuplicates: true,
+            });
+            zipcodeResultMessage = '🎉 우편번호 데이터가 변경되어 업데이트했습니다.';
+          } else {
+            zipcodeResultMessage = allExistsMessage;
+          }
         } else {
           // DB에 데이터가 일부라도 있는 경우(11931개 미만) 기존 데이터 삭제 후 새로운 데이터 추가
           await tx.zipcode.deleteMany();
