@@ -67,10 +67,10 @@ const main = async (): Promise<void> => {
         .map(line => {
           const [postalCode, feeType, isActive, juso] = line.split('\t');
 
-          // 한 줄 테스트
-          if (process.env.NODE_ENV === 'local') {
-            Logger.debug(
-              `우편번호 데이터: ${postalCode}, 배송비 유형: ${feeType}, 활성 상태: ${isActive}`,
+          // 개발 환경에서는 우편번호 데이터 로깅
+          if (process.env.NODE_ENV === 'development') {
+            Logger.log(
+              `우편번호 데이터: ${postalCode}, 배송비 유형: ${feeType}, 활성 상태: ${isActive}, 주소: ${juso}`,
             );
           }
           if (!postalCode || !feeType || !isActive || !juso) {
@@ -354,34 +354,48 @@ const main = async (): Promise<void> => {
           id: orderRequestItemsIds[index],
         }));
 
-        for (const item of orderRequestItems) {
-          const existingOrderRequestItem = await tx.orderRequestItem.findUnique({
-            where: { id: item.id },
-          });
+        // 기존 아이템 ID 목록 조회
+        const existingItemIds = new Set(
+          (
+            await tx.orderRequestItem.findMany({
+              where: { id: { in: orderRequestItems.map(item => item.id) } },
+              select: { id: true },
+            })
+          ).map(item => item.id),
+        );
 
-          if (!existingOrderRequestItem) {
-            await tx.orderRequestItem.create({
-              data: item,
-            });
-          }
+        // 존재하지 않는 아이템만 필터링하여 생성
+        const itemsToCreate = orderRequestItems.filter(item => !existingItemIds.has(item.id));
+        if (itemsToCreate.length > 0) {
+          await Promise.all(itemsToCreate.map(item => tx.orderRequestItem.create({ data: item })));
         }
 
         // 9. 각 주문 요청에 대해 totalAmount 계산 후 업데이트
-        for (const orderRequestId of orderRequestIds) {
-          // 해당 주문 요청의 아이템 조회
-          const items = await tx.orderRequestItem.findMany({
-            where: { orderRequestId },
-          });
+        // 모든 주문 요청 아이템을 한 번에 조회
+        const allOrderItems = await tx.orderRequestItem.findMany({
+          where: { orderRequestId: { in: orderRequestIds } },
+        });
 
-          // totalAmount 계산 (각 아이템의 price * quantity 합산)
-          const totalAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        // 주문별 총액 계산
+        const orderTotals = allOrderItems.reduce(
+          (acc, item) => {
+            const orderId = item.orderRequestId;
+            if (!acc[orderId]) acc[orderId] = 0;
+            acc[orderId] += item.price * item.quantity;
+            return acc;
+          },
+          {} as Record<string, number>,
+        );
 
-          // 주문 요청의 totalAmount 업데이트
-          await tx.orderRequest.update({
-            where: { id: orderRequestId },
-            data: { totalAmount },
-          });
-        }
+        // 모든 주문 총액 한 번에 업데이트
+        await Promise.all(
+          Object.entries(orderTotals).map(([orderRequestId, totalAmount]) =>
+            tx.orderRequest.update({
+              where: { id: orderRequestId },
+              data: { totalAmount },
+            }),
+          ),
+        );
 
         Logger.log('🎉 데이터베이스 시딩이 완료되었습니다!');
       } catch (error) {
