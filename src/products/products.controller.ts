@@ -11,6 +11,8 @@ import {
   UploadedFile,
   UseGuards,
   UseInterceptors,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import {
@@ -31,11 +33,12 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { FILE_SIZE_LIMIT } from './const';
 
 @Controller('products')
+@UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 export class ProductsController {
   public constructor(private readonly productsService: ProductsService) {}
 
-  @Post()
   @UseGuards(AuthGuard)
+  @Post()
   @UseInterceptors(
     FileInterceptor('imageUrl', {
       limits: { fileSize: FILE_SIZE_LIMIT },

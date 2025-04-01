@@ -47,8 +47,7 @@ export class ProductsService {
         'AWS_S3_BUCKET_NAME or AWS_REGION environment variable is not defined',
       );
     }
-
-    return `https://${bucketName}.s3.${region}.amazonaws.com/${filename}`;
+    return `https://${bucketName}.s3.${region}.amazonaws.com/products/${filename}`;
   }
 
   public async findAllProducts({
@@ -152,7 +151,8 @@ export class ProductsService {
     file: Express.Multer.File,
   ): Promise<ProductResponseDto> {
     // TODO: 실패시 로직, 예외 처리, 커스텀 데코레이터로 생성한 유저 정보 추가 필요함(2025-03-31 19:40)
-    const filename = `${createId()}${extname(file.originalname)}`;
+    const filename = `${createId()}${extname(file.originalname).toLowerCase()}`;
+
     this.logger.debug(`파일 업로드 시작: ${filename}`);
 
     const uploadParams = {
@@ -186,10 +186,9 @@ export class ProductsService {
       isImgUploaded = true;
       this.logger.debug('파일 업로드 성공');
     } catch (e) {
-      throw new BadRequestException('파일 업로드에 실패했습니다.');
       this.logger.error(e);
+      throw new BadRequestException('파일 업로드에 실패했습니다.');
     }
-
     try {
       const product = await this.prismaService.$transaction(async tx => {
         return tx.product.create({
@@ -214,17 +213,28 @@ export class ProductsService {
 
   public async deleteProduct(id: string): Promise<string> {
     try {
+      const product = await this.prismaService.product.findUnique({
+        where: { id },
+      });
+
+      if (!product) {
+        throw new NotFoundException(`상품 ${id}을 찾을 수 없습니다.`);
+      }
+
+      if (product.imageUrl) {
+        await this.s3Client.send(
+          new DeleteObjectCommand({
+            Bucket: process.env.AWS_S3_BUCKET_NAME,
+            Key: `products/${product.imageUrl.split('/').pop()}`,
+          }),
+        );
+      }
       await this.prismaService.$transaction(async tx => {
         await tx.product.delete({
           where: { id },
         });
       });
-      await this.s3Client.send(
-        new DeleteObjectCommand({
-          Bucket: process.env.AWS_S3_BUCKET_NAME,
-          Key: `products/${id}`,
-        }),
-      );
+
       return `상품 ${id}를 성공적으로 삭제했습니다.`;
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
@@ -246,7 +256,7 @@ export class ProductsService {
           name: updateProductDto.name,
           price: updateProductDto.price,
           description: updateProductDto.description,
-          imageUrl: updateProductDto.imageUrl,
+          // imageUrl: updateProductDto.imageUrl,
           categoryId: updateProductDto.categoryId,
         },
       });
