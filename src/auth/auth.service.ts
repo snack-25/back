@@ -6,6 +6,7 @@ import {
   Req,
   Res,
   UnauthorizedException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -229,7 +230,7 @@ export class AuthService {
       }
 
       // JWT 토큰 생성 시, payload의 sub 대신 userId와 joinDate 사용
-      const token = await this.generateToken(user.id, user.createdAt);
+      const token = await this.generateToken(user.id);
 
       const response: SigninResponseDto = {
         token: {
@@ -250,17 +251,23 @@ export class AuthService {
 
       return response;
     } catch (err) {
-      console.error(err);
-      return null;
+      console.error('로그인 오류:', err);
+
+      // 🔥 에러를 캐치하더라도 HTTP 응답을 명확하게 반환하도록 수정
+      if (err instanceof BadRequestException) {
+        throw err; // NestJS에서 자동으로 400 응답 반환
+      }
+
+      throw new InternalServerErrorException('서버 오류가 발생했습니다.');
     }
   }
 
   // JWT 토큰 생성 (로그인 시 호출) – payload의 sub와 joinDate 사용
-  public async generateToken(userId: string, joinDate: Date): Promise<TokenResponseDto> {
+  public async generateToken(userId: string): Promise<TokenResponseDto> {
     try {
       const [accessToken, refreshToken] = await Promise.all([
-        this.generateAccessToken(userId, joinDate),
-        this.generateRefreshToken(userId, joinDate),
+        this.generateAccessToken(userId),
+        this.generateRefreshToken(userId),
       ]);
 
       await this.prisma.user.update({
@@ -276,10 +283,9 @@ export class AuthService {
   }
 
   // accessToken 생성 (payload에 userId와 joinDate 포함)
-  private async generateAccessToken(userId: string, joinDate: Date): Promise<string> {
+  private async generateAccessToken(userId: string): Promise<string> {
     const payload: TokenRequestDto = {
       sub: userId, // 사용자 ID
-      joinDate: joinDate.toISOString(), // 가입 날짜를 문자열로 전달
       type: 'access',
     };
     return this.jwtService.signAsync(payload, {
@@ -289,10 +295,9 @@ export class AuthService {
   }
 
   // refreshToken 생성 (payload에 userId와 joinDate 포함)
-  private async generateRefreshToken(userId: string, joinDate: Date): Promise<string> {
+  private async generateRefreshToken(userId: string): Promise<string> {
     const payload: TokenRequestDto = {
       sub: userId,
-      joinDate: joinDate.toISOString(),
       type: 'refresh',
     };
     return this.jwtService.signAsync(payload, {

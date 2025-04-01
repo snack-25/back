@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Res } from '@nestjs/common';
+import { Body, Controller, Put, Post, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { BudgetsService } from './budgets.service';
 import { BudgetsRequestDto } from './dto/budgets.dto';
@@ -15,21 +15,22 @@ export class BudgetsController {
 
     res.status(200).json({ ok: true, data: inquiry, message: '예산 조회에 성공했습니다' });
   }
+
   //TODO: /budgets/{budgetId} (PUT/PATCH) 예산 정보 수정
-  // @Put('update')
-  // public async update(
-  //   @Body() dto: BudgetsRequestDto,
-  //   // @Req() req: Request,
-  //   // @Res() res: Response,
-  // ): Promise<void> {
-  //   console.log('dto', dto);
+  @Put('update')
+  public async update(
+    @Body() dto: BudgetsRequestDto,
+    // @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    console.log('dto', dto);
 
-  //   const update = await this.budgetsService.update(dto);
+    const update = await this.budgetsService.update(dto);
 
-  //   console.log(update);
+    console.log('마지막 나가는거', update);
 
-  //   // res.status(200).json({ ok: true, data: update, message: '예산 변경에 성공했습니다' });
-  // }
+    res.status(200).json({ ok: true, data: update, message: '예산 변경에 성공했습니다' });
+  }
 
   //TODO: /budgets/{budgetId} (DELETE) 예산 정보 삭제
 }
