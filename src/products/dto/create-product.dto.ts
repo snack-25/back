@@ -1,17 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsNumber, IsString } from 'class-validator';
 
 export class CreateProductDto {
   @ApiProperty({
     description: '상품명',
     example: '허니버터칩',
   })
+  @IsString()
   public name: string;
-
-  @ApiProperty({
-    description: '상품 가격',
-    example: 1500,
-  })
-  public price: number;
 
   @ApiProperty({
     description: '상품 설명',
@@ -24,12 +20,13 @@ export class CreateProductDto {
     description: '카테고리 ID',
     example: '',
   })
+  @IsString()
   public categoryId: string;
 
   @ApiProperty({
-    description: '상품 이미지 URL',
-    example: 'https://placehold.co/600x400?text=honeybutter',
-    required: false,
+    description: '상품 가격',
+    example: 1000,
   })
-  public imageUrl?: string;
+  @IsNumber()
+  public price: number;
 }

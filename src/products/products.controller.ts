@@ -13,7 +13,14 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
-import { ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiConsumes,
+} from '@nestjs/swagger';
 import { ProductResponseDto } from './dto/product.response.dto';
 import { PaginatedProductsResponseDto } from './dto/paginated-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -21,6 +28,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { SortOption } from './enums/sort-options.enum';
 import { AuthGuard } from '@src/auth/auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { FILE_SIZE_LIMIT } from './const';
 
 @Controller('products')
 export class ProductsController {
@@ -30,20 +38,20 @@ export class ProductsController {
   @UseGuards(AuthGuard)
   @UseInterceptors(
     FileInterceptor('imageUrl', {
-      limits: { fileSize: 1024 * 1024 * 5 }, //TODO: 상수화 필요
+      limits: { fileSize: FILE_SIZE_LIMIT },
     }),
   )
   @ApiOperation({ summary: '상품 생성' })
+  @ApiConsumes('multipart/form-data')
   @ApiBody({ type: CreateProductDto })
   @ApiResponse({ status: 200, description: '상품 생성 성공', type: ProductResponseDto })
   @ApiResponse({ status: 400, description: '상품 생성 실패' })
   public async create(
-    @Body('price', ParseIntPipe) price: number,
     @Body() createProductDto: CreateProductDto,
     @UploadedFile() file: Express.Multer.File,
   ): Promise<ProductResponseDto> {
     //TODO : 권한 인증 추가(role = ADMIN, SUPERADMIN 일 때만)
-    return this.productsService.createProduct(price, createProductDto, file);
+    return this.productsService.createProduct(createProductDto, file);
   }
 
   @Get()
