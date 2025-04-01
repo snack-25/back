@@ -26,9 +26,9 @@ export class ProductsService {
 
   private readonly s3Client = new S3Client({
     region:
-      process.env.AWS_REGION ||
+      process.env.AWS_S3_REGION ||
       (() => {
-        throw new InternalServerErrorException('AWS_REGION environment variable is not defined');
+        throw new InternalServerErrorException('AWS_S3_REGION environment variable is not defined');
       })(),
   });
 
@@ -40,11 +40,11 @@ export class ProductsService {
 
   private getS3ImgUrl(filename: string): string {
     const bucketName = process.env.AWS_S3_BUCKET_NAME;
-    const region = process.env.AWS_REGION;
+    const region = process.env.AWS_S3_REGION;
 
     if (!bucketName || !region) {
       throw new InternalServerErrorException(
-        'AWS_S3_BUCKET_NAME or AWS_REGION environment variable is not defined',
+        'AWS_S3_BUCKET_NAME or AWS_S3_REGION environment variable is not defined',
       );
     }
     return `https://${bucketName}.s3.${region}.amazonaws.com/products/${filename}`;
