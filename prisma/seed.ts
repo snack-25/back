@@ -8,9 +8,17 @@ import {
   Product,
   User,
 } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { createHash } from 'crypto';
 import fs from 'fs';
 import path from 'path';
+
+const isDevelopment = process.env.NODE_ENV === 'development';
+const ERROR_MESSAGES = {
+  USER_ID_NOT_FOUND: '사용자 ID가 존재하지 않습니다.',
+  COMPANY_ID_NOT_FOUND: '회사 ID가 존재하지 않습니다.',
+  REQUESTER_ID_NOT_FOUND: '요청자 ID가 존재하지 않습니다.',
+};
 
 const prisma = new PrismaClient();
 
@@ -54,109 +62,126 @@ const main = async (): Promise<void> => {
   // 0. 우편번호(Zipcode) 추가(데이터가 많아 별도 트랜잭션으로 처리함)
   await prisma.$transaction(
     async tx => {
-      // 우편번호 데이터 파일 경로(seed.ts와 같은 경로)
-      const filePath = path.join(__dirname, 'zipcodes.tsv');
+      try {
+        // 우편번호 데이터 파일 경로(seed.ts와 같은 경로)
+        const filePath = path.join(__dirname, 'zipcodes.tsv');
 
-      // 파일 존재 여부 확인
-      if (!fs.existsSync(filePath)) {
-        throw new BadRequestException(`❌ zipcodes.tsv 파일을 찾을 수 없습니다: ${filePath}`);
-      }
-      const zipCodesFile = fs.readFileSync(filePath, 'utf-8');
+        // 파일 존재 여부 확인
+        if (!fs.existsSync(filePath)) {
+          throw new BadRequestException(`❌ zipcodes.tsv 파일을 찾을 수 없습니다: ${filePath}`);
+        }
+        const zipCodesFile = fs.readFileSync(filePath, 'utf-8');
 
-      const lines = zipCodesFile.split('\n').slice(1).filter(Boolean); // 첫 줄(헤더) 제거하고 빈 줄 필터링
-      const zipcodes = lines
-        .map(line => {
-          const [postalCode, feeType, isActive, juso] = line.split('\t');
+        const lines = zipCodesFile.split('\n').slice(1).filter(Boolean); // 첫 줄(헤더) 제거하고 빈 줄 필터링
+        const zipcodes = lines
+          .map(line => {
+            const [postalCode, feeType, isActive, juso] = line.split('\t');
 
-          // 개발 환경에서는 우편번호 데이터 로깅
-          if (process.env.NODE_ENV === 'development') {
-            Logger.log(
-              `우편번호 데이터: ${postalCode}, 배송비 유형: ${feeType}, 활성 상태: ${isActive}, 주소: ${juso}`,
-            );
-          }
-          if (!postalCode || !feeType || !isActive || !juso) {
-            Logger.error(`❌ 잘못된 데이터 형식: ${line}`);
-            throw new BadRequestException(`❌ 잘못된 데이터 형식: ${line}`);
-          }
+            // 개발 환경에서는 우편번호 데이터 로깅
+            if (isDevelopment) {
+              Logger.log(
+                `우편번호 데이터: ${postalCode}, 배송비 유형: ${feeType}, 활성 상태: ${isActive}, 주소: ${juso}`,
+              );
+            }
+            if (!postalCode || !feeType || !isActive || !juso) {
+              Logger.error(`❌ 잘못된 데이터 형식: ${line}`);
+              throw new BadRequestException(`❌ 잘못된 데이터 형식: ${line}`);
+            }
 
-          return {
-            postalCode: String(postalCode.trim()), // 숫자로 인식되지 않도록 문자열로 변환(0으로 시작하는 경우 앞글자가 없어지면 안되므로)
-            feeType: feeType.trim() as FeeType, // 배송비 유형(제주, 도서산간, 이외), @prisma/client에 정의된 타입 사용
-            isActive: isActive.trim().toLowerCase() === 'true', // 현재 활성화 여부
-            juso: juso.trim(), // 주소 저장
-          };
-        })
-        .filter((zipcode): zipcode is NonNullable<typeof zipcode> => zipcode !== null);
+            return {
+              postalCode: String(postalCode.trim()), // 숫자로 인식되지 않도록 문자열로 변환(0으로 시작하는 경우 앞글자가 없어지면 안되므로)
+              feeType: feeType.trim() as FeeType, // 배송비 유형(제주, 도서산간, 이외), @prisma/client에 정의된 타입 사용
+              isActive: isActive.trim().toLowerCase() === 'true', // 현재 활성화 여부
+              juso: juso.trim(), // 주소 저장
+            };
+          })
+          .filter((zipcode): zipcode is NonNullable<typeof zipcode> => zipcode !== null);
 
-      Logger.log(`📄 TSV 데이터: ${zipcodes.length}개의 데이터 로드 완료`);
+        Logger.log(`📄 TSV 데이터: ${zipcodes.length}개의 데이터 로드 완료`);
 
-      let zipcodeResultMessage = '';
-      const noExistsMessage = '🎉 우편번호 데이터가 없어 새로 생성했습니다.';
-      const allExistsMessage =
-        '🎉 우편번호 데이터가 모두 있어 테이블에 있는 데이터를 삭제하지 않았습니다.';
-      const someExistsMessage =
-        '🎉 우편번호 데이터가 일부분만 있어 테이블에 있는 데이터를 삭제한 뒤 다시 생성했습니다.';
-      // 우편번호 데이터 추가(도서산간지역 배송비 추가 관련)
-      const existingZipcode = await tx.zipcode.aggregate({
-        _count: { id: true },
-      });
-
-      if (existingZipcode._count.id === 0) {
-        // DB에 데이터가 없는 경우 새로운 데이터 추가
-        await tx.zipcode.createMany({
-          data: zipcodes,
-          skipDuplicates: true,
+        let zipcodeResultMessage = '';
+        const noExistsMessage = '🎉 우편번호 데이터가 없어 새로 생성했습니다.';
+        const allExistsMessage =
+          '🎉 우편번호 데이터가 모두 있어 테이블에 있는 데이터를 삭제하지 않았습니다.';
+        const someExistsMessage =
+          '🎉 우편번호 데이터가 일부분만 있어 테이블에 있는 데이터를 삭제한 뒤 다시 생성했습니다.';
+        // 우편번호 데이터 추가(도서산간지역 배송비 추가 관련)
+        const existingZipcode = await tx.zipcode.aggregate({
+          _count: { id: true },
         });
-        zipcodeResultMessage = noExistsMessage;
-      } else {
-        // 만약 시딩할 데이터가 DB에 모두 있는 경우 deleteMany() 패스
-        if (existingZipcode._count.id === zipcodes.length) {
-          // 데이터 해시 함수
-          const hashData = (
-            data: { postalCode: string; feeType: FeeType; isActive: boolean }[],
-          ): string => {
-            return createHash('sha256')
-              .update(
-                JSON.stringify(
-                  data.map(d => ({
-                    postalCode: d.postalCode,
-                    feeType: d.feeType,
-                    isActive: d.isActive,
-                  })),
-                ),
-              )
-              .digest('hex');
-          };
 
-          // DB 데이터와 새 데이터의 해시 비교
-          const existingDataHash = hashData(await tx.zipcode.findMany());
-          const newDataHash = hashData(zipcodes);
-          const hasChanges = existingDataHash !== newDataHash;
-
-          if (hasChanges) {
-            await tx.zipcode.deleteMany();
-            await tx.zipcode.createMany({
-              data: zipcodes,
-              skipDuplicates: true,
-            });
-            zipcodeResultMessage = '🎉 우편번호 데이터가 변경되어 업데이트했습니다.';
-          } else {
-            zipcodeResultMessage = allExistsMessage;
-          }
-        } else {
-          // DB에 데이터가 일부라도 있는 경우(11931개 미만) 기존 데이터 삭제 후 새로운 데이터 추가
-          await tx.zipcode.deleteMany();
+        if (existingZipcode._count.id === 0) {
+          // DB에 데이터가 없는 경우 새로운 데이터 추가
           await tx.zipcode.createMany({
             data: zipcodes,
             skipDuplicates: true,
           });
-          zipcodeResultMessage = someExistsMessage;
+          zipcodeResultMessage = noExistsMessage;
+        } else {
+          // 만약 시딩할 데이터가 DB에 모두 있는 경우 deleteMany() 패스
+          if (existingZipcode._count.id === zipcodes.length) {
+            // 데이터 해시 함수
+            const hashData = (
+              data: { postalCode: string; feeType: FeeType; isActive: boolean }[],
+            ): string => {
+              return createHash('sha256')
+                .update(
+                  JSON.stringify(
+                    data.map(d => ({
+                      postalCode: d.postalCode,
+                      feeType: d.feeType,
+                      isActive: d.isActive,
+                    })),
+                  ),
+                )
+                .digest('hex');
+            };
+
+            // DB 데이터와 새 데이터의 해시 비교
+            const existingDataHash = hashData(await tx.zipcode.findMany());
+            const newDataHash = hashData(zipcodes);
+            const hasChanges = existingDataHash !== newDataHash;
+
+            if (hasChanges) {
+              await tx.zipcode.deleteMany();
+              await tx.zipcode.createMany({
+                data: zipcodes,
+                skipDuplicates: true,
+              });
+              zipcodeResultMessage = '🎉 우편번호 데이터가 변경되어 업데이트했습니다.';
+            } else {
+              zipcodeResultMessage = allExistsMessage;
+            }
+          } else {
+            // DB에 데이터가 일부라도 있는 경우(11931개 미만) 기존 데이터 삭제 후 새로운 데이터 추가
+            // 기존 데이터의 ID Map 생성
+            const existingZipcodes = await tx.zipcode.findMany({
+              select: { id: true, postalCode: true, juso: true },
+            });
+            const existingMap = new Map(
+              existingZipcodes.map(z => [`${z.postalCode}-${z.juso}`, z.id]),
+            );
+
+            // 새로운 데이터와 기존 데이터 비교 후 변경된 부분만 처리
+            const toCreate = zipcodes.filter(z => !existingMap.has(`${z.postalCode}-${z.juso}`));
+
+            if (toCreate.length > 0) {
+              await tx.zipcode.createMany({
+                data: toCreate,
+                skipDuplicates: true,
+              });
+            }
+            zipcodeResultMessage = someExistsMessage;
+          }
         }
+
+        Logger.log(zipcodeResultMessage);
+
+        Logger.log(`📄 우편번호 데이터 추가 완료`);
+      } catch (error) {
+        Logger.error('❌ 우편번호 데이터 추가 중 오류 발생:', error);
+        throw error;
       }
-
-      Logger.log(zipcodeResultMessage);
-
-      Logger.log(`📄 우편번호 데이터 추가 완료`);
     },
     { timeout: 30000 }, // 트랜잭션 타임아웃 30초 설정
   );
@@ -242,7 +267,7 @@ const main = async (): Promise<void> => {
           update: {},
           create: {
             id: 'bhcxqfshp43wkskocodegc7x',
-            userId: getRequiredId(users[4], '사용자 ID가 존재하지 않습니다.'),
+            userId: getRequiredId(users[4], ERROR_MESSAGES.USER_ID_NOT_FOUND),
             createdAt: new Date(),
             updatedAt: new Date(),
           },
@@ -258,8 +283,8 @@ const main = async (): Promise<void> => {
           data: [
             {
               id: orderRequestIds[0],
-              requesterId: getRequiredId(users[0], '요청자 ID가 존재하지 않습니다.'),
-              companyId: getRequiredId(testCompany, '회사 ID가 존재하지 않습니다.'),
+              requesterId: getRequiredId(users[0], ERROR_MESSAGES.REQUESTER_ID_NOT_FOUND),
+              companyId: getRequiredId(testCompany, ERROR_MESSAGES.COMPANY_ID_NOT_FOUND),
               status: 'PENDING',
               totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
               createdAt: new Date(),
@@ -267,8 +292,8 @@ const main = async (): Promise<void> => {
             },
             {
               id: orderRequestIds[1],
-              requesterId: getRequiredId(users[6], '요청자 ID가 존재하지 않습니다.'),
-              companyId: getRequiredId(testCompany, '회사 ID가 존재하지 않습니다.'),
+              requesterId: getRequiredId(users[6], ERROR_MESSAGES.REQUESTER_ID_NOT_FOUND),
+              companyId: getRequiredId(testCompany, ERROR_MESSAGES.COMPANY_ID_NOT_FOUND),
               status: 'APPROVED',
               totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
               createdAt: new Date(),
@@ -276,8 +301,8 @@ const main = async (): Promise<void> => {
             },
             {
               id: orderRequestIds[2],
-              requesterId: getRequiredId(users[1], '요청자 ID가 존재하지 않습니다.'),
-              companyId: getRequiredId(testCompany, '회사 ID가 존재하지 않습니다.'),
+              requesterId: getRequiredId(users[1], ERROR_MESSAGES.REQUESTER_ID_NOT_FOUND),
+              companyId: getRequiredId(testCompany, ERROR_MESSAGES.COMPANY_ID_NOT_FOUND),
               status: 'REJECTED',
               totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
               createdAt: new Date(),
@@ -402,7 +427,13 @@ const main = async (): Promise<void> => {
 
         Logger.log('🎉 데이터베이스 시딩이 완료되었습니다!');
       } catch (error) {
-        Logger.error('❌ 데이터베이스 시딩 중 오류가 발생했습니다:', error);
+        if (error instanceof BadRequestException) {
+          Logger.error('❌ 입력 데이터 오류:', error.message);
+        } else if (error instanceof PrismaClientKnownRequestError) {
+          Logger.error('❌ Prisma 요청 오류:', error.message, error.code);
+        } else {
+          Logger.error('❌ 데이터베이스 시딩 중 알 수 없는 오류 발생:', error);
+        }
         throw error;
       }
     },
