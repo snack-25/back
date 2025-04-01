@@ -1,13 +1,6 @@
 import { BadRequestException, Logger } from '@nestjs/common';
-import {
-  Category,
-  Company,
-  CompanyAddress,
-  FeeType,
-  PrismaClient,
-  Product,
-  User,
-} from '@prisma/client';
+import type { Category, Company, CompanyAddress, FeeType, Product, User } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { createHash } from 'crypto';
 import fs from 'fs';
