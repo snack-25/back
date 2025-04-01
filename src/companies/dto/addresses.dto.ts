@@ -52,6 +52,8 @@ export class CreateAddressRequestDto extends PickType(AddressRequestDto, [
 ]) {}
 
 export class AddressResponseDto extends PickType(AddressRequestDto, [
+  'id',
+  'companyId',
   'address',
   'postalCode',
   'feeType',

@@ -97,8 +97,8 @@ const main = async (): Promise<void> => {
         });
         zipcodeResultMessage = noExistsMessage;
       } else {
-        // 만약 시딩할 데이터가 DB에 모두 있는 경우(11931개) deleteMany() 패스
-        if (existingZipcode._count.id === 11931) {
+        // 만약 시딩할 데이터가 DB에 모두 있는 경우 deleteMany() 패스
+        if (existingZipcode._count.id === zipcodes.length) {
           zipcodeResultMessage = allExistsMessage;
         } else {
           // DB에 데이터가 일부라도 있는 경우(11931개 미만) 기존 데이터 삭제 후 새로운 데이터 추가

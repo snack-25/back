@@ -58,17 +58,15 @@ export class CompanyResponseDtoWithAddress extends PickType(CompanyResponseDto, 
   @ApiProperty({
     description: '기업 우편번호',
     example: '12345',
-    required: false,
+    required: true,
   })
   @IsString()
-  @IsOptional()
   public zipcode: string;
 
   @ApiProperty({
-    description: '배송비 유형',
+    description: '도서산간 여부',
     example: 'ISOLATED',
   })
   @IsEnum(FeeType)
-  @IsOptional()
   public feeType: FeeType;
 }

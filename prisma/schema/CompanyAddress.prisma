@@ -29,7 +29,6 @@ model CompanyAddress {
 
   /// 8. 테이블명, 유니크 제약, 인덱스 설정 등
   @@unique([companyId])
-  @@index([companyId])
   @@index([zipcodeId])
   @@map("company_addresses")
 }

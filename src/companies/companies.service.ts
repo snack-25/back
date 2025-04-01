@@ -106,7 +106,7 @@ export class CompaniesService {
         companyId: company.id,
       },
     });
-    console.log(companyAddress);
+
     if (!companyAddress) {
       throw new NotFoundException(`기업 ${company.name}의 주소를 찾을 수 없습니다.`);
     }
