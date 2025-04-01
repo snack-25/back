@@ -4,10 +4,13 @@ import { OrdersService } from './orders.service';
 import { Order } from '@prisma/client';
 import { OrderRequestDto } from './dto/create-order.dto';
 import { OrderQueryDto } from './dto/update-order.dto';
+import { AuthService } from '@src/auth/auth.service';
+import { Request } from 'express';
 
 describe('OrdersController', () => {
   let controller: OrdersController;
   let service: OrdersService;
+  let authService: AuthService;
 
   const userId = 'p9ri9lsfyxy4k4juq9nw2jpa';
 
@@ -48,6 +51,13 @@ describe('OrdersController', () => {
     totalItems: 1,
   };
 
+  const mockRequest = (): Request =>
+    ({
+      cookies: {
+        accessToken: 'mock-token',
+      },
+    }) as unknown as Request;
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [OrdersController],
@@ -60,15 +70,20 @@ describe('OrdersController', () => {
             getOrderDetail: jest.fn(),
           },
         },
+        {
+          provide: AuthService,
+          useValue: {
+            getUserFromCookie: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     controller = module.get<OrdersController>(OrdersController);
     service = module.get<OrdersService>(OrdersService);
-  });
+    authService = module.get<AuthService>(AuthService);
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
+    jest.clearAllMocks();
   });
 
   describe('getUserOrders', () => {
@@ -77,34 +92,58 @@ describe('OrdersController', () => {
       const page = '1';
       const pageSize = '6';
       const sort = 'latest';
+      const req = mockRequest();
 
-      const spy = jest.spyOn(service, 'getUserOrders').mockResolvedValue(mockOrderListResponse);
+      const authSpy = jest
+        .spyOn(authService, 'getUserFromCookie')
+        .mockResolvedValue({ sub: userId, exp: Date.now() + 10000 });
 
-      const result = await controller.getUserOrders(query, page, pageSize, sort);
+      const serviceSpy = jest
+        .spyOn(service, 'getUserOrders')
+        .mockResolvedValue(mockOrderListResponse);
 
-      expect(spy).toHaveBeenCalledWith(userId, query, 1, 6, sort);
+      const result = await controller.getUserOrders(req, query, page, pageSize, sort);
+
+      expect(authSpy).toHaveBeenCalledWith(req);
+      expect(serviceSpy).toHaveBeenCalledWith(userId, query, 1, 6, sort);
       expect(result).toEqual(mockOrderListResponse);
     });
   });
 
   describe('adminPurchase', () => {
     it('should create a new order', async () => {
-      const spy = jest.spyOn(service, 'createOrder').mockResolvedValue(mockOrder);
+      const req = mockRequest();
 
-      const result = await controller.adminPurchase(mockOrderRequestDto);
+      const authSpy = jest
+        .spyOn(authService, 'getUserFromCookie')
+        .mockResolvedValue({ sub: userId, exp: Date.now() + 10000 });
 
-      expect(spy).toHaveBeenCalledWith(userId, mockOrderRequestDto);
+      const serviceSpy = jest.spyOn(service, 'createOrder').mockResolvedValue(mockOrder);
+
+      const result = await controller.adminPurchase(req, mockOrderRequestDto);
+
+      expect(authSpy).toHaveBeenCalledWith(req);
+      expect(serviceSpy).toHaveBeenCalledWith(userId, mockOrderRequestDto);
       expect(result).toEqual(mockOrder);
     });
   });
 
   describe('getOrderDetail', () => {
     it('should return order detail by id', async () => {
-      const spy = jest.spyOn(service, 'getOrderDetail').mockResolvedValue(mockOrderDetailResponse);
+      const req = mockRequest();
 
-      const result = await controller.getOrderDetail('order-id');
+      const authSpy = jest
+        .spyOn(authService, 'getUserFromCookie')
+        .mockResolvedValue({ sub: userId, exp: Date.now() + 10000 });
 
-      expect(spy).toHaveBeenCalledWith(userId, 'order-id');
+      const serviceSpy = jest
+        .spyOn(service, 'getOrderDetail')
+        .mockResolvedValue(mockOrderDetailResponse);
+
+      const result = await controller.getOrderDetail(req, 'order-id');
+
+      expect(authSpy).toHaveBeenCalledWith(req);
+      expect(serviceSpy).toHaveBeenCalledWith(userId, 'order-id');
       expect(result).toEqual(mockOrderDetailResponse);
     });
   });

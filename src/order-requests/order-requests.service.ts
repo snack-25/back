@@ -5,30 +5,18 @@ import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
 import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import { calculateShippingFee } from '@src/shared/utils/shipping.util';
+import { getOrderBy } from '@src/shared/utils/order-requestsSort.util';
 
 @Injectable()
 export class OrderRequestsService {
   constructor(private readonly prisma: PrismaService) {}
   // ✅ 일반 사용자(user)의 구매 요청 내역 조회 (본인의 `userId` 기준)
 
-  // ✅ 정렬 기준을 설정하는 함수
-  private getOrderBy(sort: string): Prisma.OrderRequestOrderByWithRelationInput {
-    switch (sort) {
-      case 'latest': // 최신순
-        return { createdAt: 'desc' as Prisma.SortOrder };
-      case 'lowPrice': // 낮은 가격순
-        return { totalAmount: 'asc' as Prisma.SortOrder };
-      case 'highPrice': // 높은 가격순
-        return { totalAmount: 'desc' as Prisma.SortOrder };
-      default: // 기본값 (최신순)
-        return { createdAt: 'desc' as Prisma.SortOrder };
-    }
-  }
 
   async getUserOrderRequests(userId: string, page: number, pageSize: number, sort: string) {
     return this.prisma.orderRequest.findMany({
       where: { requesterId: userId },
-      orderBy: this.getOrderBy(sort), // 정렬 추가
+      orderBy: getOrderBy(sort), // 정렬 추가
       skip: (page - 1) * pageSize, // 페이지네이션 적용
       take: pageSize,
       select: {
@@ -54,7 +42,7 @@ export class OrderRequestsService {
   async getCompanyOrderRequests(companyId: string, page: number, pageSize: number, sort: string) {
     return this.prisma.orderRequest.findMany({
       where: { companyId },
-      orderBy: this.getOrderBy(sort), // 정렬 추가
+      orderBy: getOrderBy(sort), // 정렬 추가
       skip: (page - 1) * pageSize, // 페이지네이션 적용
       take: pageSize,
       select: {
@@ -89,32 +77,32 @@ export class OrderRequestsService {
         where: { id: { in: dto.items.map(item => item.productId) } }, // 요청된 모든 상품 ID 조회
         select: { id: true, price: true },
       });
-
+  
       if (products.length !== dto.items.length) {
         throw new NotFoundException('존재하지 않는 상품이 포함되어 있습니다.');
       }
-
+  
       // 2. 상품 ID → 가격 매핑
       const productPriceMap = new Map(products.map(p => [p.id, p.price]));
-
+  
       // 3. 주문 요청 아이템 생성 (가격 제외)
       const orderRequestItems = dto.items.map(item => ({
         productId: item.productId,
         quantity: item.quantity,
-        price: productPriceMap.get(item.productId) || 0, // 🔹 가격 포함
+        price: productPriceMap.get(item.productId) || 0, // 가격 포함
         notes: item.notes,
       }));
-
+  
       // 4. 총액 계산
       const totalAmountWithoutShipping = dto.items.reduce(
         (sum, item) => sum + item.quantity * (productPriceMap.get(item.productId) || 0),
         0,
       );
-
+  
       // 5. 배송비 계산
       const shippingFee = calculateShippingFee(totalAmountWithoutShipping);
       const totalAmount = totalAmountWithoutShipping + shippingFee;
-
+  
       // 6. 주문 요청 생성 (트랜잭션 내에서 수행)
       return tx.orderRequest.create({
         data: {
@@ -123,14 +111,19 @@ export class OrderRequestsService {
           status: OrderRequestStatus.PENDING, // 기본값 PENDING
           totalAmount, // 총액 (배송비 포함)
           orderRequestItems: {
-            create: orderRequestItems, // 주문 요청 아이템 생성
+            create: orderRequestItems.map(item => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              price: item.price,
+              notes: item.notes,
+            })), // Prisma의 모델에 맞게 `create` 형식으로 데이터 매핑
           },
         },
-        include: { orderRequestItems: true },
+        include: { orderRequestItems: true }, // `orderRequestItems`를 포함
       });
     });
   }
-
+  
   // ✅ 주문 요청 상세 조회
   async getOrderRequestDetail(orderRequestId: string) {
     const orderRequest = await this.prisma.orderRequest.findUnique({
