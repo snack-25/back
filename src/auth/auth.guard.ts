@@ -8,6 +8,17 @@ export class AuthGuard implements CanActivate {
 
   public async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>(); // ✅ 불필요한 타입 단언 제거
+
+    // 로그인, 회원가입 페이지는 가드 검사 생략
+    if (
+      request.path.startsWith('/api/auth/signup') ||
+      request.path.startsWith('/api/auth/login') ||
+      request.path.startsWith('/api/auth/logout') ||
+      request.path.startsWith('/api/health')
+    ) {
+      return true;
+    }
+
     return await this.validateRequest(request);
   }
 
