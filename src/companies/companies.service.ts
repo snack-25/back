@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException, Logger, ConflictException } from '@nestjs/common';
-import { PrismaService } from '@src/shared/prisma/prisma.service';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Company } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { CompanyResponseDto } from './dto/company.response.dto';
+import { PrismaService } from '@src/shared/prisma/prisma.service';
+import { CompanyResponseDto, CompanyResponseDtoWithAddress } from './dto/company.response.dto';
 import { CreateCompanyDto } from './dto/create-company.dto';
 
 @Injectable()
@@ -37,7 +37,7 @@ export class CompaniesService {
 
   public async findAll(): Promise<CompanyResponseDto[]> {
     const companies = await this.prismaService.company.findMany();
-    return companies.map(company => this.toResponseDto(company));
+    return Promise.all(companies.map(company => this.toResponseDto(company)));
   }
 
   public async findUniqueOrThrow(id: string): Promise<CompanyResponseDto> {
@@ -45,6 +45,9 @@ export class CompaniesService {
       const company = await this.prismaService.company.findUniqueOrThrow({
         where: {
           id,
+        },
+        include: {
+          companyAddress: true,
         },
       });
       return this.toResponseDto(company);
@@ -97,13 +100,25 @@ export class CompaniesService {
     }
   }
 
-  private toResponseDto(company: Company): CompanyResponseDto {
+  private async toResponseDto(company: Company): Promise<CompanyResponseDtoWithAddress> {
+    const companyAddress = await this.prismaService.companyAddress.findUnique({
+      where: {
+        companyId: company.id,
+      },
+    });
+    console.log(companyAddress);
+    if (!companyAddress) {
+      throw new NotFoundException(`기업 ${company.name}의 주소를 찾을 수 없습니다.`);
+    }
+
+    const { address, postalCode, feeType } = companyAddress;
     return {
       id: company.id,
       name: company.name,
       bizno: company.bizno,
-      address: company.address ?? undefined,
-      zipcode: company.zipcode ?? undefined,
+      address: address,
+      zipcode: postalCode,
+      feeType: feeType,
       createdAt: company.createdAt,
       updatedAt: company.updatedAt,
     };

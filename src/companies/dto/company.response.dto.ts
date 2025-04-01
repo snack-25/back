@@ -1,5 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsDate, IsOptional } from 'class-validator';
+import { ApiProperty, PickType } from '@nestjs/swagger';
+import { FeeType } from '@prisma/client';
+import { IsDate, IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class CompanyResponseDto {
   @ApiProperty({
@@ -24,6 +25,28 @@ export class CompanyResponseDto {
   public bizno: string;
 
   @ApiProperty({
+    description: '생성 일시',
+    example: '2023-01-01T00:00:00.000Z',
+  })
+  @IsDate()
+  public createdAt: Date;
+
+  @ApiProperty({
+    description: '수정 일시',
+    example: '2023-01-01T00:00:00.000Z',
+  })
+  @IsDate()
+  public updatedAt: Date;
+}
+
+export class CompanyResponseDtoWithAddress extends PickType(CompanyResponseDto, [
+  'id',
+  'name',
+  'bizno',
+  'createdAt',
+  'updatedAt',
+]) {
+  @ApiProperty({
     description: '기업 주소',
     example: '서울특별시 강남구 테헤란로 123',
     required: false,
@@ -39,19 +62,13 @@ export class CompanyResponseDto {
   })
   @IsString()
   @IsOptional()
-  public zipcode?: string;
+  public zipcode: string;
 
   @ApiProperty({
-    description: '생성 일시',
-    example: '2023-01-01T00:00:00.000Z',
+    description: '배송비 유형',
+    example: 'ISOLATED',
   })
-  @IsDate()
-  public createdAt: Date;
-
-  @ApiProperty({
-    description: '수정 일시',
-    example: '2023-01-01T00:00:00.000Z',
-  })
-  @IsDate()
-  public updatedAt: Date;
+  @IsEnum(FeeType)
+  @IsOptional()
+  public feeType: FeeType;
 }

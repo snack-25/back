@@ -4,7 +4,7 @@ model CompanyAddress {
   id        String   @id @default(cuid(2))
   /// 2. 외래 키 필드 (Foreign Keys)
   companyId String
-  zipcodeId String
+  zipcodeId String?
   /// 3. 필수 필드 (Required Fields)
   /// 우편번호
   postalCode String @db.VarChar(5)
@@ -23,7 +23,7 @@ model CompanyAddress {
   /// 기업 주소는 하나의 기업에 속할 수 있으며, 기업이 삭제되면 기업 주소도 삭제됨
   company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   /// 우편번호는 여러 기업 주소에 속할 수 있으며, 기업 주소가 삭제되더라도 우편번호는 삭제되지 않음
-  zipcode   Zipcode  @relation(fields: [zipcodeId], references: [id], onDelete: Restrict)
+  zipcode   Zipcode?  @relation(fields: [zipcodeId], references: [id], onDelete: Restrict)
 
   /// 7. 역참조 필드 (Reverse Relation Fields)
 

@@ -4,13 +4,17 @@
     "companyId": "qsch6ljzbigconazqak4jsrr",
     "postalCode": "06100",
     "address": "서울시 강남구 테헤란로 123",
-    "feeType": "NOT_APPLICABLE"
+    "feeType": "NOT_APPLICABLE",
+    "createdAt": "2025-03-30T00:00:00.000Z",
+    "updatedAt": "2025-03-30T00:00:00.000Z"
   },
   {
     "id": "tfw6khgndy63h312k0czqkla",
     "companyId": "dmctf6ymohg7gfsy43ls4vae",
     "postalCode": "15654",
     "address": "경기도 안산시 단원구 풍도동 풍도길 2-35",
-    "feeType": "ISOLATED"
+    "feeType": "ISOLATED",
+    "createdAt": "2025-03-30T00:00:00.000Z",
+    "updatedAt": "2025-03-30T00:00:00.000Z"
   }
 ]
