@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsUUID, IsString, IsDate } from 'class-validator';
+import { IsUUID, IsString } from 'class-validator';
 
 export class ApproveOrderRequestDto {
   @ApiProperty({ description: '주문 요청을 승인한 관리자 ID', example: 'admin-uuid-5678' })
