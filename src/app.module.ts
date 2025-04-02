@@ -1,20 +1,20 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ConfigModule } from '@nestjs/config';
+import { AuthModule } from './auth/auth.module';
+import { BudgetsModule } from './budgets/budgets.module';
+import { CartsModule } from './carts/carts.module';
+import { CategoriesModule } from './categories/categories.module';
+import { CompaniesModule } from './companies/companies.module';
+import { InvitationsModule } from './invitations/invitations.module';
+import { OrderRequestsModule } from './order-requests/order-requests.module';
+import { OrdersModule } from './orders/orders.module';
+import { ProductsModule } from './products/products.module';
+// import { AwsS3Module } from './shared/aws/s3.module';
 import { PrismaModule } from './shared/prisma/prisma.module';
 import { UsersModule } from './users/users.module';
-import { AuthModule } from './auth/auth.module';
-import { CompaniesModule } from './companies/companies.module';
-import { CartsModule } from './carts/carts.module';
-import { ProductsModule } from './products/products.module';
-import { CategoriesModule } from './categories/categories.module';
-import { OrdersModule } from './orders/orders.module';
-import { OrderRequestsModule } from './order-requests/order-requests.module';
-import { BudgetsModule } from './budgets/budgets.module';
-import { InvitationsModule } from './invitations/invitations.module';
 import { WishlistsModule } from './wishlists/wishlists.module';
-import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -25,6 +25,7 @@ import { MailModule } from './mail/mail.module';
       envFilePath: `.env.${process.env.NODE_ENV || 'local'}`,
     }),
     PrismaModule,
+    // AwsS3Module,
     UsersModule,
     AuthModule,
     CompaniesModule,
@@ -36,7 +37,6 @@ import { MailModule } from './mail/mail.module';
     BudgetsModule,
     InvitationsModule,
     WishlistsModule,
-    MailModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,14 +1,21 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CartItem } from '@prisma/client';
 import { CartsService } from './carts.service';
 import { CreateCartDto } from './dto/create-cart.dto';
 import { DeleteCartItemsDto, UpdateCartItemDto } from './dto/update-cart.dto';
+import { Request } from 'express';
+import { AuthService } from '@src/auth/auth.service'; // ✅ 추가
+import { AuthGuard } from '@src/auth/auth.guard';
 
+@UseGuards(AuthGuard)
 @ApiTags('Carts')
 @Controller('carts')
 export class CartsController {
-  public constructor(private readonly cartsService: CartsService) {}
+  public constructor(
+    private readonly cartsService: CartsService,
+    private readonly authService: AuthService, // ✅ 추가
+  ) {}
 
   @ApiOperation({
     summary: '장바구니 조회',
@@ -17,12 +24,16 @@ export class CartsController {
   @ApiParam({ name: 'cartId', required: true, description: '조회할 장바구니 ID' })
   @ApiResponse({ status: 200, description: '장바구니 조회 성공' })
   @Get(':cartId/items')
-  public async getCartItems(@Param('cartId') cartId: string): Promise<{
+  public async getCartItems(
+    @Param('cartId') cartId: string,
+    @Req() req: Request,
+  ): Promise<{
     items: CartItem[];
     totalAmount: number;
     shippingFee: number;
   }> {
-    return await this.cartsService.getCartItems(cartId);
+    const { sub: userId } = await this.authService.getUserFromCookie(req);
+    return await this.cartsService.getCartItems(userId, cartId);
   }
 
   @ApiOperation({
@@ -36,8 +47,10 @@ export class CartsController {
   public async addToCart(
     @Param('cartId') cartId: string,
     @Body() createDto: CreateCartDto,
+    @Req() req: Request,
   ): Promise<CartItem> {
-    return await this.cartsService.addToCart(cartId, createDto.productId);
+    const { sub: userId } = await this.authService.getUserFromCookie(req);
+    return await this.cartsService.addToCart(userId, cartId, createDto.productId);
   }
 
   @ApiOperation({
@@ -53,8 +66,15 @@ export class CartsController {
     @Param('cartId') cartId: string,
     @Param('itemId') itemId: string,
     @Body() updateCartItemDto: UpdateCartItemDto,
+    @Req() req: Request,
   ): Promise<CartItem> {
-    return await this.cartsService.updateCartItem(cartId, itemId, updateCartItemDto.quantity);
+    const { sub: userId } = await this.authService.getUserFromCookie(req);
+    return await this.cartsService.updateCartItem(
+      userId,
+      cartId,
+      updateCartItemDto.quantity,
+      itemId,
+    );
   }
 
   @ApiOperation({
@@ -68,7 +88,9 @@ export class CartsController {
   public async deleteCartItems(
     @Param('cartId') cartId: string,
     @Body() deleteDto: DeleteCartItemsDto,
+    @Req() req: Request,
   ): Promise<{ message: string }> {
-    return await this.cartsService.deleteCartItems(cartId, deleteDto.itemIds);
+    const { sub: userId } = await this.authService.getUserFromCookie(req);
+    return await this.cartsService.deleteCartItems(userId, cartId, deleteDto.itemIds);
   }
 }

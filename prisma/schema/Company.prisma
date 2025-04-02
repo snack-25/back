@@ -11,12 +11,18 @@ model Company {
   bizno         String         @unique @db.VarChar(10)
   /// 4. 선택적 필드 (Optional Fields)
   /// 기업 주소(발전과제)
-  address       String?
+  // address       String?
   /// 기업 우편번호(발전과제, 5자리, 추후 우편번호 API 연동 할 수 있도록 확장)
-  zipcode       String?        @db.VarChar(5)
+  // zipcode       String?        @db.VarChar(5)
   /// 5. 타임스탬프 필드 (Timestamp Fields)
   createdAt     DateTime       @default(now()) @db.Timestamptz(6)
   updatedAt     DateTime       @updatedAt @db.Timestamptz(6)
+
+  /// 6. 관계 필드 (Relation Fields)
+  /// 기업 주소는 없을 수 있지만, 있을 경우 하나의 기업 주소만 가능
+  companyAddress CompanyAddress?
+
+  /// 7. 역참조 필드 (Reverse Relation Fields)
   budgets       Budget[]
   categories    Category[]
   invitations   Invitation[]

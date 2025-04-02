@@ -1,15 +1,27 @@
-import { Controller, Body, Post, Get, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  // Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Req,
+  Res,
+  Param,
+  // UseGuards,
+} from '@nestjs/common';
+import { ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { type Invitation } from '@prisma/client';
+import { Request, Response } from 'express';
+// import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import {
-  SignUpRequestDto,
-  SignInRequestDto,
-  TokenResponseDto,
   InvitationCodeDto,
+  SignInRequestDto,
+  SignUpRequestDto,
+  SignUpResponseDto,
+  TokenResponseDto,
 } from './dto/auth.dto';
-import { Request, Response } from 'express';
-import { AuthGuard } from './auth.guard';
-import { ApiResponse } from '@nestjs/swagger';
-import { type Invitation } from '@prisma/client';
 
 @Controller('auth')
 export class AuthController {
@@ -18,9 +30,22 @@ export class AuthController {
   // TODO: /auth/signup (POST) [최고관리자] 회원가입
 
   @Post('signup')
+  @ApiResponse({
+    status: 201,
+    description: '회원가입이 완료되었습니다.',
+  })
+  @ApiResponse({
+    status: 409,
+    description: '이미 사용 중인 이메일입니다.',
+  })
+  @ApiResponse({
+    status: 500,
+    description: '회원가입을 진행하는 중 오류가 발생했습니다.',
+  })
+  @HttpCode(HttpStatus.CREATED)
   public async signup(@Body() dto: SignUpRequestDto, @Res() res: Response): Promise<void> {
     const result = await this.authService.signup(dto);
-    res.status(200).json({ msg: '회원가입에 성공했습니다.', data: result });
+    res.status(201).json({ msg: '회원가입에 성공했습니다.', data: result });
   }
 
   @Post('signup/invitationcode')
@@ -31,20 +56,38 @@ export class AuthController {
 
   @Post('signup/invite/:token')
   public async signupToken(
+    @Param('token') token: string,
     @Body() body: { password: string },
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    await this.authService.getinfo({ token: req.params.token });
+    const user = await this.authService.getinfo({ token: req.params.token });
+
+    if (!user) {
+      res.status(400).json({ ok: false, message: '유효하지 않은 초대 토큰입니다.' });
+    }
     const password = body.password;
-    const result: string = await this.authService.invitationSignup({
+
+    const result: SignUpResponseDto | null = await this.authService.invitationSignup({
       password,
-      token: req.params.token,
+      token,
     });
-    res.status(200).json({ msg: result });
+
+    if (!result) {
+      res.status(500).json({ ok: false, message: '회원가입 처리 중 문제가 발생했습니다.' });
+      return;
+    }
+
+    res.status(200).json({ ok: true, message: '회원가입에 성공했습니다' });
   }
 
+  // 로그인
   @Post('login')
+  @ApiOperation({
+    summary: '유저 로그인',
+    description:
+      '모든 테스트용 계정(user1~5,admin1~2,superadmin1)의 비밀번호는 아이디(user1)과 동일합니다',
+  })
   public async login(
     @Body() dto: SignInRequestDto,
     @Req() req: Request,
@@ -65,7 +108,6 @@ export class AuthController {
   }
 
   // 로그아웃
-  @UseGuards(AuthGuard)
   @Post('logout')
   public async logout(@Req() req: Request, @Res() res: Response): Promise<void> {
     const invalidateToken = req.cookies['refreshToken'];
@@ -84,7 +126,7 @@ export class AuthController {
       httpOnly: true, // XSS 공격 방지
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict', // CORS 문제 방지
-      maxAge: 60 * 1000 * 60 * 24, // 24시간 (24시간 × 60분 × 60초 × 1000밀리초)
+      maxAge: 1000 * 60 * 60 * 24, // 24시간 (24시간 × 60분 × 60초 × 1000밀리초)
     });
 
     res.cookie('refreshToken', token.refreshToken, {
@@ -97,9 +139,9 @@ export class AuthController {
 
   // 아래와 같이 사용하려는 API Endpoint위에 @UseGuards(AuthGuard) 데코레이터를 추가하면
   // 쿠키 기반 인증을 검사합니다. 권한이 없으면 에러를 반환합니다.
-  @UseGuards(AuthGuard)
-  @Get('guard')
-  public findAll(): string {
-    return 'guard';
-  }
+  // @UseGuards(AuthGuard)
+  // @Get('guard')
+  // public findAll(): string {
+  //   return 'guard';
+  // }
 }

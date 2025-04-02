@@ -1,396 +1,442 @@
-import { createId } from '@paralleldrive/cuid2';
+import { BadRequestException, Logger } from '@nestjs/common';
+import type { Category, Company, CompanyAddress, FeeType, Product, User } from '@prisma/client';
 import { PrismaClient } from '@prisma/client';
-import { hash } from 'argon2';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { createHash } from 'crypto';
+import fs from 'fs';
+import path from 'path';
+
+const isDevelopment = process.env.NODE_ENV === 'development';
+const ERROR_MESSAGES = {
+  USER_ID_NOT_FOUND: '사용자 ID가 존재하지 않습니다.',
+  COMPANY_ID_NOT_FOUND: '회사 ID가 존재하지 않습니다.',
+  REQUESTER_ID_NOT_FOUND: '요청자 ID가 존재하지 않습니다.',
+};
 
 const prisma = new PrismaClient();
 
+const companies = JSON.parse(
+  fs.readFileSync(path.join(__dirname, 'const/companies.json'), 'utf-8'),
+) as Company[];
+
+const companyAddresses = JSON.parse(
+  fs.readFileSync(path.join(__dirname, 'const/company-addresses.json'), 'utf-8'),
+) as CompanyAddress[];
+
+const categories = JSON.parse(
+  fs.readFileSync(path.join(__dirname, 'const/categories.json'), 'utf-8'),
+) as Category[];
+
+const subCategories: Category[] = JSON.parse(
+  fs.readFileSync(path.join(__dirname, 'const/sub-categories.json'), 'utf-8'),
+) as Category[];
+
+const users = JSON.parse(
+  fs.readFileSync(path.join(__dirname, 'const/users.json'), 'utf-8'),
+) as User[];
+
+const products = JSON.parse(
+  fs.readFileSync(path.join(__dirname, 'const/products.json'), 'utf-8'),
+) as Product[];
+
+const getRequiredId = <T extends { id: string }>(
+  entity: T | undefined,
+  errorMessage: string,
+): string => {
+  if (!entity?.id) {
+    throw new BadRequestException(errorMessage);
+  }
+  return entity.id;
+};
+
 const main = async (): Promise<void> => {
-  console.log('🚀 Seeding database...');
+  Logger.log('🚀 데이터베이스를 시딩중입니다...');
 
-  await prisma.$transaction(async tx => {
-    // 1. Company 데이터 추가
-    const companyId = createId();
-    const userId = createId();
-    const cartId = createId();
+  // 0. 우편번호(Zipcode) 추가(데이터가 많아 별도 트랜잭션으로 처리함)
+  await prisma.$transaction(
+    async tx => {
+      try {
+        // 우편번호 데이터 파일 경로(seed.ts와 같은 경로)
+        const filePath = path.join(__dirname, 'zipcodes.tsv');
 
-    const company = await tx.company.upsert({
-      where: { id: companyId },
-      update: {},
-      create: {
-        id: companyId,
-        name: '테스트 회사',
-        bizno: '1234567890',
-        address: '서울시 강남구 테헤란로 123',
-        zipcode: '06100',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    });
+        // 파일 존재 여부 확인
+        if (!fs.existsSync(filePath)) {
+          throw new BadRequestException(`❌ zipcodes.tsv 파일을 찾을 수 없습니다: ${filePath}`);
+        }
+        const zipCodesFile = fs.readFileSync(filePath, 'utf-8');
 
-    // 2. 메인 카테고리 추가
-    const mainCategories = ['스낵', '음료', '생수', '간편식', '신선식품', '원두커피', '비품'];
-    const mainCategoryIds = mainCategories.map(() => createId());
+        const lines = zipCodesFile.split('\n').slice(1).filter(Boolean); // 첫 줄(헤더) 제거하고 빈 줄 필터링
+        const zipcodes = lines
+          .map(line => {
+            const [postalCode, feeType, isActive, juso] = line.split('\t');
 
-    for (const [index, category] of mainCategories.entries()) {
-      await tx.category.upsert({
-        where: { id: mainCategoryIds[index] },
-        update: {},
-        create: {
-          id: mainCategoryIds[index],
-          companyId: company.id,
-          name: category,
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      });
-    }
+            // 개발 환경에서는 우편번호 데이터 로깅
+            if (isDevelopment) {
+              Logger.log(
+                `우편번호 데이터: ${postalCode}, 배송비 유형: ${feeType}, 활성 상태: ${isActive}, 주소: ${juso}`,
+              );
+            }
+            if (!postalCode || !feeType || !isActive || !juso) {
+              Logger.error(`❌ 잘못된 데이터 형식: ${line}`);
+              throw new BadRequestException(`❌ 잘못된 데이터 형식: ${line}`);
+            }
 
-    // 3. 서브카테고리 추가
-    const subCategories = {
-      스낵: [
-        '과자',
-        '쿠키',
-        '파이',
-        '초콜릿류',
-        '캔디류',
-        '껌류',
-        '비스켓류',
-        '씨리얼바',
-        '젤리류',
-        '견과류',
-        '워터젤리',
-      ],
-      음료: [
-        '청량/탄산음료',
-        '과즙음료',
-        '에너지음료',
-        '이온음료',
-        '유산균음료',
-        '건강음료',
-        '차류',
-        '두유/우유',
-        '커피',
-      ],
-      생수: ['생수', '스파클링'],
-      간편식: [
-        '봉지라면',
-        '과일',
-        '컵라면',
-        '핫도그 및 소시지',
-        '계란',
-        '죽/스프류',
-        '컵밥류',
-        '시리얼',
-        '반찬류',
-        '면류',
-        '요거트류',
-        '가공안주류',
-        '유제품',
-      ],
-      신선식품: ['샐러드', '빵', '햄버거/샌드위치', '주먹밥/김밥', '도시락'],
-      원두커피: ['드립커피', '원두', '캡슐커피'],
-      비품: ['커피/차류', '생활용품', '일회용품', '사무용품', '카페용품', '일회용품(친환경)'],
-    };
-    // const subCategoryIds = Object.values(subCategories).flatMap(list => list.map(() => createId()));
+            return {
+              postalCode: String(postalCode.trim()), // 숫자로 인식되지 않도록 문자열로 변환(0으로 시작하는 경우 앞글자가 없어지면 안되므로)
+              feeType: feeType.trim() as FeeType, // 배송비 유형(제주, 도서산간, 이외), @prisma/client에 정의된 타입 사용
+              isActive: isActive.trim().toLowerCase() === 'true', // 현재 활성화 여부
+              juso: juso.trim(), // 주소 저장
+            };
+          })
+          .filter((zipcode): zipcode is NonNullable<typeof zipcode> => zipcode !== null);
 
-    // 서브카테고리 ID 매핑을 위한 객체
-    const categoryIdMap = new Map<string, string>();
+        Logger.log(`📄 TSV 데이터: ${zipcodes.length}개의 데이터 로드 완료`);
 
-    for (const [mainCategory, subCategoryList] of Object.entries(subCategories)) {
-      const mainCategoryIndex = mainCategories.indexOf(mainCategory);
-      const parentCategory = await tx.category.findUnique({
-        where: { id: mainCategoryIds[mainCategoryIndex] },
-      });
+        let zipcodeResultMessage = '';
+        const noExistsMessage = '🎉 우편번호 데이터가 없어 새로 생성했습니다.';
+        const allExistsMessage =
+          '🎉 우편번호 데이터가 모두 있어 테이블에 있는 데이터를 삭제하지 않았습니다.';
+        const someExistsMessage =
+          '🎉 우편번호 데이터가 일부분만 있어 테이블에 있는 데이터를 삭제한 뒤 다시 생성했습니다.';
+        // 우편번호 데이터 추가(도서산간지역 배송비 추가 관련)
+        const existingZipcode = await tx.zipcode.aggregate({
+          _count: { id: true },
+        });
 
-      if (!parentCategory) {
-        console.error(`❌ 메인 카테고리를 찾을 수 없습니다: ${mainCategory}`);
-        continue;
+        if (existingZipcode._count.id === 0) {
+          // DB에 데이터가 없는 경우 새로운 데이터 추가
+          await tx.zipcode.createMany({
+            data: zipcodes,
+            skipDuplicates: true,
+          });
+          zipcodeResultMessage = noExistsMessage;
+        } else {
+          // 만약 시딩할 데이터가 DB에 모두 있는 경우 deleteMany() 패스
+          if (existingZipcode._count.id === zipcodes.length) {
+            // 데이터 해시 함수
+            const hashData = (
+              data: { postalCode: string; feeType: FeeType; isActive: boolean }[],
+            ): string => {
+              return createHash('sha256')
+                .update(
+                  JSON.stringify(
+                    data.map(d => ({
+                      postalCode: d.postalCode,
+                      feeType: d.feeType,
+                      isActive: d.isActive,
+                    })),
+                  ),
+                )
+                .digest('hex');
+            };
+
+            // DB 데이터와 새 데이터의 해시 비교
+            const existingDataHash = hashData(await tx.zipcode.findMany());
+            const newDataHash = hashData(zipcodes);
+            const hasChanges = existingDataHash !== newDataHash;
+
+            if (hasChanges) {
+              await tx.zipcode.deleteMany();
+              await tx.zipcode.createMany({
+                data: zipcodes,
+                skipDuplicates: true,
+              });
+              zipcodeResultMessage = '🎉 우편번호 데이터가 변경되어 업데이트했습니다.';
+            } else {
+              zipcodeResultMessage = allExistsMessage;
+            }
+          } else {
+            // DB에 데이터가 일부라도 있는 경우(11931개 미만) 기존 데이터 삭제 후 새로운 데이터 추가
+            // 기존 데이터의 ID Map 생성
+            const existingZipcodes = await tx.zipcode.findMany({
+              select: { id: true, postalCode: true, juso: true },
+            });
+            const existingMap = new Map(
+              existingZipcodes.map(z => [`${z.postalCode}-${z.juso}`, z.id]),
+            );
+
+            // 새로운 데이터와 기존 데이터 비교 후 변경된 부분만 처리
+            const toCreate = zipcodes.filter(z => !existingMap.has(`${z.postalCode}-${z.juso}`));
+
+            if (toCreate.length > 0) {
+              await tx.zipcode.createMany({
+                data: toCreate,
+                skipDuplicates: true,
+              });
+            }
+            zipcodeResultMessage = someExistsMessage;
+          }
+        }
+
+        Logger.log(zipcodeResultMessage);
+
+        Logger.log(`📄 우편번호 데이터 추가 완료`);
+      } catch (error) {
+        Logger.error('❌ 우편번호 데이터 추가 중 오류 발생:', error);
+        throw error;
       }
+    },
+    { timeout: 30000 }, // 트랜잭션 타임아웃 30초 설정
+  );
 
-      for (const subCategory of subCategoryList) {
-        const subCategoryId = createId();
-        categoryIdMap.set(subCategory, subCategoryId);
+  await prisma.$transaction(
+    async tx => {
+      try {
+        // 1. 기업 데이터 및 기업 주소 데이터 추가
+        // 아래 다른 테이블 입력을 위해 테스트 기업 선택
+        const testCompany: Company = companies[0];
 
-        await tx.category.upsert({
-          where: { id: subCategoryId },
+        // 1-1. 기업 생성
+        await tx.company.createMany({
+          data: companies,
+          skipDuplicates: true,
+        });
+
+        // 1-2. 기업 주소 생성
+        // 우편번호 데이터를 한 번에 가져와서 메모리에 캐싱
+        const allZipcodes = await tx.zipcode.findMany();
+        const zipCodeMap = new Map(allZipcodes.map(z => [`${z.postalCode}-${z.juso}`, z]));
+
+        // 배치 처리를 위한 데이터 준비
+        const addressesToCreate = companyAddresses.map(address => {
+          const { companyId, zipcodeId: _zipcodeId, ...rest } = address;
+          const key = `${address.postalCode}-${address.address}`;
+          const matchingZipcode = zipCodeMap.get(key);
+
+          return {
+            ...rest,
+            company: { connect: { id: companyId } },
+            ...(matchingZipcode ? { zipcode: { connect: { id: matchingZipcode.id } } } : {}),
+          };
+        });
+        // 배치 생성 또는 createMany를 지원하지 않는 경우 효율적인 방식으로 처리
+        await Promise.all(addressesToCreate.map(data => tx.companyAddress.create({ data })));
+
+        // 2. Category 데이터 추가
+        const parentCategories: Category[] = categories.map(category => ({
+          ...category,
+          companyId: testCompany.id,
+        }));
+        if (categories.length === 0) {
+          throw new BadRequestException('Categories not found');
+        }
+        await tx.category.createMany({
+          data: parentCategories,
+          skipDuplicates: true,
+        });
+
+        // 3. SubCategory 데이터 추가
+        const subCategoriesWithCompany: Category[] = subCategories.map(category => ({
+          ...category,
+          companyId: testCompany.id,
+        }));
+        if (subCategories.length === 0) {
+          throw new BadRequestException('SubCategories not found');
+        }
+        await tx.category.createMany({
+          data: subCategoriesWithCompany,
+          skipDuplicates: true,
+        });
+
+        // 4. User 데이터 추가
+        await tx.user.createMany({
+          data: users,
+          skipDuplicates: true,
+        });
+
+        // 5. Product 데이터 추가
+        await tx.product.createMany({
+          data: products,
+          skipDuplicates: true,
+        });
+
+        /**
+         * 기존 데이터
+         */
+
+        // 6. 장바구니 추가
+        await tx.cart.upsert({
+          where: { id: 'bhcxqfshp43wkskocodegc7x' },
           update: {},
           create: {
-            id: subCategoryId,
-            parentId: parentCategory.id,
-            companyId: company.id,
-            name: subCategory,
-            isActive: true,
+            id: 'bhcxqfshp43wkskocodegc7x',
+            userId: getRequiredId(users[4], ERROR_MESSAGES.USER_ID_NOT_FOUND),
             createdAt: new Date(),
             updatedAt: new Date(),
           },
         });
-      }
-    }
 
-    // 4. User11 추가
-    const user11 = await tx.user.upsert({
-      where: { id: userId },
-      update: {},
-      create: {
-        id: userId,
-        companyId: company.id,
-        email: 'user11@example.com',
-        password: await hash('hashedpassword11'),
-        name: '유저11호',
-        role: 'USER',
-        // refreshToken: null, // 기본값이 nullable이므로 생략
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    });
+        // 7. 주문 요청 추가
+        const orderRequestIds = [
+          'nz2p1larko8dcbyr7ej08v98',
+          'xp569x8t45rbax2m2pqhqsnl',
+          'uc4os87dbme8k5gom16lqb6u',
+        ];
+        await tx.orderRequest.createMany({
+          data: [
+            {
+              id: orderRequestIds[0],
+              requesterId: getRequiredId(users[0], ERROR_MESSAGES.REQUESTER_ID_NOT_FOUND),
+              companyId: getRequiredId(testCompany, ERROR_MESSAGES.COMPANY_ID_NOT_FOUND),
+              status: 'PENDING',
+              totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+            {
+              id: orderRequestIds[1],
+              requesterId: getRequiredId(users[6], ERROR_MESSAGES.REQUESTER_ID_NOT_FOUND),
+              companyId: getRequiredId(testCompany, ERROR_MESSAGES.COMPANY_ID_NOT_FOUND),
+              status: 'APPROVED',
+              totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+            {
+              id: orderRequestIds[2],
+              requesterId: getRequiredId(users[1], ERROR_MESSAGES.REQUESTER_ID_NOT_FOUND),
+              companyId: getRequiredId(testCompany, ERROR_MESSAGES.COMPANY_ID_NOT_FOUND),
+              status: 'REJECTED',
+              totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          ],
+          skipDuplicates: true,
+        });
 
-    // 5. 장바구니 추가 (User11)
-    await tx.cart.upsert({
-      where: { id: cartId },
-      update: {},
-      create: {
-        id: cartId,
-        userId: user11.id,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    });
+        // 8. 주문 요청 아이템 추가
+        // createId() 대신 직접 값 할당
+        const orderRequestItemsIds = [
+          'ux1idk821b5j1qmv6b30ncko',
+          'fugejwfmuo43d7po46psreto',
+          'vsqr28wsy0oxz1fzstc9s8l1',
+          'iurp3qr1rffhzj9lan7sbu6c',
+          'dirjv4wqu8fhb6up8n0frnzl',
+          'hfe0sszybej58jdqfmqtnpgi',
+        ];
+        const orderRequestItems = [
+          {
+            id: orderRequestItemsIds[0],
+            orderRequestId: orderRequestIds[0],
+            productId: products[0].id,
+            quantity: 2,
+            price: products[0].price,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+          {
+            id: orderRequestItemsIds[1],
+            orderRequestId: orderRequestIds[0],
+            productId: products[1].id,
+            quantity: 3,
+            price: products[1].price,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+          {
+            id: orderRequestItemsIds[2],
+            orderRequestId: orderRequestIds[1],
+            productId: products[1].id,
+            quantity: 1,
+            price: products[1].price,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+          {
+            id: orderRequestItemsIds[3],
+            orderRequestId: orderRequestIds[1],
+            productId: products[2].id,
+            quantity: 3,
+            price: products[2].price,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+          {
+            id: orderRequestItemsIds[4],
+            orderRequestId: orderRequestIds[1],
+            productId: products[3].id,
+            quantity: 4,
+            price: products[3].price,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+          {
+            id: orderRequestItemsIds[5],
+            orderRequestId: orderRequestIds[2],
+            productId: products[1].id,
+            quantity: 2,
+            price: products[1].price,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ].map((item, index) => ({
+          ...item,
+          id: orderRequestItemsIds[index],
+        }));
 
-    // 6.상품 추가
+        // 기존 아이템 ID 목록 조회
+        const existingItemIds = new Set(
+          (
+            await tx.orderRequestItem.findMany({
+              where: { id: { in: orderRequestItems.map(item => item.id) } },
+              select: { id: true },
+            })
+          ).map(item => item.id),
+        );
 
-    const productIds = Array.from({ length: 10 }, () => createId());
-    const products = [
-      {
-        id: productIds[0],
-        categoryId: categoryIdMap.get('과자'),
-        name: '허니버터칩',
-        price: 1500,
-        description: '달콤한 허니버터 맛이 일품인 과자',
-        imageUrl: 'https://placehold.co/600x400?text=honeybutter',
-      },
-      {
-        id: productIds[1],
-        categoryId: categoryIdMap.get('청량/탄산음료'),
-        name: '콜라',
-        price: 2000,
-        description: '시원한 탄산음료',
-        imageUrl: 'https://placehold.co/600x400?text=cola',
-      },
-      {
-        id: productIds[2],
-        categoryId: categoryIdMap.get('생수'),
-        name: '삼다수 2L',
-        price: 1200,
-        description: '제주 화산암반수로 만든 생수',
-        imageUrl: 'https://placehold.co/600x400?text=water',
-      },
-      {
-        id: productIds[3],
-        categoryId: categoryIdMap.get('컵라면'),
-        name: '신라면 컵',
-        price: 1300,
-        description: '매콤한 국물이 일품인 컵라면',
-        imageUrl: 'https://placehold.co/600x400?text=cupnoodle',
-      },
-      {
-        id: productIds[4],
-        categoryId: categoryIdMap.get('샐러드'),
-        name: '닭가슴살 샐러드',
-        price: 6500,
-        description: '신선한 채소와 닭가슴살이 들어간 건강한 샐러드',
-        imageUrl: 'https://placehold.co/600x400?text=salad',
-      },
-      {
-        id: productIds[5],
-        categoryId: categoryIdMap.get('원두'),
-        name: '에티오피아 예가체프',
-        price: 25000,
-        description: '꽃향이 풍부한 에티오피아 원두',
-        imageUrl: 'https://placehold.co/600x400?text=coffee+bean',
-      },
-      {
-        id: productIds[6],
-        categoryId: categoryIdMap.get('일회용품'),
-        name: '종이컵 6.5oz (50개입)',
-        price: 3000,
-        description: '무형광 친환경 종이컵',
-        imageUrl: 'https://placehold.co/600x400?text=paper+cup',
-      },
-      {
-        id: productIds[7],
-        categoryId: categoryIdMap.get('과일'),
-        name: '제주 감귤 1kg',
-        price: 8900,
-        description: '새콤달콤한 제주 감귤',
-        imageUrl: 'https://placehold.co/600x400?text=tangerine',
-      },
-      {
-        id: productIds[8],
-        categoryId: categoryIdMap.get('초콜릿류'),
-        name: '다크초콜릿 70%',
-        price: 4500,
-        description: '카카오 함량 70%의 프리미엄 다크초콜릿',
-        imageUrl: 'https://placehold.co/600x400?text=chocolate',
-      },
-      {
-        id: productIds[9],
-        categoryId: categoryIdMap.get('차류'),
-        name: '캐모마일 티백 20개입',
-        price: 5500,
-        description: '릴렉싱에 도움을 주는 캐모마일차',
-        imageUrl: 'https://placehold.co/600x400?text=chamomile',
-      },
-    ]
-      .map((product, index) => ({
-        ...product,
-        id: productIds[index],
-      }))
-      .filter(product => {
-        if (!product.categoryId) {
-          console.error(`❌ 카테고리를 찾을 수 없습니다: ${product.name}`);
-          return false;
+        // 존재하지 않는 아이템만 필터링하여 생성
+        const itemsToCreate = orderRequestItems.filter(item => !existingItemIds.has(item.id));
+        if (itemsToCreate.length > 0) {
+          await Promise.all(itemsToCreate.map(item => tx.orderRequestItem.create({ data: item })));
         }
-        return true;
-      });
-    await tx.product.createMany({
-      data: products as {
-        id: string;
-        categoryId: string;
-        name: string;
-        price: number;
-        description: string;
-        imageUrl: string;
-      }[],
-      skipDuplicates: true,
-    });
 
-    // 7. 주문 요청 추가 (User ID 11)
-    const orderRequestIds = Array.from({ length: 3 }, () => createId());
-    await tx.orderRequest.createMany({
-      data: [
-        {
-          id: orderRequestIds[0],
-          requesterId: user11.id,
-          companyId: company.id,
-          status: 'PENDING',
-          totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: orderRequestIds[1],
-          requesterId: user11.id,
-          companyId: company.id,
-          status: 'PENDING',
-          totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: orderRequestIds[2],
-          requesterId: user11.id,
-          companyId: company.id,
-          status: 'PENDING',
-          totalAmount: 0, // 초기값은 0으로 설정, 나중에 계산하여 덮어씀
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ],
-      skipDuplicates: true,
-    });
+        // 9. 각 주문 요청에 대해 totalAmount 계산 후 업데이트
+        // 모든 주문 요청 아이템을 한 번에 조회
+        const allOrderItems = await tx.orderRequestItem.findMany({
+          where: { orderRequestId: { in: orderRequestIds } },
+        });
 
-    // 8. 주문 요청 아이템 추가 (orderRequestItems.ts에서 import한 데이터 사용)
-    const orderRequestItemsIds = Array.from({ length: 6 }, () => createId());
-    const orderRequestItems = [
-      {
-        id: orderRequestItemsIds[0],
-        orderRequestId: orderRequestIds[0],
-        productId: products[0].id,
-        quantity: 2,
-        price: products[0].price,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: orderRequestItemsIds[1],
-        orderRequestId: orderRequestIds[0],
-        productId: products[1].id,
-        quantity: 3,
-        price: products[1].price,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: orderRequestItemsIds[2],
-        orderRequestId: orderRequestIds[1],
-        productId: products[1].id,
-        quantity: 1,
-        price: products[1].price,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: orderRequestItemsIds[3],
-        orderRequestId: orderRequestIds[1],
-        productId: products[2].id,
-        quantity: 3,
-        price: products[2].price,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: orderRequestItemsIds[4],
-        orderRequestId: orderRequestIds[1],
-        productId: products[3].id,
-        quantity: 4,
-        price: products[3].price,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: orderRequestItemsIds[5],
-        orderRequestId: orderRequestIds[2],
-        productId: products[1].id,
-        quantity: 2,
-        price: products[1].price,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ].map((item, index) => ({
-      ...item,
-      id: orderRequestItemsIds[index],
-    }));
+        // 주문별 총액 계산
+        const orderTotals = allOrderItems.reduce(
+          (acc, item) => {
+            const orderId = item.orderRequestId;
+            if (!acc[orderId]) acc[orderId] = 0;
+            acc[orderId] += item.price * item.quantity;
+            return acc;
+          },
+          {} as Record<string, number>,
+        );
 
-    await tx.orderRequestItem.createMany({
-      data: orderRequestItems,
-      skipDuplicates: true,
-    });
+        // 모든 주문 총액 한 번에 업데이트
+        await Promise.all(
+          Object.entries(orderTotals).map(([orderRequestId, totalAmount]) =>
+            tx.orderRequest.update({
+              where: { id: orderRequestId },
+              data: { totalAmount },
+            }),
+          ),
+        );
 
-    // 9. 각 주문 요청에 대해 totalAmount 계산 후 업데이트
-    for (const orderRequestId of orderRequestIds) {
-      // 해당 주문 요청의 아이템 조회
-      const items = await tx.orderRequestItem.findMany({
-        where: { orderRequestId },
-      });
-
-      // totalAmount 계산 (각 아이템의 price * quantity 합산)
-      const totalAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
-      // 주문 요청의 totalAmount 업데이트
-      await tx.orderRequest.update({
-        where: { id: orderRequestId },
-        data: { totalAmount },
-      });
-    }
-
-    console.log('🎉 Seeding complete!');
-  });
+        Logger.log('🎉 데이터베이스 시딩이 완료되었습니다!');
+      } catch (error) {
+        if (error instanceof BadRequestException) {
+          Logger.error('❌ 입력 데이터 오류:', error.message);
+        } else if (error instanceof PrismaClientKnownRequestError) {
+          Logger.error('❌ Prisma 요청 오류:', error.message, error.code);
+        } else {
+          Logger.error('❌ 데이터베이스 시딩 중 알 수 없는 오류 발생:', error);
+        }
+        throw error;
+      }
+    },
+    { timeout: 30000 }, // 트랜잭션 타임아웃 30초 설정
+  );
 };
 
 main()
   .catch(e => {
-    console.error('❌ Seeding failed:', e);
+    Logger.error('❌ Seeding failed:', e);
     process.exit(1);
   })
   .finally(() => {
