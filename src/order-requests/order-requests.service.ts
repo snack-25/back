@@ -14,7 +14,6 @@ export class OrderRequestsService {
   public constructor(private readonly prisma: PrismaService) {}
 
   // ✅ 일반 사용자(user)의 구매 요청 내역 조회 (본인의 `userId` 기준)
-
   async getUserOrderRequests(userId: string, page: number, pageSize: string, sort: string) {
     const parsedPageSize = parseInt(pageSize, 10);
 
@@ -189,7 +188,7 @@ export class OrderRequestsService {
         imageUrl: item.product?.imageUrl || null, // 🔹 이미지 URL 추가
         quantity: item.quantity,
         price: item.product?.price || 0,
-        notes: item.notes || null, // 주문 요청 시 입력한 메모
+        requestMessage: item.notes || null, // 주문 요청 시 입력한 메모
       })),
     };
   }
