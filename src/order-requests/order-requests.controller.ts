@@ -78,11 +78,7 @@ export class OrderRequestsController {
   })
   @Get()
   public async getOrderRequests(@Req() req: Request, @Query() query: GetOrderRequestsDto) {
-    const user = req.user as { id: string; role: UserRole; companyId: string };
-
-    if (!user) {
-      throw new UnauthorizedException('인증되지 않은 사용자입니다.');
-    }
+    const user = await this.getUserFromCookie(req); // 유저 정보를 가져옵니다.
 
     const { page = 1, pageSize = 10, sort = OrderSort.LATEST } = query;
 
