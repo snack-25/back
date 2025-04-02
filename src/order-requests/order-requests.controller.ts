@@ -54,8 +54,9 @@ export class OrderRequestsController {
   })
   @Get()
   public async getOrderRequests(@Req() req: Request, @Query() query: GetOrderRequestsDto) {
+    console.log(123);
     const user = req.user as { id: string; role: UserRole; companyId: string };
-
+    console.log(req.query);
     if (!user) {
       throw new UnauthorizedException('인증되지 않은 사용자입니다.');
     }

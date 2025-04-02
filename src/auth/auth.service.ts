@@ -201,6 +201,7 @@ export class AuthService {
   public async login(dto: SignInRequestDto): Promise<SigninResponseDto | null> {
     try {
       const { email, password } = dto;
+      console.log (email, password);
 
       const user = await this.prisma.user.findUnique({
         where: { email },
@@ -304,6 +305,8 @@ export class AuthService {
   // accessToken 검증
   public async verifyAccessToken(accessToken: string): Promise<JwtPayload> {
     try {
+      console.log('쉐리')
+
       return await this.jwtService.verifyAsync(accessToken, {
         secret: this.configService.getOrThrow<string>('JWT_SECRET'),
       });
@@ -316,6 +319,7 @@ export class AuthService {
   // refreshToken 검증
   public async verifyRefreshToken(refreshToken: string): Promise<JwtPayload> {
     try {
+      
       // DB에서 저장된 refreshToken을 검증하여 리프레시토큰이 없거나
       // 저장된 리프레시토큰이 비어있으면 예외 발생
       const storedRefreshToken = await this.prisma.user.findFirst({
