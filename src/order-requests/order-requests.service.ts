@@ -85,7 +85,7 @@ export class OrderRequestsService {
       },
     });
   }
-
+  
   // ✅ 주문 요청 생성
   public async createOrderRequest(dto: CreateOrderRequestDto): Promise<Partial<OrderRequest>> {
     return this.prisma.$transaction(async tx => {
@@ -132,7 +132,7 @@ export class OrderRequestsService {
               productId: item.productId,
               quantity: item.quantity,
               price: item.price,
-              notes: item.notes,
+              requestMessage: item.notes,
             })), // Prisma의 모델에 맞게 `create` 형식으로 데이터 매핑
           },
         },
