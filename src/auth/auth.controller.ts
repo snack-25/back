@@ -1,19 +1,18 @@
 import {
   Body,
   Controller,
-  // Get,
   HttpCode,
   HttpStatus,
   Post,
   Req,
   Res,
   Param,
-  // UseGuards,
+  Patch,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { type Invitation } from '@prisma/client';
 import { Request, Response } from 'express';
-// import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import {
   InvitationCodeDto,
@@ -28,7 +27,6 @@ export class AuthController {
   public constructor(private readonly authService: AuthService) {}
 
   // TODO: /auth/signup (POST) [최고관리자] 회원가입
-
   @Post('signup')
   @ApiResponse({
     status: 201,
@@ -118,6 +116,27 @@ export class AuthController {
     }
 
     await this.authService.logout(invalidateToken, res);
+  }
+
+  @Patch('update/info')
+  public async updatePassword(
+    @Body() body: { password: string; company?: string },
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { sub: userId } = await this.authService.getUserFromCookie(req);
+
+    if (!userId) {
+      throw new UnauthorizedException('유효하지 않은 사용자');
+    }
+
+    const result = await this.authService.updateData({
+      userId,
+      password: body.password,
+      company: body.company,
+    });
+
+    res.status(200).json({ msg: '변경 성공', data: result, ok: true });
   }
 
   // 쿠키 인증 설정(accessToken, refreshToken 둘 다 설정)
