@@ -202,6 +202,7 @@ export class AuthService {
   public async login(dto: SignInRequestDto): Promise<SigninResponseDto | null> {
     try {
       const { email, password } = dto;
+      console.log(email, password);
 
       const user = await this.prisma.user.findUnique({
         where: { email },
@@ -311,6 +312,8 @@ export class AuthService {
   // accessToken 검증
   public async verifyAccessToken(accessToken: string): Promise<JwtPayload> {
     try {
+      console.log('쉐리');
+
       return await this.jwtService.verifyAsync(accessToken, {
         secret: this.configService.getOrThrow<string>('JWT_SECRET'),
       });

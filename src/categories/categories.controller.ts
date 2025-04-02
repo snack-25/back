@@ -3,7 +3,9 @@ import { CategoriesService } from './categories.service';
 import { Category } from '@prisma/client';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CategoryResponseDto } from './dto/category.response.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth()
 @Controller('categories')
 export class CategoriesController {
   public constructor(private readonly categoriesService: CategoriesService) {}

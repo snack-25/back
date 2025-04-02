@@ -9,7 +9,6 @@ import {
   Post,
   Query,
   UploadedFile,
-  UseGuards,
   UseInterceptors,
   UsePipes,
   ValidationPipe,
@@ -28,16 +27,16 @@ import { PaginatedProductsResponseDto } from './dto/paginated-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { SortOption } from './enums/sort-options.enum';
-import { AuthGuard } from '@src/auth/auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FILE_SIZE_LIMIT } from './const';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth()
 @Controller('products')
 @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 export class ProductsController {
   public constructor(private readonly productsService: ProductsService) {}
 
-  @UseGuards(AuthGuard)
   @Post()
   @UseInterceptors(
     FileInterceptor('imageUrl', {
@@ -53,7 +52,6 @@ export class ProductsController {
     @Body() createProductDto: CreateProductDto,
     @UploadedFile() file: Express.Multer.File,
   ): Promise<ProductResponseDto> {
-    //TODO : 권한 인증 추가(role = ADMIN, SUPERADMIN 일 때만)
     return this.productsService.createProduct(createProductDto, file);
   }
 
@@ -86,6 +84,14 @@ export class ProductsController {
     type: String,
     required: false,
     example: '',
+    enum: [
+      'd8031i1djxm1hh5rpmpv2smc', // 과자
+      'jvfkhtspnr4gvmtcue6xtjxf', // 봉지라면
+      'si5qvq6vsqptcju91ur81w83', // 청량/탄산음료
+      'az2o6o95cgxi5qsygg8c9p5h', // 차
+      'h7ess07as8obzrjcad55vjs5', // 샐러드
+      'bv6sxcr1a3ie7udxvpmrdpcb', // 생활용품
+    ],
   })
   @ApiQuery({
     name: 'sort',
