@@ -4,7 +4,7 @@ import { CreateOrderRequestDto } from './dto/create-order-request.dto';
 import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
 import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
-import { calculateShippingFee } from '@src/shared/utils/shipping.util';
+import { getShippingFeeByUserId } from '@src/shared/helpers/shipping.helper';
 import { getOrderBy } from '@src/shared/utils/order-requestsSort.util';
 
 @Injectable()
@@ -117,7 +117,7 @@ export class OrderRequestsService {
       );
 
       // 5. 배송비 계산
-      const shippingFee = calculateShippingFee(totalAmountWithoutShipping);
+      const shippingFee = await getShippingFeeByUserId(this.prisma, dto.requesterId, totalAmountWithoutShipping);
       const totalAmount = totalAmountWithoutShipping + shippingFee;
 
       // 6. 주문 요청 생성 (트랜잭션 내에서 수행)
@@ -175,7 +175,7 @@ export class OrderRequestsService {
 
     return {
       requesterId: orderRequest.requesterId,
-      status: orderRequest.status,
+      status: orderRequest.status, // 주문 요청 상태
       requestedAt: orderRequest.createdAt, // 요청일
       resolvedAt: orderRequest.resolvedAt, // 처리일
       resolverMessage: orderRequest.notes, // 처리 메시지
