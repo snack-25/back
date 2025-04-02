@@ -1,10 +1,11 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import { Cart, CartItem } from './dto/cart.interface';
 import { getShippingFeeByUserId } from '@src/shared/helpers/shipping.helper';
 
 @Injectable()
 export class CartsService {
+  private readonly logger = new Logger(CartsService.name);
   public constructor(private readonly prisma: PrismaService) {}
 
   public async addToCart(userId: string, cartId: string, productId: string): Promise<CartItem> {
@@ -69,9 +70,9 @@ export class CartsService {
       shippingFee = await getShippingFeeByUserId(this.prisma, userId, totalAmount);
     } catch (error) {
       if (error instanceof Error) {
-        console.error('배송비 계산 중 오류 발생:', error.message);
+        this.logger.error(`배송비 계산 중 오류 발생: ${error.message}`, error.stack);
       } else {
-        console.error('배송비 계산 중 알 수 없는 오류 발생:', error);
+        this.logger.error('배송비 계산 중 알 수 없는 오류 발생', error);
       }
     }
 
