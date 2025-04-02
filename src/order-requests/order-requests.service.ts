@@ -9,13 +9,15 @@ import { getOrderBy } from '@src/shared/utils/order-requestsSort.util';
 
 @Injectable()
 export class OrderRequestsService {
-  constructor(private readonly prisma: PrismaService) {}
-  // ✅ 일반 사용자(user)의 구매 요청 내역 조회 (본인의 `userId` 기준)
+  // order-request.controller.spec.ts 21번째 줄에서 에러 발생(private로 선언된 생성자는 접근 불가)
+  // private constructor(private readonly prisma: PrismaService) {}
+  public constructor(private readonly prisma: PrismaService) {}
 
+  // ✅ 일반 사용자(user)의 구매 요청 내역 조회 (본인의 `userId` 기준)
 
   async getUserOrderRequests(userId: string, page: number, pageSize: string, sort: string) {
     const parsedPageSize = parseInt(pageSize, 10);
-  
+
     if (isNaN(parsedPageSize)) {
       throw new Error('pageSize는 숫자여야 합니다.');
     }
@@ -49,11 +51,11 @@ export class OrderRequestsService {
   async getCompanyOrderRequests(companyId: string, page: number, pageSize: string, sort: string) {
     // pageSize가 문자열로 들어올 경우 숫자로 변환
     const parsedPageSize = parseInt(pageSize, 10);
-  
+
     if (isNaN(parsedPageSize)) {
       throw new Error('pageSize는 숫자여야 합니다.');
     }
-  
+
     return this.prisma.orderRequest.findMany({
       where: { companyId },
       orderBy: getOrderBy(sort), // 정렬 추가
@@ -84,23 +86,23 @@ export class OrderRequestsService {
       },
     });
   }
-  
+
   // ✅ 주문 요청 생성
-  async createOrderRequest(dto: CreateOrderRequestDto) {
+  public async createOrderRequest(dto: CreateOrderRequestDto): Promise<Partial<OrderRequest>> {
     return this.prisma.$transaction(async tx => {
       // 1. 상품 정보 조회 (DB에서 가격 가져오기)
       const products = await tx.product.findMany({
         where: { id: { in: dto.items.map(item => item.productId) } }, // 요청된 모든 상품 ID 조회
         select: { id: true, price: true },
       });
-  
+
       if (products.length !== dto.items.length) {
         throw new NotFoundException('존재하지 않는 상품이 포함되어 있습니다.');
       }
-  
+
       // 2. 상품 ID → 가격 매핑
       const productPriceMap = new Map(products.map(p => [p.id, p.price]));
-  
+
       // 3. 주문 요청 아이템 생성 (가격 제외)
       const orderRequestItems = dto.items.map(item => ({
         productId: item.productId,
@@ -108,17 +110,17 @@ export class OrderRequestsService {
         price: productPriceMap.get(item.productId) || 0, // 가격 포함
         notes: item.notes,
       }));
-  
+
       // 4. 총액 계산
       const totalAmountWithoutShipping = dto.items.reduce(
         (sum, item) => sum + item.quantity * (productPriceMap.get(item.productId) || 0),
         0,
       );
-  
+
       // 5. 배송비 계산
       const shippingFee = calculateShippingFee(totalAmountWithoutShipping);
       const totalAmount = totalAmountWithoutShipping + shippingFee;
-  
+
       // 6. 주문 요청 생성 (트랜잭션 내에서 수행)
       return tx.orderRequest.create({
         data: {
@@ -139,9 +141,9 @@ export class OrderRequestsService {
       });
     });
   }
-  
+
   // ✅ 주문 요청 상세 조회
-  async getOrderRequestDetail(orderRequestId: string) {
+  public async getOrderRequestDetail(orderRequestId: string): Promise<any> {
     const orderRequest = await this.prisma.orderRequest.findUnique({
       where: { id: orderRequestId },
       include: {
@@ -173,7 +175,7 @@ export class OrderRequestsService {
     }
 
     return {
-      requestId: orderRequest.id,
+      requesterId: orderRequest.requesterId,
       status: orderRequest.status,
       requestedAt: orderRequest.createdAt, // 요청일
       resolvedAt: orderRequest.resolvedAt, // 처리일
@@ -193,7 +195,10 @@ export class OrderRequestsService {
   }
 
   // ✅ 주문 요청 승인
-  async approveOrderRequest(orderRequestId: string, dto: ApproveOrderRequestDto) {
+  public async approveOrderRequest(
+    orderRequestId: string,
+    dto: ApproveOrderRequestDto,
+  ): Promise<Partial<OrderRequest>> {
     return this.prisma.$transaction(async tx => {
       // 1️⃣ 주문 요청 상태 확인
       const orderRequest = await tx.orderRequest.findUnique({
@@ -227,7 +232,10 @@ export class OrderRequestsService {
   }
 
   // ✅ 주문 요청 거절
-  async rejectOrderRequest(orderRequestId: string, dto: RejectOrderRequestDto) {
+  public async rejectOrderRequest(
+    orderRequestId: string,
+    dto: RejectOrderRequestDto,
+  ): Promise<Partial<OrderRequest>> {
     return this.prisma.$transaction(async tx => {
       // 1️⃣ 주문 요청 상태 확인
       const orderRequest = await tx.orderRequest.findUnique({
@@ -261,7 +269,7 @@ export class OrderRequestsService {
   }
 
   // ✅ 주문 요청 ID로 상세 조회
-  async getOrderRequestById(orderRequestId: string): Promise<OrderRequest | null> {
+  public async getOrderRequestById(orderRequestId: string): Promise<OrderRequest | null> {
     return this.prisma.orderRequest.findUnique({
       where: { id: orderRequestId },
       include: { orderRequestItems: true }, // 필요한 관계 추가
@@ -269,7 +277,7 @@ export class OrderRequestsService {
   }
 
   // ✅ 주문 요청 삭제 (트랜잭션)
-  async deleteRequestAndItemsInTransaction(orderRequestId: string): Promise<void> {
+  public async deleteRequestAndItemsInTransaction(orderRequestId: string): Promise<void> {
     try {
       await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         // 🔹 1. 주문 요청이 존재하는지 확인

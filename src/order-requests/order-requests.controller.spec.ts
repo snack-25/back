@@ -2,7 +2,8 @@ import { OrderRequestsService } from './order-requests.service';
 import { OrderRequestsController } from './order-requests.controller';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
-import { OrderRequestStatus, UserRole } from '@prisma/client';
+// import { OrderRequestStatus, UserRole } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 import { UnauthorizedException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
@@ -11,7 +12,7 @@ import { AuthService } from '../auth/auth.service';
 describe('OrderRequestsController', () => {
   let service: OrderRequestsService;
   let controller: OrderRequestsController;
-  let prisma: PrismaService;
+  // let prisma: PrismaService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -34,7 +35,8 @@ describe('OrderRequestsController', () => {
             product: {
               findMany: jest.fn(),
             },
-            $transaction: jest.fn(async (cb) =>
+            $transaction: jest.fn((cb: any) =>
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-return
               cb({
                 orderRequest: {
                   findMany: jest.fn(),
@@ -69,7 +71,7 @@ describe('OrderRequestsController', () => {
 
     service = module.get<OrderRequestsService>(OrderRequestsService);
     controller = module.get<OrderRequestsController>(OrderRequestsController);
-    prisma = module.get<PrismaService>(PrismaService);
+    // prisma = module.get<PrismaService>(PrismaService);
   });
 
   it('should be defined', () => {
@@ -79,26 +81,36 @@ describe('OrderRequestsController', () => {
 
   describe('createOrderRequest', () => {
     it('should throw UnauthorizedException if user is not authenticated', async () => {
-      await expect(controller.createOrderRequest({} as Request, { items: [], companyId: '', requesterId: '' })).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        controller.createOrderRequest({} as Request, { items: [], companyId: '', requesterId: '' }),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 
   describe('approveOrderRequest', () => {
     it('should throw ForbiddenException if user is not an admin', async () => {
-      const req = { user: { id: 'user123', role: UserRole.USER, companyId: 'company123' } } as unknown as Request;
-      await expect(controller.approveOrderRequest(req, 'order1', { notes: 'Approved', resolverId: 'admin123' })).rejects.toThrow(
-        ForbiddenException,
-      );
+      const req = {
+        user: { id: 'user123', role: UserRole.USER, companyId: 'company123' },
+      } as unknown as Request;
+      await expect(
+        controller.approveOrderRequest(req, 'order1', {
+          notes: 'Approved',
+          resolverId: 'admin123',
+        }),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('should throw NotFoundException if order request does not exist', async () => {
       jest.spyOn(service, 'getOrderRequestById').mockResolvedValue(null);
-      const req = { user: { id: 'admin123', role: UserRole.ADMIN, companyId: 'company123' } } as unknown as Request;
-      await expect(controller.approveOrderRequest(req, 'order1', { notes: 'Approved', resolverId: 'admin123' })).rejects.toThrow(
-        NotFoundException,
-      );
+      const req = {
+        user: { id: 'admin123', role: UserRole.ADMIN, companyId: 'company123' },
+      } as unknown as Request;
+      await expect(
+        controller.approveOrderRequest(req, 'order1', {
+          notes: 'Approved',
+          resolverId: 'admin123',
+        }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

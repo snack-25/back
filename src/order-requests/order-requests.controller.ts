@@ -11,7 +11,6 @@ import {
   Query,
   Req,
   UnauthorizedException,
-  UseGuards,
 } from '@nestjs/common';
 import { OrderRequestStatus, UserRole } from '@prisma/client';
 import type { Request } from 'express';
@@ -21,12 +20,12 @@ import { CreateOrderRequestDto } from './dto/create-order-request.dto';
 import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
 import { GetOrderRequestsDto, OrderSort } from './dto/getOrderRequest.dto';
 import { OrderRequestsService } from './order-requests.service';
-import { AuthGuard } from '@src/auth/auth.guard'; // 인증 가드 추가
+import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from '@src/auth/auth.service'; // AuthService 가져오기
 import { PrismaService } from '@src/shared/prisma/prisma.service'; // PrismaService 가져오기
 
-@ApiTags('OrderRequests') // Swagger 그룹 태그 추가
-@UseGuards(AuthGuard) // 인증 가드 적용
+@ApiBearerAuth()
+@ApiTags('OrderRequests')
 @Controller('order-requests')
 export class OrderRequestsController {
   public constructor(
@@ -38,7 +37,7 @@ export class OrderRequestsController {
   // getUserFromCookie 메서드를 authService에서 가져와 사용
   private async getUserFromCookie(@Req() req: Request) {
     const decoded = await this.authService.getUserFromCookie(req); // authService에서 유저 정보를 가져옵니다.
-    
+
     // 유저 정보에서 ID를 가져와서 Prisma로 유저를 조회
     const user = await this.prismaService.user.findUnique({
       where: { id: decoded.sub },
@@ -83,7 +82,12 @@ export class OrderRequestsController {
     const { page = 1, pageSize = 10, sort = OrderSort.LATEST } = query;
 
     if (user.role === UserRole.USER) {
-      return this.orderRequestsService.getUserOrderRequests(user.id, page, pageSize.toString(), sort);
+      return this.orderRequestsService.getUserOrderRequests(
+        user.id,
+        page,
+        pageSize.toString(),
+        sort,
+      );
     }
 
     if (user.role === UserRole.ADMIN || user.role === UserRole.SUPERADMIN) {
@@ -121,7 +125,9 @@ export class OrderRequestsController {
   @ApiResponse({ status: 200, description: '주문 요청 상세 정보 반환' })
   @ApiResponse({ status: 404, description: '주문 요청을 찾을 수 없음' })
   @Get(':orderRequestId')
-  public async getOrderRequestDetail(@Param('orderRequestId') orderRequestId: string) {
+  public async getOrderRequestDetail(
+    @Param('orderRequestId') orderRequestId: string,
+  ): Promise<any> {
     return this.orderRequestsService.getOrderRequestDetail(orderRequestId);
   }
 

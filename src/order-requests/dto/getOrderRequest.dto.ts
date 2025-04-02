@@ -20,7 +20,7 @@ export class GetOrderRequestsDto {
   @IsInt()
   @Min(1)
   @Type(() => Number)
-  page?: number = 1;
+  public page?: number = 1;
 
   @ApiProperty({
     required: false,
@@ -33,7 +33,7 @@ export class GetOrderRequestsDto {
   @Min(1)
   @Max(50)
   @Type(() => Number)
-  pageSize?: number = 10;
+  public pageSize?: number = 10;
 
   @ApiProperty({
     required: false,
@@ -43,5 +43,5 @@ export class GetOrderRequestsDto {
   })
   @IsOptional()
   @IsEnum(OrderSort)
-  sort?: OrderSort = OrderSort.LATEST;
+  public sort?: OrderSort = OrderSort.LATEST;
 }
