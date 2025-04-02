@@ -41,7 +41,6 @@ export class BudgetsService {
   }
 
   public async update(dto: BudgetsRequestDto): Promise<BudgetsResponseDto> {
-    console.log('updateDto', dto);
     try {
       // 특정 예산 레코드 조회
       const existingBudget = await this.prisma.budget.findUnique({
@@ -53,8 +52,6 @@ export class BudgetsService {
           },
         },
       });
-
-      console.log('existingBudget', existingBudget);
 
       // 값이 하나라도 0이면 새로 생성
       if (!existingBudget || dto.currentAmount === 0 || dto.initialAmount === 0) {
@@ -68,8 +65,6 @@ export class BudgetsService {
             name: `Budget ${dto.year}-${dto.month}`, // 'name' 필수 필드 추가
           },
         });
-
-        console.log('createdBudget', createdBudget);
 
         return {
           currentAmount: createdBudget.currentAmount,
@@ -93,8 +88,6 @@ export class BudgetsService {
           initialAmount: dto.initialAmount,
         },
       });
-
-      console.log('updatedBudget', updatedBudget);
 
       return {
         currentAmount: updatedBudget.currentAmount,

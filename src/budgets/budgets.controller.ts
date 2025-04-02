@@ -23,12 +23,7 @@ export class BudgetsController {
     // @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    console.log('dto', dto);
-
     const update = await this.budgetsService.update(dto);
-
-    console.log('마지막 나가는거', update);
-
     res.status(200).json({ ok: true, data: update, message: '예산 변경에 성공했습니다' });
   }
 
