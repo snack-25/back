@@ -1,7 +1,7 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import { Cart, CartItem } from './dto/cart.interface';
-import { calculateShippingFee } from '@src/shared/utils/shipping.util';
+import { getShippingFeeByUserId } from '@src/shared/helpers/shipping.helper';
 
 @Injectable()
 export class CartsService {
@@ -64,7 +64,7 @@ export class CartsService {
       return acc + item.quantity * item.product.price;
     }, 0);
 
-    const shippingFee = calculateShippingFee(totalAmount);
+    const shippingFee = await getShippingFeeByUserId(this.prisma, userId, totalAmount);
 
     return {
       items: cart.cartItems,
