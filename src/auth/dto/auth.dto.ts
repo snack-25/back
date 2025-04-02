@@ -45,7 +45,6 @@ export class SigninResponseDto {
 // 토큰 생성 요청 DTO
 export class TokenRequestDto {
   public sub: string;
-  public joinDate: string;
   public type: 'access' | 'refresh';
 }
 
