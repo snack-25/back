@@ -52,7 +52,6 @@ export class ProductsController {
     @Body() createProductDto: CreateProductDto,
     @UploadedFile() file: Express.Multer.File,
   ): Promise<ProductResponseDto> {
-    //TODO : 권한 인증 추가(role = ADMIN, SUPERADMIN 일 때만)
     return this.productsService.createProduct(createProductDto, file);
   }
 
@@ -85,6 +84,14 @@ export class ProductsController {
     type: String,
     required: false,
     example: '',
+    enum: [
+      'd8031i1djxm1hh5rpmpv2smc', // 과자
+      'jvfkhtspnr4gvmtcue6xtjxf', // 봉지라면
+      'si5qvq6vsqptcju91ur81w83', // 청량/탄산음료
+      'az2o6o95cgxi5qsygg8c9p5h', // 차
+      'h7ess07as8obzrjcad55vjs5', // 샐러드
+      'bv6sxcr1a3ie7udxvpmrdpcb', // 생활용품
+    ],
   })
   @ApiQuery({
     name: 'sort',

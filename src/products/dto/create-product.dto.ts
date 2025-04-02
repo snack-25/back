@@ -55,6 +55,5 @@ export class CreateProductDto {
     format: 'binary',
     required: false,
   })
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public imageUrl?: any;
+  public imageUrl?: Express.Multer.File | string;
 }

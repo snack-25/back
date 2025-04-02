@@ -5,11 +5,15 @@ import {
   ConflictException,
   InternalServerErrorException,
   HttpStatus,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { CheckEmailRequestDto, CheckEmailResponseDto, CheckNameDto } from './dto/user.dto';
 import { CompaniesRequestDto } from '@src/companies/dto/companies.dto';
+import { UserResponseDto } from './dto/response-user.dto';
+import { NAME_REGEX, PASSWORD_REGEX } from '@src/shared/const/RegExp';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
@@ -46,8 +50,7 @@ export class UsersService {
       throw new BadRequestException('이름은 최소 2자, 최대 50자여야 합니다.');
     }
     // 영어 대소문자, 숫자, 한글만 허용 (특수문자 및 띄어쓰기는 허용하지 않음)
-    const nameRegex = /^[A-Za-z0-9\uAC00-\uD7A3]+$/;
-    if (!nameRegex.test(CheckNameDto.name)) {
+    if (!NAME_REGEX.test(CheckNameDto.name)) {
       throw new BadRequestException('이름에 특수문자나 띄어쓰기를 사용할 수 없습니다.');
     }
     // 유효성 검사를 통과하면 입력받은 객체를 그대로 Promise로 감싸서 반환
@@ -110,12 +113,32 @@ export class UsersService {
       throw new BadRequestException('비밀번호는 최대 128자 이하여야 합니다.');
     }
 
-    const passwordRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
-
-    if (!passwordRegex.test(password)) {
+    if (!PASSWORD_REGEX.test(password)) {
       throw new BadRequestException('비밀번호는 영문 대소문자, 숫자, 특수문자를 포함해야 합니다.');
     }
 
     return '사용 가능한 비밀번호입니다.';
+  }
+
+  public async getUser(userId: string): Promise<UserResponseDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user) {
+      throw new NotFoundException('사용자 ID를 찾을 수 없습니다.');
+    }
+    return this.toResponseDto(user);
+  }
+
+  private toResponseDto(user: User): UserResponseDto {
+    return {
+      id: user.id,
+      companyId: user.companyId,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
   }
 }
