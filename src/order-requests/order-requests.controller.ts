@@ -76,15 +76,8 @@ export class OrderRequestsController {
     description: '정렬 기준 (latest: 최신순, lowPrice: 낮은 가격순, highPrice: 높은 가격순)',
   })
   @Get()
-  public async getOrderRequests(
-    @Req() req: Request,
-    @Query() query: GetOrderRequestsDto,
-  ): Promise<any[]> {
-    const user = req.user as { id: string; role: UserRole; companyId: string };
-
-    if (!user) {
-      throw new UnauthorizedException('인증되지 않은 사용자입니다.');
-    }
+  public async getOrderRequests(@Req() req: Request, @Query() query: GetOrderRequestsDto) {
+    const user = await this.getUserFromCookie(req); // 유저 정보를 가져옵니다.
 
     const { page = 1, pageSize = 10, sort = OrderSort.LATEST } = query;
 

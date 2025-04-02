@@ -31,6 +31,7 @@ export class OrderRequestsService {
         createdAt: true, // 요청 날짜
         status: true, // 상태
         totalAmount: true, // 총 주문 금액
+        id: true, // 주문 요청 ID
         orderRequestItems: {
           select: {
             price: true, // 상품 가격
@@ -64,6 +65,7 @@ export class OrderRequestsService {
         createdAt: true, // 요청 날짜
         totalAmount: true, // 총 주문 금액
         status: true, // 상태
+        id: true, // 주문 요청 ID
         requester: {
           select: { name: true }, // 요청한 사용자 이름 (user 테이블)
         },
