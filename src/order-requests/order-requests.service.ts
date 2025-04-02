@@ -175,7 +175,7 @@ export class OrderRequestsService {
 
     return {
       requesterId: orderRequest.requesterId,
-      status: orderRequest.status,
+      status: orderRequest.status, // 주문 요청 상태
       requestedAt: orderRequest.createdAt, // 요청일
       resolvedAt: orderRequest.resolvedAt, // 처리일
       resolverMessage: orderRequest.notes, // 처리 메시지
