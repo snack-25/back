@@ -14,7 +14,6 @@ export class OrderRequestsService {
   public constructor(private readonly prisma: PrismaService) {}
 
   // ✅ 일반 사용자(user)의 구매 요청 내역 조회 (본인의 `userId` 기준)
-
   async getUserOrderRequests(userId: string, page: number, pageSize: string, sort: string) {
     const parsedPageSize = parseInt(pageSize, 10);
 
@@ -86,7 +85,7 @@ export class OrderRequestsService {
       },
     });
   }
-
+  
   // ✅ 주문 요청 생성
   public async createOrderRequest(dto: CreateOrderRequestDto): Promise<Partial<OrderRequest>> {
     return this.prisma.$transaction(async tx => {
@@ -133,7 +132,7 @@ export class OrderRequestsService {
               productId: item.productId,
               quantity: item.quantity,
               price: item.price,
-              notes: item.notes,
+              requestMessage: item.notes,
             })), // Prisma의 모델에 맞게 `create` 형식으로 데이터 매핑
           },
         },
@@ -189,7 +188,7 @@ export class OrderRequestsService {
         imageUrl: item.product?.imageUrl || null, // 🔹 이미지 URL 추가
         quantity: item.quantity,
         price: item.product?.price || 0,
-        notes: item.notes || null, // 주문 요청 시 입력한 메모
+        requestMessage: item.notes || null, // 주문 요청 시 입력한 메모
       })),
     };
   }
