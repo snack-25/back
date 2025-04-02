@@ -150,45 +150,48 @@ export class ProductsService {
     createProductDto: CreateProductDto,
     file: Express.Multer.File,
   ): Promise<ProductResponseDto> {
-    // TODO: 실패시 로직, 예외 처리, 커스텀 데코레이터로 생성한 유저 정보 추가 필요함(2025-03-31 19:40)
-    const filename = `${createId()}${extname(file.originalname).toLowerCase()}`;
+    const isFileExist = !!file; // 업로드한 파일이 있는지 확인
+    let isImgUploaded = false; // 이미지가 s3 버킷에 업로드 성공했는지 확인
+    let filename = '';
 
-    this.logger.debug(`파일 업로드 시작: ${filename}`);
+    // 업로드할 이미지 파일이 있을 경우에만 s3 업로드 로직 실행
+    if (isFileExist) {
+      filename = `${createId()}${extname(file.originalname).toLowerCase()}`;
 
-    const uploadParams = {
-      Bucket:
-        process.env.AWS_S3_BUCKET_NAME ||
-        (() => {
-          throw new InternalServerErrorException(
-            'AWS_S3_BUCKET_NAME environment variable is not defined',
-          );
-        })(),
-      Key: `products/${filename}`,
-      Body: file.buffer,
-      ContentType: file.mimetype,
-    };
+      const uploadParams = {
+        Bucket:
+          process.env.AWS_S3_BUCKET_NAME ||
+          (() => {
+            throw new InternalServerErrorException(
+              'AWS_S3_BUCKET_NAME environment variable is not defined',
+            );
+          })(),
+        Key: `products/${filename}`,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      };
 
-    if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-      throw new BadRequestException(
-        '지원되지 않는 파일 형식입니다. JPEG, PNG, GIF, WEBP 형식만 지원합니다.',
-      );
+      if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+        throw new BadRequestException(
+          '지원되지 않는 파일 형식입니다. JPEG, PNG, GIF, WEBP 형식만 지원합니다.',
+        );
+      }
+
+      if (file.size > FILE_SIZE_LIMIT) {
+        throw new BadRequestException('파일 크기가 너무 큽니다. 최대 5MB까지 업로드 가능합니다.');
+      }
+
+      try {
+        const command = new PutObjectCommand(uploadParams);
+        await this.s3Client.send(command);
+        isImgUploaded = true;
+      } catch (e) {
+        this.logger.error(e);
+        throw new BadRequestException('파일 업로드에 실패했습니다.');
+      }
     }
 
-    if (file.size > FILE_SIZE_LIMIT) {
-      throw new BadRequestException('파일 크기가 너무 큽니다. 최대 5MB까지 업로드 가능합니다.');
-    }
-    this.logger.debug('파일 업로드 시작');
-
-    let isImgUploaded = false;
-    try {
-      const command = new PutObjectCommand(uploadParams);
-      await this.s3Client.send(command);
-      isImgUploaded = true;
-      this.logger.debug('파일 업로드 성공');
-    } catch (e) {
-      this.logger.error(e);
-      throw new BadRequestException('파일 업로드에 실패했습니다.');
-    }
+    // DB에 상품 생성
     try {
       const product = await this.prismaService.$transaction(async tx => {
         return tx.product.create({
@@ -197,14 +200,19 @@ export class ProductsService {
             description: createProductDto.description,
             categoryId: createProductDto.categoryId,
             price: createProductDto.price,
-            imageUrl: this.getS3ImgUrl(filename),
+            imageUrl: isImgUploaded ? this.getS3ImgUrl(filename) : null,
           },
         });
       });
       return this.toResponseDto(product);
     } catch (error) {
       if (isImgUploaded) {
-        await this.s3Client.send(new DeleteObjectCommand(uploadParams));
+        await this.s3Client.send(
+          new DeleteObjectCommand({
+            Bucket: process.env.AWS_S3_BUCKET_NAME,
+            Key: `products/${filename}`,
+          }),
+        );
       }
       this.logger.error(error);
       throw new BadRequestException('상품 생성에 실패했습니다.');
