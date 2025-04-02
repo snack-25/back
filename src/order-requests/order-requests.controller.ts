@@ -53,7 +53,10 @@ export class OrderRequestsController {
     description: '정렬 기준 (latest: 최신순, lowPrice: 낮은 가격순, highPrice: 높은 가격순)',
   })
   @Get()
-  public async getOrderRequests(@Req() req: Request, @Query() query: GetOrderRequestsDto) {
+  public async getOrderRequests(
+    @Req() req: Request,
+    @Query() query: GetOrderRequestsDto,
+  ): Promise<any[]> {
     const user = req.user as { id: string; role: UserRole; companyId: string };
 
     if (!user) {
@@ -83,7 +86,10 @@ export class OrderRequestsController {
   @ApiResponse({ status: 201, description: '주문 요청 생성 성공' })
   @ApiResponse({ status: 401, description: '인증되지 않은 사용자' })
   @Post()
-  public async createOrderRequest(@Req() req: Request, @Body() dto: CreateOrderRequestDto) {
+  public async createOrderRequest(
+    @Req() req: Request,
+    @Body() dto: CreateOrderRequestDto,
+  ): Promise<any> {
     const user = req.user as { id: string; role: UserRole; companyId: string };
 
     if (!user) {
@@ -105,7 +111,9 @@ export class OrderRequestsController {
   @ApiResponse({ status: 200, description: '주문 요청 상세 정보 반환' })
   @ApiResponse({ status: 404, description: '주문 요청을 찾을 수 없음' })
   @Get(':orderRequestId')
-  public async getOrderRequestDetail(@Param('orderRequestId') orderRequestId: string) {
+  public async getOrderRequestDetail(
+    @Param('orderRequestId') orderRequestId: string,
+  ): Promise<any> {
     return this.orderRequestsService.getOrderRequestDetail(orderRequestId);
   }
 
@@ -120,7 +128,7 @@ export class OrderRequestsController {
     @Req() req: Request,
     @Param('orderRequestId') orderRequestId: string,
     @Body() dto: ApproveOrderRequestDto,
-  ) {
+  ): Promise<any> {
     const user = req.user as { id: string; role: UserRole; companyId: string };
 
     if (!user) {
@@ -153,7 +161,7 @@ export class OrderRequestsController {
     @Req() req: Request,
     @Param('orderRequestId') orderRequestId: string,
     @Body() dto: RejectOrderRequestDto,
-  ) {
+  ): Promise<any> {
     const user = req.user as { id: string; role: UserRole; companyId: string };
 
     if (!user) {
