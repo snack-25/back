@@ -6,6 +6,6 @@ import { AuthModule } from '../auth/auth.module'; // AuthModule 추가
 @Module({
   imports: [AuthModule], // AuthModule을 imports에 추가
   controllers: [OrderRequestsController],
-  providers: [OrderRequestsService]
+  providers: [OrderRequestsService],
 })
 export class OrderRequestsModule {}

@@ -88,7 +88,16 @@ export class OrdersService {
         };
       });
 
-      const shippingFee = await getShippingFeeByUserId(this.prisma, userId, totalAmount);
+      let shippingFee = 0;
+      try {
+        shippingFee = await getShippingFeeByUserId(this.prisma, userId, totalAmount);
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error('배송비 계산 중 오류 발생:', error.message);
+        } else {
+          console.error('배송비 계산 중 알 수 없는 오류 발생:', error);
+        }
+      }
       totalAmount += shippingFee;
 
       const order = await prisma.order.create({
