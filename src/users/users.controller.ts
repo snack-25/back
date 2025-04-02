@@ -5,6 +5,8 @@ import { UsersService } from './users.service';
 export class UsersController {
   public constructor(private readonly usersService: UsersService) {}
 
+  // TODO: /users (GET) 회원 목록 조회
+  // TODO: /users?search=김스낵 (GET) 회원 검색
   // TODO: /users/{userId} (GET) 유저 정보 조회
   // TODO: /users/{userId} (PUT/PATCH) 유저 정보 수정(유저 본인 정보 수정)
   // TODO: /users/{userId}/role (PATCH) [최고관리자] 유저 권한 수정

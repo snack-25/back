@@ -175,4 +175,13 @@ export class ProductsService {
       totalSold: 0,
     };
   }
+
+  public async getProductPricesByIds(productIds: string[]): Promise<Map<string, number>> {
+    const products = await this.prismaService.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, price: true },
+    });
+
+    return new Map(products.map(p => [p.id, p.price]));
+  }
 }
