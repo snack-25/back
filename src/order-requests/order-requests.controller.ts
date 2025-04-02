@@ -11,7 +11,6 @@ import {
   Query,
   Req,
   UnauthorizedException,
-  UseGuards,
 } from '@nestjs/common';
 import { OrderRequestStatus, UserRole } from '@prisma/client';
 import type { Request } from 'express';
@@ -21,12 +20,10 @@ import { CreateOrderRequestDto } from './dto/create-order-request.dto';
 import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
 import { GetOrderRequestsDto, OrderSort } from './dto/getOrderRequest.dto';
 import { OrderRequestsService } from './order-requests.service';
-import { AuthGuard } from '@src/auth/auth.guard'; // 인증 가드 추가
 import { ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiBearerAuth()
-@ApiTags('OrderRequests') // Swagger 그룹 태그 추가
-@UseGuards(AuthGuard) // 인증 가드 적용
+@ApiTags('OrderRequests')
 @Controller('order-requests')
 export class OrderRequestsController {
   public constructor(private readonly orderRequestsService: OrderRequestsService) {}

@@ -1,16 +1,14 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam, ApiBody } from '@nestjs/swagger';
 import { OrderRequestDto } from './dto/create-order.dto';
 import { Order } from '@prisma/client';
 import { OrderQueryDto } from './dto/update-order.dto';
 import { OrdersService } from './orders.service';
 import { Request } from 'express';
-import { AuthGuard } from '@src/auth/auth.guard';
 import { AuthService } from '@src/auth/auth.service';
 import { ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
 @ApiTags('Orders')
 @Controller('orders')
 export class OrdersController {
