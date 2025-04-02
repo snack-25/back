@@ -12,10 +12,9 @@ export class OrderRequestsService {
   constructor(private readonly prisma: PrismaService) {}
   // ✅ 일반 사용자(user)의 구매 요청 내역 조회 (본인의 `userId` 기준)
 
-
   async getUserOrderRequests(userId: string, page: number, pageSize: string, sort: string) {
     const parsedPageSize = parseInt(pageSize, 10);
-  
+
     if (isNaN(parsedPageSize)) {
       throw new Error('pageSize는 숫자여야 합니다.');
     }
@@ -48,11 +47,11 @@ export class OrderRequestsService {
   async getCompanyOrderRequests(companyId: string, page: number, pageSize: string, sort: string) {
     // pageSize가 문자열로 들어올 경우 숫자로 변환
     const parsedPageSize = parseInt(pageSize, 10);
-  
+
     if (isNaN(parsedPageSize)) {
       throw new Error('pageSize는 숫자여야 합니다.');
     }
-  
+
     return this.prisma.orderRequest.findMany({
       where: { companyId },
       orderBy: getOrderBy(sort), // 정렬 추가
@@ -82,7 +81,7 @@ export class OrderRequestsService {
       },
     });
   }
-  
+
   // ✅ 주문 요청 생성
   async createOrderRequest(dto: CreateOrderRequestDto) {
     return this.prisma.$transaction(async tx => {
@@ -91,14 +90,14 @@ export class OrderRequestsService {
         where: { id: { in: dto.items.map(item => item.productId) } }, // 요청된 모든 상품 ID 조회
         select: { id: true, price: true },
       });
-  
+
       if (products.length !== dto.items.length) {
         throw new NotFoundException('존재하지 않는 상품이 포함되어 있습니다.');
       }
-  
+
       // 2. 상품 ID → 가격 매핑
       const productPriceMap = new Map(products.map(p => [p.id, p.price]));
-  
+
       // 3. 주문 요청 아이템 생성 (가격 제외)
       const orderRequestItems = dto.items.map(item => ({
         productId: item.productId,
@@ -106,17 +105,17 @@ export class OrderRequestsService {
         price: productPriceMap.get(item.productId) || 0, // 가격 포함
         notes: item.notes,
       }));
-  
+
       // 4. 총액 계산
       const totalAmountWithoutShipping = dto.items.reduce(
         (sum, item) => sum + item.quantity * (productPriceMap.get(item.productId) || 0),
         0,
       );
-  
+
       // 5. 배송비 계산
       const shippingFee = calculateShippingFee(totalAmountWithoutShipping);
       const totalAmount = totalAmountWithoutShipping + shippingFee;
-  
+
       // 6. 주문 요청 생성 (트랜잭션 내에서 수행)
       return tx.orderRequest.create({
         data: {
@@ -137,7 +136,7 @@ export class OrderRequestsService {
       });
     });
   }
-  
+
   // ✅ 주문 요청 상세 조회
   async getOrderRequestDetail(orderRequestId: string) {
     const orderRequest = await this.prisma.orderRequest.findUnique({

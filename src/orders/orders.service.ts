@@ -3,9 +3,9 @@ import { PrismaService } from '@src/shared/prisma/prisma.service';
 import { OrderRequestDto } from './dto/create-order.dto';
 import { Order } from '@prisma/client';
 import { OrderQueryDto } from './dto/update-order.dto';
-import { calculateShippingFee } from '@src/shared/utils/shipping.util';
 import { ProductsService } from '@src/products/products.service';
 import { CartsService } from '@src/carts/carts.service';
+import { getShippingFeeByUserId } from '@src/shared/helpers/shipping.helper';
 
 @Injectable()
 export class OrdersService {
@@ -55,7 +55,6 @@ export class OrdersService {
   //관리자, 최고관리자 주문하기
   public async createOrder(userId: string, orderData: OrderRequestDto): Promise<Order> {
     return await this.prisma.$transaction(async prisma => {
-      // 유저 정보 조회
       const user = await prisma.user.findUnique({
         where: { id: userId },
         include: { company: true },
@@ -65,16 +64,12 @@ export class OrdersService {
         throw new Error('유효하지 않은 사용자 또는 소속된 회사 없음.');
       }
 
-      // 관리자 또는 최고관리자 권한 확인
       if (user.role !== 'ADMIN' && user.role !== 'SUPERADMIN') {
         throw new ForbiddenException('주문 권한이 없습니다.');
       }
 
-      // 주문 상품 정보 조회 (가격 포함)
       const productIds = orderData.items.map(item => item.productId);
       const productPriceMap = await this.productsService.getProductPricesByIds(productIds);
-
-      // 상품 ID → 가격 매핑
 
       let totalAmount = 0;
       const orderItems = orderData.items.map(item => {
@@ -93,11 +88,10 @@ export class OrdersService {
         };
       });
 
-      // 배송비 추가 (5만원 미만 주문 시)
-      const shippingFee = calculateShippingFee(totalAmount);
+      // 💡 여기서 배송비 계산
+      const shippingFee = await getShippingFeeByUserId(this.prisma, userId, totalAmount);
       totalAmount += shippingFee;
 
-      // 주문 생성
       const order = await prisma.order.create({
         data: {
           companyId: user.company.id,
@@ -112,7 +106,6 @@ export class OrdersService {
         },
       });
 
-      // 주문 항목(OrderItem) 생성
       await prisma.orderItem.createMany({
         data: orderItems.map(item => ({
           orderId: order.id,
@@ -122,7 +115,6 @@ export class OrdersService {
         })),
       });
 
-      // 장바구니 초기화 (해당 유저의 장바구니 아이템 삭제)
       await this.cartsService.clearCartItemsByUserId(userId);
 
       return order;

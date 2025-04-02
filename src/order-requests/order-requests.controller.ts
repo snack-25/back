@@ -38,7 +38,7 @@ export class OrderRequestsController {
   // getUserFromCookie 메서드를 authService에서 가져와 사용
   private async getUserFromCookie(@Req() req: Request) {
     const decoded = await this.authService.getUserFromCookie(req); // authService에서 유저 정보를 가져옵니다.
-    
+
     // 유저 정보에서 ID를 가져와서 Prisma로 유저를 조회
     const user = await this.prismaService.user.findUnique({
       where: { id: decoded.sub },
@@ -87,7 +87,12 @@ export class OrderRequestsController {
     const { page = 1, pageSize = 10, sort = OrderSort.LATEST } = query;
 
     if (user.role === UserRole.USER) {
-      return this.orderRequestsService.getUserOrderRequests(user.id, page, pageSize.toString(), sort);
+      return this.orderRequestsService.getUserOrderRequests(
+        user.id,
+        page,
+        pageSize.toString(),
+        sort,
+      );
     }
 
     if (user.role === UserRole.ADMIN || user.role === UserRole.SUPERADMIN) {
