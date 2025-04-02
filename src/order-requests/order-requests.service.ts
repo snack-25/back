@@ -14,17 +14,19 @@ export class OrderRequestsService {
   public constructor(private readonly prisma: PrismaService) {}
 
   // ✅ 일반 사용자(user)의 구매 요청 내역 조회 (본인의 `userId` 기준)
-  public async getUserOrderRequests(
-    userId: string,
-    page: number,
-    pageSize: number,
-    sort: string,
-  ): Promise<Partial<OrderRequest>[]> {
+
+  async getUserOrderRequests(userId: string, page: number, pageSize: string, sort: string) {
+    const parsedPageSize = parseInt(pageSize, 10);
+
+    if (isNaN(parsedPageSize)) {
+      throw new Error('pageSize는 숫자여야 합니다.');
+    }
+
     return this.prisma.orderRequest.findMany({
       where: { requesterId: userId },
       orderBy: getOrderBy(sort), // 정렬 추가
-      skip: (page - 1) * pageSize, // 페이지네이션 적용
-      take: pageSize,
+      skip: (page - 1) * parsedPageSize, // 페이지네이션 적용
+      take: parsedPageSize,
       select: {
         createdAt: true, // 요청 날짜
         status: true, // 상태
@@ -45,20 +47,23 @@ export class OrderRequestsService {
   }
 
   // ✅ 관리자(admin) & 최고 관리자(superadmin)의 회사 구매 요청 내역 조회 (로그인한 사용자의 `companyId` 기준)
-  public async getCompanyOrderRequests(
-    companyId: string,
-    page: number,
-    pageSize: number,
-    sort: string,
-  ): Promise<Partial<OrderRequest>[]> {
+  async getCompanyOrderRequests(companyId: string, page: number, pageSize: string, sort: string) {
+    // pageSize가 문자열로 들어올 경우 숫자로 변환
+    const parsedPageSize = parseInt(pageSize, 10);
+
+    if (isNaN(parsedPageSize)) {
+      throw new Error('pageSize는 숫자여야 합니다.');
+    }
+
     return this.prisma.orderRequest.findMany({
       where: { companyId },
       orderBy: getOrderBy(sort), // 정렬 추가
-      skip: (page - 1) * pageSize, // 페이지네이션 적용
-      take: pageSize,
+      skip: (page - 1) * parsedPageSize, // 페이지네이션 적용
+      take: parsedPageSize, // take는 숫자여야 함
       select: {
         createdAt: true, // 요청 날짜
         totalAmount: true, // 총 주문 금액
+        status: true, // 상태
         requester: {
           select: { name: true }, // 요청한 사용자 이름 (user 테이블)
         },
