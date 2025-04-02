@@ -1,6 +1,6 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { UserResponseDto } from './dto/response-user.dto';
 
 @ApiBearerAuth()
@@ -9,7 +9,12 @@ export class UsersController {
   public constructor(private readonly usersService: UsersService) {}
 
   // TODO: /users/{userId} (GET) 유저 정보 조회
-  @Get()
+  @Get(':userId')
+  @ApiOperation({
+    summary: '유저 정보 조회',
+    description: '유저 정보를 조회합니다.',
+  })
+  @ApiResponse({ status: 200, description: '유저 정보 전달' })
   public async getUser(@Param('userId') userId: string): Promise<UserResponseDto> {
     return await this.usersService.getUser(userId);
   }
