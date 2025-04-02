@@ -31,13 +31,15 @@ import { SortOption } from './enums/sort-options.enum';
 import { AuthGuard } from '@src/auth/auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FILE_SIZE_LIMIT } from './const';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth()
+@UseGuards(AuthGuard)
 @Controller('products')
 @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 export class ProductsController {
   public constructor(private readonly productsService: ProductsService) {}
 
-  @UseGuards(AuthGuard)
   @Post()
   @UseInterceptors(
     FileInterceptor('imageUrl', {

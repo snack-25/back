@@ -2,7 +2,9 @@ import { Body, Controller, Post, Req, Res } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { BudgetsService } from './budgets.service';
 import { BudgetsRequestDto } from './dto/budgets.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth()
 @Controller('budgets')
 export class BudgetsController {
   public constructor(private readonly budgetsService: BudgetsService) {}

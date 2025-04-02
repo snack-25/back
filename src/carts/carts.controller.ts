@@ -7,7 +7,8 @@ import { DeleteCartItemsDto, UpdateCartItemDto } from './dto/update-cart.dto';
 import { Request } from 'express';
 import { AuthService } from '@src/auth/auth.service'; // ✅ 추가
 import { AuthGuard } from '@src/auth/auth.guard';
-
+import { ApiBearerAuth } from '@nestjs/swagger';
+@ApiBearerAuth()
 @UseGuards(AuthGuard)
 @ApiTags('Carts')
 @Controller('carts')

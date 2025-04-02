@@ -7,10 +7,11 @@ import { OrdersService } from './orders.service';
 import { Request } from 'express';
 import { AuthGuard } from '@src/auth/auth.guard';
 import { AuthService } from '@src/auth/auth.service';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth()
 @UseGuards(AuthGuard)
 @ApiTags('Orders')
-@UseGuards(AuthGuard)
 @Controller('orders')
 export class OrdersController {
   public constructor(
