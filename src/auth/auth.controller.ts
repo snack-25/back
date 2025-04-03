@@ -136,28 +136,7 @@ export class AuthController {
   }
 
   @Patch('update/info')
-  public async updatePassword(
-    @Body() body: { password: string; company?: string },
-    @Req() req: Request,
-    @Res() res: Response,
-  ): Promise<void> {
-    const { sub: userId } = await this.authService.getUserFromCookie(req);
-
-    if (!userId) {
-      throw new UnauthorizedException('유효하지 않은 사용자');
-    }
-
-    const result = await this.authService.updateData({
-      userId,
-      password: body.password,
-      company: body.company,
-    });
-
-    res.status(200).json({ msg: '변경 성공', data: result, ok: true });
-  }
-
-  @Patch('update/info')
-  public async updatePassword(
+  public async updateData(
     @Body() body: { password: string; company?: string },
     @Req() req: Request,
     @Res() res: Response,
