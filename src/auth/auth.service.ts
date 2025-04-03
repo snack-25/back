@@ -27,6 +27,7 @@ import {
   SignUpResponseDto,
   TokenRequestDto,
   TokenResponseDto,
+  ReulstDto,
 } from './dto/auth.dto';
 
 @Injectable()
@@ -382,6 +383,7 @@ export class AuthService {
       throw new UnauthorizedException('액세스 토큰 디코딩에 실패했습니다.', error.message);
     }
   }
+
   // 쿠키에서 사용자 정보 가져오기
   public async getUserFromCookie(@Req() req: Request): Promise<decodeAccessToken> {
     const accessToken: string | undefined = req.cookies.accessToken;
@@ -396,5 +398,78 @@ export class AuthService {
       throw new UnauthorizedException('토큰이 만료되었습니다.');
     }
     return decoded;
+  }
+
+  // 비밀번호 및 회사명 업데이트
+  public async updateData(body: {
+    userId: string;
+    password?: string;
+    company?: string;
+  }): Promise<ReulstDto> {
+    // 비밀번호 업데이트 처리 (비밀번호가 전달된 경우)
+    const passwordPromise = (async (): Promise<string | null> => {
+      if (!body.password) return null;
+      const hashedPassword = await argon2.hash(body.password);
+
+      const currentData = await this.prisma.user.findUnique({
+        where: { id: body.userId },
+        select: { password: true, company: true },
+      });
+
+      if (!currentData) {
+        throw new UnauthorizedException('유저가 없습니다');
+      }
+
+      const isSamePassword = await argon2.verify(currentData.password, body.password);
+
+      if (isSamePassword) {
+        throw new BadRequestException('전과 동일한 비밀번호는 사용할 수 없습니다');
+      }
+
+      if (currentData.company.name === body.company) {
+        throw new BadRequestException('전과 동일한 회사명은 사용할 수 없습니다');
+      }
+
+      await this.prisma.user.update({
+        where: { id: body.userId },
+        data: { password: hashedPassword },
+        select: { id: true },
+      });
+
+      return '비밀번호 변경 성공';
+    })();
+
+    // 회사 업데이트 처리 (회사명이 전달된 경우)
+    const companyPromise = (async (): Promise<{ name: string } | null> => {
+      if (!body.company) return null;
+      const userWithCompany = await this.prisma.user.findUnique({
+        where: { id: body.userId },
+        include: { company: true },
+      });
+      if (!userWithCompany) {
+        throw new BadRequestException('해당하는 사용자가 존재하지 않습니다.');
+      }
+      if (!userWithCompany.company) {
+        throw new BadRequestException('연결된 회사가 존재하지 않습니다.');
+      }
+      const updatedCompany = await this.prisma.company.update({
+        where: { id: userWithCompany.company.id },
+        data: { name: body.company },
+        select: { name: true },
+      });
+      return updatedCompany;
+    })();
+
+    // 동시에 두 작업 실행
+    const [passwordResult, companyResult] = await Promise.all([passwordPromise, companyPromise]);
+
+    // 결과 구성 (두 작업 중 하나 또는 둘 다 실행된 경우)
+    const result = {
+      ...(passwordResult && { msg: passwordResult }),
+      ...(companyResult && { company: companyResult }),
+    };
+
+    console.log('업데이트 결과:', result);
+    return result;
   }
 }
