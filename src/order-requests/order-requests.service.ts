@@ -53,6 +53,7 @@ export class OrderRequestsService {
         orderRequestItems: {
           select: {
             price: true,
+            quantity: true,
             product: {
               select: {
                 name: true,
@@ -116,6 +117,7 @@ export class OrderRequestsService {
         orderRequestItems: {
           select: {
             price: true,
+            quantity: true,
             product: {
               select: {
                 name: true,
@@ -223,6 +225,7 @@ export class OrderRequestsService {
         companyId: orderRequest.companyId,
         orderRequestItems: orderRequest.orderRequestItems.map(item => ({
           price: item.price,
+          quantity: item.quantity,
           product: {
             name: item.product.name,
             imageUrl: item.product.imageUrl,
@@ -340,6 +343,7 @@ export class OrderRequestsService {
         companyId: updatedOrderRequest.companyId,
         orderRequestItems: updatedOrderRequest.orderRequestItems.map(item => ({
           price: item.price,
+          quantity: item.quantity, 
           product: {
             name: item.product?.name || '상품 정보 없음',
             imageUrl: item.product?.imageUrl || null,
@@ -404,6 +408,7 @@ export class OrderRequestsService {
         companyId: updatedOrderRequest.companyId,
         orderRequestItems: updatedOrderRequest.orderRequestItems.map(item => ({
           price: item.price,
+          quantity: item.quantity,
           product: {
             name: item.product?.name || '상품 정보 없음',
             imageUrl: item.product?.imageUrl || null,
