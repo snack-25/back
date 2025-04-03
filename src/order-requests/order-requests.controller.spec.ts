@@ -2,8 +2,7 @@ import { OrderRequestsService } from './order-requests.service';
 import { OrderRequestsController } from './order-requests.controller';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
-// import { OrderRequestStatus, UserRole } from '@prisma/client';
-import { UserRole } from '@prisma/client';
+import { UserRole, OrderRequestStatus } from '@prisma/client';
 import { UnauthorizedException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
@@ -35,8 +34,9 @@ describe('OrderRequestsController', () => {
             product: {
               findMany: jest.fn(),
             },
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             $transaction: jest.fn((cb: any) =>
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
               cb({
                 orderRequest: {
                   findMany: jest.fn(),
@@ -82,7 +82,12 @@ describe('OrderRequestsController', () => {
   describe('createOrderRequest', () => {
     it('should throw UnauthorizedException if user is not authenticated', async () => {
       await expect(
-        controller.createOrderRequest({} as Request, { items: [], companyId: '', requesterId: '' }),
+        controller.createOrderRequest({} as Request, {
+          items: [],
+          companyId: '',
+          requesterId: '',
+          status: OrderRequestStatus.PENDING,
+        }),
       ).rejects.toThrow(UnauthorizedException);
     });
   });

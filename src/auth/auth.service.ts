@@ -29,6 +29,7 @@ import {
   TokenResponseDto,
   ReulstDto,
 } from './dto/auth.dto';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class AuthService {
@@ -192,9 +193,9 @@ export class AuthService {
         select: { id: true },
       });
       return { msg: '성공', id: companyRecord.id };
-    } catch (err: any) {
+    } catch (err) {
       const result = { msg: '', id: '' };
-      if (err.code === 'P2002') {
+      if (err instanceof PrismaClientKnownRequestError && err.code === 'P2002') {
         result.msg = '회사가 있습니다.';
       }
       return result;
@@ -390,7 +391,7 @@ export class AuthService {
 
   // 쿠키에서 사용자 정보 가져오기
   public async getUserFromCookie(@Req() req: Request): Promise<decodeAccessToken> {
-    const accessToken: string | undefined = req.cookies.accessToken;
+    const accessToken: string | undefined = req.cookies?.accessToken as string | undefined;
     if (!accessToken) {
       throw new BadRequestException('로그인이 필요합니다.');
     }

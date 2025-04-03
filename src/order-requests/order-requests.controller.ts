@@ -23,6 +23,7 @@ import { OrderRequestsService } from './order-requests.service';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from '@src/auth/auth.service'; // AuthService 가져오기
 import { PrismaService } from '@src/shared/prisma/prisma.service'; // PrismaService 가져오기
+import { UserResponseDto } from '@src/users/dto/response-user.dto';
 
 @ApiBearerAuth()
 @ApiTags('OrderRequests')
@@ -35,7 +36,7 @@ export class OrderRequestsController {
   ) {}
 
   // getUserFromCookie 메서드를 authService에서 가져와 사용
-  private async getUserFromCookie(@Req() req: Request) {
+  private async getUserFromCookie(@Req() req: Request): Promise<UserResponseDto> {
     const decoded = await this.authService.getUserFromCookie(req); // authService에서 유저 정보를 가져옵니다.
 
     // 유저 정보에서 ID를 가져와서 Prisma로 유저를 조회
@@ -76,6 +77,7 @@ export class OrderRequestsController {
     description: '정렬 기준 (latest: 최신순, lowPrice: 낮은 가격순, highPrice: 높은 가격순)',
   })
   @Get()
+  // FIXME: 반환 타입(dto) 추가 부탁드려요
   public async getOrderRequests(@Req() req: Request, @Query() query: GetOrderRequestsDto) {
     const user = await this.getUserFromCookie(req); // 유저 정보를 가져옵니다.
 
@@ -125,9 +127,7 @@ export class OrderRequestsController {
   @ApiResponse({ status: 200, description: '주문 요청 상세 정보 반환' })
   @ApiResponse({ status: 404, description: '주문 요청을 찾을 수 없음' })
   @Get(':orderRequestId')
-  public async getOrderRequestDetail(
-    @Param('orderRequestId') orderRequestId: string,
-  ): Promise<any> {
+  public async getOrderRequestDetail(@Param('orderRequestId') orderRequestId: string) {
     return this.orderRequestsService.getOrderRequestDetail(orderRequestId);
   }
 
@@ -138,6 +138,7 @@ export class OrderRequestsController {
   @ApiResponse({ status: 403, description: '권한 없음' })
   @ApiResponse({ status: 404, description: '주문 요청을 찾을 수 없음' })
   @Post(':orderRequestId/accept')
+  // FIXME: 반환 타입(dto) 추가 부탁드려요
   public async approveOrderRequest(
     @Req() req: Request,
     @Param('orderRequestId') orderRequestId: string,
@@ -167,6 +168,7 @@ export class OrderRequestsController {
   @ApiResponse({ status: 403, description: '권한 없음' })
   @ApiResponse({ status: 404, description: '주문 요청을 찾을 수 없음' })
   @Post(':orderRequestId/reject')
+  // FIXME: 반환 타입(dto) 추가 부탁드려요
   public async rejectOrderRequest(
     @Req() req: Request,
     @Param('orderRequestId') orderRequestId: string,

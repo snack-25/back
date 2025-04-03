@@ -14,7 +14,8 @@ export class OrderRequestsService {
   public constructor(private readonly prisma: PrismaService) {}
 
   // ✅ 일반 사용자(user)의 구매 요청 내역 조회 (본인의 `userId` 기준)
-  async getUserOrderRequests(userId: string, page: number, pageSize: string, sort: string) {
+  // FIXME: 반환 타입(dto) 추가 부탁드려요
+  public async getUserOrderRequests(userId: string, page: number, pageSize: string, sort: string) {
     const parsedPageSize = parseInt(pageSize, 10);
 
     if (isNaN(parsedPageSize)) {
@@ -47,7 +48,13 @@ export class OrderRequestsService {
   }
 
   // ✅ 관리자(admin) & 최고 관리자(superadmin)의 회사 구매 요청 내역 조회 (로그인한 사용자의 `companyId` 기준)
-  async getCompanyOrderRequests(companyId: string, page: number, pageSize: string, sort: string) {
+  // FIXME: 반환 타입(dto) 추가 부탁드려요
+  public async getCompanyOrderRequests(
+    companyId: string,
+    page: number,
+    pageSize: string,
+    sort: string,
+  ) {
     // pageSize가 문자열로 들어올 경우 숫자로 변환
     const parsedPageSize = parseInt(pageSize, 10);
 
@@ -146,7 +153,8 @@ export class OrderRequestsService {
   }
 
   // ✅ 주문 요청 상세 조회
-  public async getOrderRequestDetail(orderRequestId: string): Promise<any> {
+  // FIXME: 반환 타입(dto) 추가 부탁드려요
+  public async getOrderRequestDetail(orderRequestId: string) {
     const orderRequest = await this.prisma.orderRequest.findUnique({
       where: { id: orderRequestId },
       include: {
