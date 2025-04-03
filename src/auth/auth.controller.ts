@@ -156,7 +156,9 @@ export class AuthController {
       company: body.company,
     });
 
-    res.status(200).json({ msg: '변경 성공', data: result });
+    console.log('res', res);
+
+    res.status(200).json({ message: '비밀번호 변경에 성공하였습니다', data: result });
   }
 
   private setAuthCookies(@Res() res: Response, token: TokenResponseDto): void {
