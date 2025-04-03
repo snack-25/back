@@ -139,6 +139,7 @@ export class AuthService {
   public async signup(dto: SignUpRequestDto): Promise<SignUpResponseDto> {
     const { email, password, name, company, bizno } = dto;
 
+    console.log('여긴 서비스야', dto);
     // 이름, 이메일, 회사 중복 확인
     await this.usersService.checkName({ name });
     await this.usersService.checkEmail({ email });
@@ -172,6 +173,7 @@ export class AuthService {
         createdAt: true,
       },
     });
+    console.log('superAdmin', superAdmin);
 
     const response: SignUpResponseDto = {
       email: superAdmin.email,
@@ -180,6 +182,8 @@ export class AuthService {
       companyId: companyIdCheck.id,
       role: superAdmin.role,
     };
+
+    console.log('response', response);
 
     return response;
   }
@@ -206,6 +210,7 @@ export class AuthService {
   public async login(dto: SignInRequestDto): Promise<SigninResponseDto | null> {
     try {
       const { email, password } = dto;
+      console.log(email);
       const user = await this.prisma.user.findUnique({
         where: { email },
         select: {
@@ -220,6 +225,7 @@ export class AuthService {
         },
       });
 
+      console.log('user', user);
       if (!user) {
         throw new BadRequestException('이메일 또는 비밀번호가 잘못되었습니다.');
       }
@@ -239,7 +245,7 @@ export class AuthService {
 
       const response: SigninResponseDto = {
         token: {
-          accessToken: token.accessToken, // 실제 토큰 로직을 넣어줘야 합니다.
+          accessToken: token.accessToken,
           refreshToken: token.refreshToken,
         },
         user: {
@@ -247,10 +253,7 @@ export class AuthService {
           email: user.email,
           name: user.name,
           role: user.role,
-          company: {
-            name: user.company ? user.company.name : '',
-            id: user.companyId,
-          },
+          companyName: user.company.name,
           companyId: user.companyId,
         },
       };
