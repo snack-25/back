@@ -8,6 +8,8 @@ import { UserResponseDto } from './dto/response-user.dto';
 export class UsersController {
   public constructor(private readonly usersService: UsersService) {}
 
+  // TODO: /users (GET) 회원 목록 조회
+  // TODO: /users?search=김스낵 (GET) 회원 검색
   // TODO: /users/{userId} (GET) 유저 정보 조회
   @Get(':userId')
   @ApiOperation({
