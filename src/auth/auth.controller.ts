@@ -115,7 +115,6 @@ export class AuthController {
     }
 
     const { token, user } = loginResult;
-    console.log('user', user);
 
     // 쿠키 인증 설정
     this.setAuthCookies(res, token);
