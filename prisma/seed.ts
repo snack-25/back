@@ -1,5 +1,13 @@
 import { BadRequestException, Logger } from '@nestjs/common';
-import type { Category, Company, CompanyAddress, FeeType, Product, User } from '@prisma/client';
+import type {
+  Budget,
+  Category,
+  Company,
+  CompanyAddress,
+  FeeType,
+  Product,
+  User,
+} from '@prisma/client';
 import { PrismaClient } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { createHash } from 'crypto';
@@ -38,6 +46,10 @@ const users = JSON.parse(
 const products = JSON.parse(
   fs.readFileSync(path.join(__dirname, 'const/products.json'), 'utf-8'),
 ) as Product[];
+
+const budgets = JSON.parse(
+  fs.readFileSync(path.join(__dirname, 'const/budgets.json'), 'utf-8'),
+) as Budget[];
 
 const getRequiredId = <T extends { id: string }>(
   entity: T | undefined,
@@ -417,6 +429,31 @@ const main = async (): Promise<void> => {
             }),
           ),
         );
+
+        // 10. Budget 데이터 추가
+        if (budgets.length > 0) {
+          const existingBudgets = await tx.budget.findMany({
+            where: {
+              id: { in: budgets.map(b => b.id) },
+            },
+            select: { id: true },
+          });
+
+          const existingIds = new Set(existingBudgets.map(b => b.id));
+          const newBudgets = budgets.filter(b => !existingIds.has(b.id));
+
+          if (newBudgets.length > 0) {
+            await tx.budget.createMany({
+              data: newBudgets,
+              skipDuplicates: true,
+            });
+            Logger.log(`💰 Budget 데이터 ${newBudgets.length}개 추가 완료`);
+          } else {
+            Logger.log('💰 Budget 데이터가 이미 존재하여 추가하지 않았습니다.');
+          }
+        } else {
+          Logger.warn('⚠️ Budget JSON 데이터가 비어있습니다.');
+        }
 
         Logger.log('🎉 데이터베이스 시딩이 완료되었습니다!');
       } catch (error) {

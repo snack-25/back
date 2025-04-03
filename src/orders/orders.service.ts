@@ -6,6 +6,7 @@ import { OrderQueryDto } from './dto/update-order.dto';
 import { ProductsService } from '@src/products/products.service';
 import { CartsService } from '@src/carts/carts.service';
 import { getShippingFeeByUserId } from '@src/shared/helpers/shipping.helper';
+import { deductCompanyBudgetByUserId } from '@src/shared/helpers/budget.helper';
 
 @Injectable()
 export class OrdersService {
@@ -101,6 +102,8 @@ export class OrdersService {
         }
       }
       totalAmount += shippingFee;
+
+      await deductCompanyBudgetByUserId(this.prisma, userId, totalAmount);
 
       const order = await prisma.order.create({
         data: {
