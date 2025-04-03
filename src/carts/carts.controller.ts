@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CartItem } from '@prisma/client';
 import { CartsService } from './carts.service';
@@ -6,15 +6,16 @@ import { CreateCartDto } from './dto/create-cart.dto';
 import { DeleteCartItemsDto, UpdateCartItemDto } from './dto/update-cart.dto';
 import { Request } from 'express';
 import { AuthService } from '@src/auth/auth.service'; // ✅ 추가
-import { AuthGuard } from '@src/auth/auth.guard';
+import { ApiBearerAuth } from '@nestjs/swagger';
+import { GetCartItemsResponse } from './dto/cart.interface';
 
-@UseGuards(AuthGuard)
+@ApiBearerAuth()
 @ApiTags('Carts')
 @Controller('carts')
 export class CartsController {
   public constructor(
     private readonly cartsService: CartsService,
-    private readonly authService: AuthService, // ✅ 추가
+    private readonly authService: AuthService,
   ) {}
 
   @ApiOperation({
@@ -27,11 +28,7 @@ export class CartsController {
   public async getCartItems(
     @Param('cartId') cartId: string,
     @Req() req: Request,
-  ): Promise<{
-    items: CartItem[];
-    totalAmount: number;
-    shippingFee: number;
-  }> {
+  ): Promise<GetCartItemsResponse> {
     const { sub: userId } = await this.authService.getUserFromCookie(req);
     return await this.cartsService.getCartItems(userId, cartId);
   }

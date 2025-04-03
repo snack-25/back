@@ -1,135 +1,240 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { OrderRequest, OrderRequestStatus, Prisma } from '@prisma/client';
+import { getShippingFeeByUserId } from '@src/shared/helpers/shipping.helper';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import { getOrderBy } from '@src/shared/utils/order-requestsSort.util';
-import { calculateShippingFee } from '@src/shared/utils/shipping.util';
 import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
 import { CreateOrderRequestDto } from './dto/create-order-request.dto';
+import {
+  OrderRequestDetailResponse,
+  OrderRequestResponseDto,
+} from './dto/order-request-detail-response.interface';
 import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
 
 @Injectable()
 export class OrderRequestsService {
+  // order-request.controller.spec.ts 21번째 줄에서 에러 발생(private로 선언된 생성자는 접근 불가)
+  // private constructor(private readonly prisma: PrismaService) {}
   public constructor(private readonly prisma: PrismaService) {}
-  // ✅ 일반 사용자(user)의 구매 요청 내역 조회 (본인의 `userId` 기준)
 
-  public async getUserOrderRequests(userId: string, page: number, pageSize: number, sort: string) {
-    return this.prisma.orderRequest.findMany({
+  public async getUserOrderRequests(
+    userId: string,
+    page: number,
+    pageSize: string,
+    sort: string,
+  ): Promise<OrderRequestResponseDto[]> {
+    const parsedPageSize = parseInt(pageSize, 10);
+
+    if (isNaN(parsedPageSize)) {
+      throw new Error('pageSize는 숫자여야 합니다.');
+    }
+
+    const orders = await this.prisma.orderRequest.findMany({
       where: { requesterId: userId },
-      orderBy: getOrderBy(sort), // 정렬 추가
-      skip: (page - 1) * pageSize, // 페이지네이션 적용
-      take: pageSize,
+      orderBy: getOrderBy(sort),
+      skip: (page - 1) * parsedPageSize,
+      take: parsedPageSize,
       select: {
-        createdAt: true, // 요청 날짜
-        status: true, // 상태
-        totalAmount: true, // 총 주문 금액
+        id: true,
+        companyId: true,
+        requesterId: true,
+        resolverId: true,
+        status: true,
+        totalAmount: true,
+        notes: true,
+        createdAt: true,
+        resolvedAt: true,
+        requester: {
+          select: { name: true }, // ✅ 요청자 이름 조회
+        },
+        resolver: {
+          select: { name: true }, // ✅ 처리자 이름 조회
+        },
         orderRequestItems: {
           select: {
-            price: true, // 상품 가격
+            price: true,
             product: {
               select: {
-                name: true, // 상품 이름
-                imageUrl: true, // 상품 이미지 URL 추가
+                name: true,
+                imageUrl: true,
               },
             },
           },
         },
       },
     });
+
+    return orders.map(order => ({
+      id: order.id,
+      status: order.status,
+      totalAmount: order.totalAmount,
+      requestedAt: order.createdAt,
+      requesterId: order.requesterId,
+      requesterName: order.requester?.name || '알 수 없음', // ✅ 요청자 이름 추가
+      resolverId: order.resolverId,
+      resolverName: order.resolver?.name || null, // ✅ 처리자 이름 추가
+      resolvedAt: order.resolvedAt,
+      resolverMessage: order.notes,
+      companyId: order.companyId,
+      orderRequestItems: order.orderRequestItems,
+    }));
   }
 
-  // ✅ 관리자(admin) & 최고 관리자(superadmin)의 회사 구매 요청 내역 조회 (로그인한 사용자의 `companyId` 기준)
   public async getCompanyOrderRequests(
     companyId: string,
     page: number,
-    pageSize: number,
+    pageSize: string,
     sort: string,
-  ) {
-    return this.prisma.orderRequest.findMany({
+  ): Promise<OrderRequestResponseDto[]> {
+    const parsedPageSize = parseInt(pageSize, 10);
+
+    if (isNaN(parsedPageSize)) {
+      throw new Error('pageSize는 숫자여야 합니다.');
+    }
+
+    const orders = await this.prisma.orderRequest.findMany({
       where: { companyId },
-      orderBy: getOrderBy(sort), // 정렬 추가
-      skip: (page - 1) * pageSize, // 페이지네이션 적용
-      take: pageSize,
+      orderBy: getOrderBy(sort),
+      skip: (page - 1) * parsedPageSize,
+      take: parsedPageSize,
       select: {
-        createdAt: true, // 요청 날짜
-        totalAmount: true, // 총 주문 금액
+        id: true,
+        companyId: true,
+        requesterId: true,
+        resolverId: true,
+        status: true,
+        totalAmount: true,
+        notes: true,
+        createdAt: true,
+        resolvedAt: true,
         requester: {
-          select: { name: true }, // 요청한 사용자 이름 (user 테이블)
+          select: { name: true }, // ✅ 요청자 이름 조회
         },
         resolver: {
-          select: { name: true }, // 승인 담당자 이름 (user 테이블)
+          select: { name: true }, // ✅ 처리자 이름 조회
         },
         orderRequestItems: {
           select: {
-            price: true, // 상품 가격
+            price: true,
             product: {
               select: {
-                name: true, // 상품 이름
-                imageUrl: true, // 상품 이미지 URL 추가
+                name: true,
+                imageUrl: true,
               },
             },
           },
         },
       },
     });
+
+    return orders.map(order => ({
+      id: order.id,
+      status: order.status,
+      totalAmount: order.totalAmount,
+      requestedAt: order.createdAt,
+      requesterId: order.requesterId,
+      requesterName: order.requester?.name || '알 수 없음', // ✅ 요청자 이름 추가
+      resolverId: order.resolverId,
+      resolverName: order.resolver?.name || null, // ✅ 처리자 이름 추가
+      resolvedAt: order.resolvedAt,
+      resolverMessage: order.notes,
+      companyId: order.companyId,
+      orderRequestItems: order.orderRequestItems,
+    }));
   }
 
   // ✅ 주문 요청 생성
-  public async createOrderRequest(dto: CreateOrderRequestDto) {
+  public async createOrderRequest(dto: CreateOrderRequestDto): Promise<OrderRequestResponseDto> {
     return this.prisma.$transaction(async tx => {
       // 1. 상품 정보 조회 (DB에서 가격 가져오기)
       const products = await tx.product.findMany({
-        where: { id: { in: dto.items.map(item => item.productId) } }, // 요청된 모든 상품 ID 조회
-        select: { id: true, price: true },
+        where: { id: { in: dto.items.map(item => item.productId) } },
+        select: { id: true, price: true, name: true, imageUrl: true },
       });
 
       if (products.length !== dto.items.length) {
         throw new NotFoundException('존재하지 않는 상품이 포함되어 있습니다.');
       }
 
-      // 2. 상품 ID → 가격 매핑
-      const productPriceMap = new Map(products.map(p => [p.id, p.price]));
+      // 2. 상품 ID → 가격 및 기타 정보 매핑
+      const productMap = new Map(products.map(p => [p.id, p]));
 
-      // 3. 주문 요청 아이템 생성 (가격 제외)
+      // 3. 주문 요청 아이템 생성
       const orderRequestItems = dto.items.map(item => ({
         productId: item.productId,
         quantity: item.quantity,
-        price: productPriceMap.get(item.productId) || 0, // 가격 포함
-        notes: item.notes,
+        price: productMap.get(item.productId)?.price || 0,
+        notes: item.requestMessage || null, // requestMessage 대신 notes 사용
       }));
 
       // 4. 총액 계산
       const totalAmountWithoutShipping = dto.items.reduce(
-        (sum, item) => sum + item.quantity * (productPriceMap.get(item.productId) || 0),
+        (sum, item) => sum + item.quantity * (productMap.get(item.productId)?.price || 0),
         0,
       );
 
       // 5. 배송비 계산
-      const shippingFee = calculateShippingFee(totalAmountWithoutShipping);
+      const shippingFee = await getShippingFeeByUserId(
+        this.prisma,
+        dto.requesterId,
+        totalAmountWithoutShipping,
+      );
       const totalAmount = totalAmountWithoutShipping + shippingFee;
 
-      // 6. 주문 요청 생성 (트랜잭션 내에서 수행)
-      return tx.orderRequest.create({
+      // 6. 주문 요청 생성
+      const orderRequest = await tx.orderRequest.create({
         data: {
           requesterId: dto.requesterId,
           companyId: dto.companyId,
-          status: OrderRequestStatus.PENDING, // 기본값 PENDING
-          totalAmount, // 총액 (배송비 포함)
+          status: dto.status, // 역할에 따른 상태 설정
+          totalAmount,
           orderRequestItems: {
             create: orderRequestItems.map(item => ({
               productId: item.productId,
               quantity: item.quantity,
               price: item.price,
-              notes: item.notes,
-            })), // Prisma의 모델에 맞게 `create` 형식으로 데이터 매핑
+              notes: item.notes, // requestMessage -> notes로 변경
+            })),
           },
         },
-        include: { orderRequestItems: true }, // `orderRequestItems`를 포함
+        include: {
+          orderRequestItems: {
+            include: {
+              product: true, // 상품 정보 포함
+            },
+          },
+          requester: { select: { name: true } }, // 요청자 이름 조회
+          resolver: { select: { name: true } }, // 처리자 이름 조회 (없을 수도 있음)
+        },
       });
+
+      // 7. DTO 형태로 변환하여 반환
+      return {
+        id: orderRequest.id,
+        status: orderRequest.status,
+        totalAmount: orderRequest.totalAmount,
+        requestedAt: orderRequest.createdAt,
+        requesterId: orderRequest.requesterId,
+        requesterName: orderRequest.requester?.name || '알 수 없음',
+        resolverId: orderRequest.resolverId,
+        resolverName: orderRequest.resolver?.name || null,
+        resolvedAt: orderRequest.resolvedAt,
+        resolverMessage: null,
+        companyId: orderRequest.companyId,
+        orderRequestItems: orderRequest.orderRequestItems.map(item => ({
+          price: item.price,
+          product: {
+            name: item.product.name,
+            imageUrl: item.product.imageUrl,
+            requestMessage: item.notes || null, // 주문 요청 시 입력한 메모
+          },
+        })),
+      };
     });
   }
 
   // ✅ 주문 요청 상세 조회
-  public async getOrderRequestDetail(orderRequestId: string) {
+  public async getOrderRequestDetail(orderRequestId: string): Promise<OrderRequestDetailResponse> {
     const orderRequest = await this.prisma.orderRequest.findUnique({
       where: { id: orderRequestId },
       include: {
@@ -143,7 +248,6 @@ export class OrderRequestsService {
                 price: true,
                 imageUrl: true, // 🔹 상품 이미지 URL 추가
                 category: {
-                  // 🔹 카테고리 정보 가져오기 (ID + 이름)
                   select: {
                     id: true,
                     name: true, // 🔹 카테고리 이름 추가
@@ -161,8 +265,8 @@ export class OrderRequestsService {
     }
 
     return {
-      requestId: orderRequest.id,
-      status: orderRequest.status,
+      requesterId: orderRequest.requesterId,
+      status: orderRequest.status, // 주문 요청 상태
       requestedAt: orderRequest.createdAt, // 요청일
       resolvedAt: orderRequest.resolvedAt, // 처리일
       resolverMessage: orderRequest.notes, // 처리 메시지
@@ -175,18 +279,21 @@ export class OrderRequestsService {
         imageUrl: item.product?.imageUrl || null, // 🔹 이미지 URL 추가
         quantity: item.quantity,
         price: item.product?.price || 0,
-        notes: item.notes || null, // 주문 요청 시 입력한 메모
+        requestMessage: item.notes || null, // 주문 요청 시 입력한 메모
       })),
     };
   }
 
   // ✅ 주문 요청 승인
-  public async approveOrderRequest(orderRequestId: string, dto: ApproveOrderRequestDto) {
+  public async approveOrderRequest(
+    orderRequestId: string,
+    dto: ApproveOrderRequestDto,
+  ): Promise<OrderRequestResponseDto> {
     return this.prisma.$transaction(async tx => {
       // 1️⃣ 주문 요청 상태 확인
       const orderRequest = await tx.orderRequest.findUnique({
         where: { id: orderRequestId },
-        select: { status: true }, // status만 조회
+        select: { status: true },
       });
 
       if (!orderRequest) {
@@ -201,26 +308,56 @@ export class OrderRequestsService {
         throw new BadRequestException('이미 처리된 주문 요청은 승인할 수 없습니다.');
       }
 
-      // 3️⃣ 승인 처리 (상태 변경)
-      return tx.orderRequest.update({
+      // 3️⃣ 주문 요청 승인 처리
+      const updatedOrderRequest = await tx.orderRequest.update({
         where: { id: orderRequestId },
         data: {
           status: OrderRequestStatus.APPROVED,
           resolverId: dto.resolverId,
-          notes: dto.notes, // 관리자 처리 메시지 저장
+          notes: dto.notes,
           resolvedAt: new Date(),
         },
+        include: {
+          resolver: { select: { name: true } }, // 처리자 이름 조회
+          orderRequestItems: {
+            include: {
+              product: { select: { name: true, price: true, imageUrl: true } },
+            },
+          },
+        },
       });
+
+      return {
+        id: updatedOrderRequest.id,
+        status: updatedOrderRequest.status,
+        totalAmount: updatedOrderRequest.totalAmount,
+        requestedAt: updatedOrderRequest.createdAt,
+        requesterId: updatedOrderRequest.requesterId,
+        resolverId: updatedOrderRequest.resolverId,
+        resolvedAt: updatedOrderRequest.resolvedAt,
+        resolverMessage: updatedOrderRequest.notes,
+        companyId: updatedOrderRequest.companyId,
+        orderRequestItems: updatedOrderRequest.orderRequestItems.map(item => ({
+          price: item.price,
+          product: {
+            name: item.product?.name || '상품 정보 없음',
+            imageUrl: item.product?.imageUrl || null,
+          },
+        })),
+      };
     });
   }
 
   // ✅ 주문 요청 거절
-  public async rejectOrderRequest(orderRequestId: string, dto: RejectOrderRequestDto) {
+  public async rejectOrderRequest(
+    orderRequestId: string,
+    dto: RejectOrderRequestDto,
+  ): Promise<OrderRequestResponseDto> {
     return this.prisma.$transaction(async tx => {
       // 1️⃣ 주문 요청 상태 확인
       const orderRequest = await tx.orderRequest.findUnique({
         where: { id: orderRequestId },
-        select: { status: true }, // status만 조회
+        select: { status: true },
       });
 
       if (!orderRequest) {
@@ -235,16 +372,43 @@ export class OrderRequestsService {
         throw new BadRequestException('이미 처리된 주문 요청은 거절할 수 없습니다.');
       }
 
-      // 3️⃣ 거절 처리 (상태 변경)
-      return tx.orderRequest.update({
+      // 3️⃣ 주문 요청 거절 처리
+      const updatedOrderRequest = await tx.orderRequest.update({
         where: { id: orderRequestId },
         data: {
           status: OrderRequestStatus.REJECTED,
           resolverId: dto.resolverId,
-          notes: dto.notes, // 관리자 처리 메시지 저장
+          notes: dto.notes || null,
           resolvedAt: new Date(),
         },
+        include: {
+          resolver: { select: { name: true } }, // 처리자 이름 조회
+          orderRequestItems: {
+            include: {
+              product: { select: { name: true, price: true, imageUrl: true } },
+            },
+          },
+        },
       });
+
+      return {
+        id: updatedOrderRequest.id,
+        status: updatedOrderRequest.status,
+        totalAmount: updatedOrderRequest.totalAmount,
+        requestedAt: updatedOrderRequest.createdAt,
+        requesterId: updatedOrderRequest.requesterId,
+        resolverId: updatedOrderRequest.resolverId,
+        resolvedAt: updatedOrderRequest.resolvedAt,
+        resolverMessage: updatedOrderRequest.notes,
+        companyId: updatedOrderRequest.companyId,
+        orderRequestItems: updatedOrderRequest.orderRequestItems.map(item => ({
+          price: item.price,
+          product: {
+            name: item.product?.name || '상품 정보 없음',
+            imageUrl: item.product?.imageUrl || null,
+          },
+        })),
+      };
     });
   }
 

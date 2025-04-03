@@ -1,19 +1,18 @@
 import {
   Body,
   Controller,
-  // Get,
   HttpCode,
   HttpStatus,
   Post,
   Req,
   Res,
   Param,
-  // UseGuards,
+  Patch,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { type Invitation } from '@prisma/client';
 import { Request, Response } from 'express';
-// import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import {
   InvitationCodeDto,
@@ -28,8 +27,11 @@ export class AuthController {
   public constructor(private readonly authService: AuthService) {}
 
   // TODO: /auth/signup (POST) [최고관리자] 회원가입
-
   @Post('signup')
+  @ApiOperation({
+    summary: '회원가입',
+    description: '사용자 정보를 입력받아 새로운 계정을 생성합니다',
+  })
   @ApiResponse({
     status: 201,
     description: '회원가입이 완료되었습니다.',
@@ -49,12 +51,23 @@ export class AuthController {
   }
 
   @Post('signup/invitationcode')
+  @ApiOperation({
+    summary: '초대 토큰 정보 조회',
+    description: '초대 토큰을 통해 초대된 사용자의 정보를 조회합니다.',
+  })
   @ApiResponse({ status: 200, description: '토큰 유저 정보 전달' })
   public async signupInfo(@Body() body: InvitationCodeDto): Promise<Invitation | null> {
     return await this.authService.getinfo(body);
   }
 
   @Post('signup/invite/:token')
+  @ApiOperation({
+    summary: '초대 토큰으로 회원가입',
+    description: '초대 토큰을 통해 초대된 사용자로 회원가입을 진행합니다.',
+  })
+  @ApiResponse({ status: 200, description: '회원가입에 성공했습니다' })
+  @ApiResponse({ status: 400, description: '유효하지 않은 초대 토큰입니다.' })
+  @ApiResponse({ status: 500, description: '회원가입 처리 중 문제가 발생했습니다.' })
   public async signupToken(
     @Param('token') token: string,
     @Body() body: { password: string },
@@ -81,7 +94,6 @@ export class AuthController {
     res.status(200).json({ ok: true, message: '회원가입에 성공했습니다' });
   }
 
-  // 로그인
   @Post('login')
   @ApiOperation({
     summary: '유저 로그인',
@@ -107,10 +119,13 @@ export class AuthController {
     res.status(200).json({ msg: '로그인 성공', data: user });
   }
 
-  // 로그아웃
   @Post('logout')
+  @ApiOperation({
+    summary: '유저 로그아웃',
+    description: '현재 로그인된 사용자의 세션을 종료하고 인증 토큰을 무효화합니다.',
+  })
   public async logout(@Req() req: Request, @Res() res: Response): Promise<void> {
-    const invalidateToken = req.cookies['refreshToken'];
+    const invalidateToken = req.cookies['refreshToken'] as string;
 
     if (!invalidateToken) {
       res.status(400).json({ message: 'Refresh Token이 없습니다.' });
@@ -120,7 +135,27 @@ export class AuthController {
     await this.authService.logout(invalidateToken, res);
   }
 
-  // 쿠키 인증 설정(accessToken, refreshToken 둘 다 설정)
+  @Patch('update/info')
+  public async updateData(
+    @Body() body: { password: string; company?: string },
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { sub: userId } = await this.authService.getUserFromCookie(req);
+
+    if (!userId) {
+      throw new UnauthorizedException('유효하지 않은 사용자');
+    }
+
+    const result = await this.authService.updateData({
+      userId,
+      password: body.password,
+      company: body.company,
+    });
+
+    res.status(200).json({ msg: '변경 성공', data: result, ok: true });
+  }
+
   private setAuthCookies(@Res() res: Response, token: TokenResponseDto): void {
     res.cookie('accessToken', token.accessToken, {
       httpOnly: true, // XSS 공격 방지

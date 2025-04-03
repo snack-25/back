@@ -8,7 +8,9 @@ import {
 import { Invitation } from './interfaces/invitation.interface';
 import { InvitationsService } from './invitations.service';
 import { Token } from './types/token.type';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth()
 @Controller('invitations')
 export class InvitationsController {
   public constructor(private readonly invitationsService: InvitationsService) {}

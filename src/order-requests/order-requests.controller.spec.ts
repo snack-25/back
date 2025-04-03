@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import { ForbiddenException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { UserRole } from '@prisma/client';
+import { OrderRequestStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
@@ -12,6 +12,7 @@ import { OrderRequestsService } from './order-requests.service';
 describe('OrderRequestsController', () => {
   let service: OrderRequestsService;
   let controller: OrderRequestsController;
+  // let prisma: PrismaService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -34,7 +35,9 @@ describe('OrderRequestsController', () => {
             product: {
               findMany: jest.fn(),
             },
-            $transaction: jest.fn(cb =>
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            $transaction: jest.fn((cb: any) =>
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-call
               cb({
                 orderRequest: {
                   findMany: jest.fn(),
@@ -69,6 +72,7 @@ describe('OrderRequestsController', () => {
 
     service = module.get<OrderRequestsService>(OrderRequestsService);
     controller = module.get<OrderRequestsController>(OrderRequestsController);
+    // prisma = module.get<PrismaService>(PrismaService);
   });
 
   it('should be defined', () => {
@@ -79,7 +83,12 @@ describe('OrderRequestsController', () => {
   describe('createOrderRequest', () => {
     it('should throw UnauthorizedException if user is not authenticated', async () => {
       await expect(
-        controller.createOrderRequest({} as Request, { items: [], companyId: '', requesterId: '' }),
+        controller.createOrderRequest({} as Request, {
+          items: [],
+          companyId: '',
+          requesterId: '',
+          status: OrderRequestStatus.PENDING,
+        }),
       ).rejects.toThrow(UnauthorizedException);
     });
   });

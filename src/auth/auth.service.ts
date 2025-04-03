@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  InternalServerErrorException,
   Logger,
   Req,
   Res,
@@ -10,6 +11,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Invitation } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import * as argon2 from 'argon2';
 import { Request, Response } from 'express';
@@ -19,6 +21,7 @@ import {
   InvitationCodeDto,
   InvitationSignupDto,
   JwtPayload,
+  ReulstDto,
   SignInRequestDto,
   SigninResponseDto,
   SignUpComponeyRequestDto,
@@ -36,6 +39,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
+
+  private readonly logger = new Logger(AuthService.name);
 
   public async getinfo(dto: InvitationCodeDto): Promise<Invitation | null> {
     const { token } = dto;
@@ -188,9 +193,9 @@ export class AuthService {
         select: { id: true },
       });
       return { msg: '성공', id: companyRecord.id };
-    } catch (err: any) {
+    } catch (err) {
       const result = { msg: '', id: '' };
-      if (err.code === 'P2002') {
+      if (err instanceof PrismaClientKnownRequestError && err.code === 'P2002') {
         result.msg = '회사가 있습니다.';
       }
       return result;
@@ -201,7 +206,6 @@ export class AuthService {
   public async login(dto: SignInRequestDto): Promise<SigninResponseDto | null> {
     try {
       const { email, password } = dto;
-
       const user = await this.prisma.user.findUnique({
         where: { email },
         select: {
@@ -216,13 +220,15 @@ export class AuthService {
         },
       });
 
-      if (!user) return null;
+      if (!user) {
+        throw new BadRequestException('이메일 또는 비밀번호가 잘못되었습니다.');
+      }
 
-      Logger.log('User found: ', user);
+      this.logger.log('User found: ', user);
 
       const isPasswordValid = await argon2.verify(user.password, password);
 
-      Logger.log('Password verification result: ', isPasswordValid);
+      this.logger.log('Password verification result: ', isPasswordValid);
 
       if (!isPasswordValid) {
         throw new BadRequestException('이메일 또는 비밀번호가 잘못되었습니다.');
@@ -237,6 +243,7 @@ export class AuthService {
           refreshToken: token.refreshToken,
         },
         user: {
+          id: user.id,
           email: user.email,
           name: user.name,
           role: user.role,
@@ -250,8 +257,14 @@ export class AuthService {
 
       return response;
     } catch (err) {
-      console.error(err);
-      return null;
+      console.error('로그인 오류:', err);
+
+      // 🔥 에러를 캐치하더라도 HTTP 응답을 명확하게 반환하도록 수정
+      if (err instanceof BadRequestException) {
+        throw err; // NestJS에서 자동으로 400 응답 반환
+      }
+
+      throw new InternalServerErrorException('서버 오류가 발생했습니다.');
     }
   }
 
@@ -259,6 +272,8 @@ export class AuthService {
   public async generateToken(userId: string): Promise<TokenResponseDto> {
     try {
       const [accessToken, refreshToken] = await Promise.all([
+        this.generateAccessToken(userId),
+        this.generateRefreshToken(userId),
         this.generateAccessToken(userId),
         this.generateRefreshToken(userId),
       ]);
@@ -302,6 +317,7 @@ export class AuthService {
   // accessToken 검증
   public async verifyAccessToken(accessToken: string): Promise<JwtPayload> {
     try {
+      this.logger.log('액세스 토큰 검증 시도');
       return await this.jwtService.verifyAsync(accessToken, {
         secret: this.configService.getOrThrow<string>('JWT_SECRET'),
       });
@@ -328,7 +344,8 @@ export class AuthService {
         secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
       });
     } catch (error) {
-      throw new UnauthorizedException('리프레시 토큰 검증에 실패했습니다.', error.message);
+      this.logger.error('리프레시 토큰 검증 실패', error);
+      throw new UnauthorizedException('리프레시 토큰 검증에 실패했습니다.');
     }
   }
 
@@ -352,7 +369,7 @@ export class AuthService {
         throw new ConflictException(`회원가입에 실패했습니다.`);
       }
       // 예외 상황에 대한 HTTP 응답 반환
-      return res.status(400).json({ message: '로그아웃 실패', error: error.message });
+      throw new UnauthorizedException('로그아웃 실패');
     }
   }
 
@@ -366,12 +383,17 @@ export class AuthService {
         exp: user['exp'],
       };
     } catch (error) {
-      throw new UnauthorizedException('액세스 토큰 디코딩에 실패했습니다.', error.message);
+      this.logger.error(
+        '액세스 토큰 디코딩 실패',
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw new UnauthorizedException('액세스 토큰 디코딩에 실패했습니다.');
     }
   }
+
   // 쿠키에서 사용자 정보 가져오기
   public async getUserFromCookie(@Req() req: Request): Promise<decodeAccessToken> {
-    const accessToken: string | undefined = req.cookies.accessToken;
+    const accessToken: string | undefined = req.cookies?.accessToken as string | undefined;
     if (!accessToken) {
       throw new BadRequestException('로그인이 필요합니다.');
     }
@@ -383,5 +405,78 @@ export class AuthService {
       throw new UnauthorizedException('토큰이 만료되었습니다.');
     }
     return decoded;
+  }
+
+  // 비밀번호 및 회사명 업데이트
+  public async updateData(body: {
+    userId: string;
+    password?: string;
+    company?: string;
+  }): Promise<ReulstDto> {
+    // 비밀번호 업데이트 처리 (비밀번호가 전달된 경우)
+    const passwordPromise = (async (): Promise<string | null> => {
+      if (!body.password) return null;
+      const hashedPassword = await argon2.hash(body.password);
+
+      const currentData = await this.prisma.user.findUnique({
+        where: { id: body.userId },
+        select: { password: true, company: true },
+      });
+
+      if (!currentData) {
+        throw new UnauthorizedException('유저가 없습니다');
+      }
+
+      const isSamePassword = await argon2.verify(currentData.password, body.password);
+
+      if (isSamePassword) {
+        throw new BadRequestException('전과 동일한 비밀번호는 사용할 수 없습니다');
+      }
+
+      if (currentData.company.name === body.company) {
+        throw new BadRequestException('전과 동일한 회사명은 사용할 수 없습니다');
+      }
+
+      await this.prisma.user.update({
+        where: { id: body.userId },
+        data: { password: hashedPassword },
+        select: { id: true },
+      });
+
+      return '비밀번호 변경 성공';
+    })();
+
+    // 회사 업데이트 처리 (회사명이 전달된 경우)
+    const companyPromise = (async (): Promise<{ name: string } | null> => {
+      if (!body.company) return null;
+      const userWithCompany = await this.prisma.user.findUnique({
+        where: { id: body.userId },
+        include: { company: true },
+      });
+      if (!userWithCompany) {
+        throw new BadRequestException('해당하는 사용자가 존재하지 않습니다.');
+      }
+      if (!userWithCompany.company) {
+        throw new BadRequestException('연결된 회사가 존재하지 않습니다.');
+      }
+      const updatedCompany = await this.prisma.company.update({
+        where: { id: userWithCompany.company.id },
+        data: { name: body.company },
+        select: { name: true },
+      });
+      return updatedCompany;
+    })();
+
+    // 동시에 두 작업 실행
+    const [passwordResult, companyResult] = await Promise.all([passwordPromise, companyPromise]);
+
+    // 결과 구성 (두 작업 중 하나 또는 둘 다 실행된 경우)
+    const result = {
+      ...(passwordResult && { msg: passwordResult }),
+      ...(companyResult && { company: companyResult }),
+    };
+
+    this.logger.log('업데이트 결과:', result);
+    return result;
   }
 }

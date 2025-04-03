@@ -34,6 +34,7 @@ export class SigninResponseDto {
 
   @ApiProperty({ description: '사용자 정보', type: Object })
   public user: {
+    id: string;
     email: string;
     name: string;
     company: { name: string; id: string };
@@ -77,3 +78,9 @@ export class InvitationSignupDto extends PickType(UserDto, ['password']) {
 }
 
 export class decodeAccessToken extends PickType(JwtPayload, ['sub', 'exp']) {}
+
+//유저 정보 응답 dto
+export class ReulstDto {
+  public message?: string;
+  public company?: { name: string };
+}
