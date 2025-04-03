@@ -7,6 +7,7 @@ import { DeleteCartItemsDto, UpdateCartItemDto } from './dto/update-cart.dto';
 import { Request } from 'express';
 import { AuthService } from '@src/auth/auth.service'; // ✅ 추가
 import { ApiBearerAuth } from '@nestjs/swagger';
+import { GetCartItemsResponse } from './dto/cart.interface';
 
 @ApiBearerAuth()
 @ApiTags('Carts')
@@ -14,7 +15,7 @@ import { ApiBearerAuth } from '@nestjs/swagger';
 export class CartsController {
   public constructor(
     private readonly cartsService: CartsService,
-    private readonly authService: AuthService, // ✅ 추가
+    private readonly authService: AuthService,
   ) {}
 
   @ApiOperation({
@@ -27,11 +28,7 @@ export class CartsController {
   public async getCartItems(
     @Param('cartId') cartId: string,
     @Req() req: Request,
-  ): Promise<{
-    items: CartItem[];
-    totalAmount: number;
-    shippingFee: number;
-  }> {
+  ): Promise<GetCartItemsResponse> {
     const { sub: userId } = await this.authService.getUserFromCookie(req);
     return await this.cartsService.getCartItems(userId, cartId);
   }
