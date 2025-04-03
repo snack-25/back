@@ -1,23 +1,27 @@
 /* eslint-disable no-useless-escape */
 import {
-  Injectable,
   BadRequestException,
   ConflictException,
-  InternalServerErrorException,
   HttpStatus,
+  Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from '@src/shared/prisma/prisma.service';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { CheckEmailRequestDto, CheckEmailResponseDto, CheckNameDto } from './dto/user.dto';
-import { CompaniesRequestDto } from '@src/companies/dto/companies.dto';
-import { UserResponseDto } from './dto/response-user.dto';
-import { NAME_REGEX, PASSWORD_REGEX } from '@src/shared/const/RegExp';
+import { JwtService } from '@nestjs/jwt';
 import { User } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { CompaniesRequestDto } from '@src/companies/dto/companies.dto';
+import { NAME_REGEX, PASSWORD_REGEX } from '@src/shared/const/RegExp';
+import { PrismaService } from '@src/shared/prisma/prisma.service';
+import { UserResponseDto } from './dto/response-user.dto';
+import { CheckEmailRequestDto, CheckEmailResponseDto, CheckNameDto } from './dto/user.dto';
 
 @Injectable()
 export class UsersService {
-  public constructor(private prisma: PrismaService) {}
+  public constructor(
+    private prisma: PrismaService,
+    private jwtService: JwtService,
+  ) {}
 
   // 기업조회
   public async checkCompany(companiesRequestDto: CompaniesRequestDto): Promise<boolean> {
@@ -118,6 +122,25 @@ export class UsersService {
     }
 
     return '사용 가능한 비밀번호입니다.';
+  }
+
+  // 본인 정보 조회
+  public async getMe(userId: string): Promise<Pick<User, 'id' | 'email' | 'name' | 'role'>> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('사용자를 찾을 수 없습니다.');
+    }
+
+    return user;
   }
 
   public async getUser(userId: string): Promise<UserResponseDto> {
