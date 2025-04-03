@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import { BudgetsRequestDto, BudgetsResponseDto } from './dto/budgets.dto';
+import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class BudgetsService {
   public constructor(private readonly prisma: PrismaService) {}
+
+  private readonly logger = new Logger(BudgetsService.name);
 
   public async getinfo(dto: BudgetsRequestDto): Promise<BudgetsResponseDto | null> {
     try {
@@ -36,7 +39,7 @@ export class BudgetsService {
 
       return transformedInfo; // 하나의 객체를 반환
     } catch (err) {
-      console.error('예산 조회 실패', err);
+      this.logger.error('예산 조회 실패', err);
       return null;
     }
   }
@@ -44,7 +47,7 @@ export class BudgetsService {
   public async update(dto: BudgetsRequestDto): Promise<BudgetsResponseDto> {
     try {
       // 특정 예산 레코드 조회
-      console.log('dto', dto);
+      this.logger.debug('예산 업데이트', dto);
       const existingBudget = await this.prisma.budget.findUnique({
         where: {
           companyId_year_month: {
@@ -98,7 +101,7 @@ export class BudgetsService {
         month: updatedBudget.month,
       };
     } catch (err) {
-      console.error('예산 처리 중 에러 발생', err);
+      this.logger.error('예산 처리 중 에러 발생', err);
       throw new Error('예산 처리 중 오류 발생');
     }
   }

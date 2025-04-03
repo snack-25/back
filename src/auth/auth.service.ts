@@ -7,6 +7,7 @@ import {
   Res,
   UnauthorizedException,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -129,8 +130,8 @@ export class AuthService {
 
       return response; // 프론트엔드로 유저 정보 반환
     } catch (err) {
-      console.error(err);
-      console.error('회원가입 실패');
+      this.logger.error(err);
+      this.logger.error('회원가입 실패');
       return null;
     }
   }
@@ -139,7 +140,7 @@ export class AuthService {
   public async signup(dto: SignUpRequestDto): Promise<SignUpResponseDto> {
     const { email, password, name, company, bizno } = dto;
 
-    console.log('여긴 서비스야', dto);
+    this.logger.log('여긴 서비스야', dto);
     // 이름, 이메일, 회사 중복 확인
     await this.usersService.checkName({ name });
     await this.usersService.checkEmail({ email });
@@ -173,7 +174,7 @@ export class AuthService {
         createdAt: true,
       },
     });
-    console.log('superAdmin', superAdmin);
+    this.logger.log('superAdmin', superAdmin);
 
     const response: SignUpResponseDto = {
       email: superAdmin.email,
@@ -183,7 +184,7 @@ export class AuthService {
       role: superAdmin.role,
     };
 
-    console.log('response', response);
+    this.logger.log('response', response);
 
     return response;
   }
@@ -210,7 +211,7 @@ export class AuthService {
   public async login(dto: SignInRequestDto): Promise<SigninResponseDto | null> {
     try {
       const { email, password } = dto;
-      console.log(email);
+      this.logger.log(email);
       const user = await this.prisma.user.findUnique({
         where: { email },
         select: {
@@ -225,9 +226,9 @@ export class AuthService {
         },
       });
 
-      console.log('user', user);
+      this.logger.log('user', user);
       if (!user) {
-        throw new BadRequestException('이메일 또는 비밀번호가 잘못되었습니다.');
+        throw new NotFoundException('사용자를 찾을 수 없습니다.');
       }
 
       this.logger.log('User found: ', user);
@@ -237,7 +238,7 @@ export class AuthService {
       this.logger.log('Password verification result: ', isPasswordValid);
 
       if (!isPasswordValid) {
-        throw new BadRequestException('이메일 또는 비밀번호가 잘못되었습니다.');
+        throw new UnauthorizedException('이메일 또는 비밀번호가 잘못되었습니다.');
       }
 
       // JWT 토큰 생성 시, payload의 sub 대신 userId와 joinDate 사용
@@ -260,7 +261,7 @@ export class AuthService {
 
       return response;
     } catch (err) {
-      console.error('로그인 오류:', err);
+      this.logger.error('로그인 오류:', err);
 
       // 🔥 에러를 캐치하더라도 HTTP 응답을 명확하게 반환하도록 수정
       if (err instanceof BadRequestException) {
@@ -286,7 +287,7 @@ export class AuthService {
 
       return { accessToken, refreshToken };
     } catch (error) {
-      console.error(error);
+      this.logger.error(error);
       throw new UnauthorizedException('토큰 생성에 실패했습니다.');
     }
   }

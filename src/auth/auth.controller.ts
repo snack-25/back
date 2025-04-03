@@ -7,6 +7,7 @@ import {
   Req,
   Res,
   Param,
+  Logger,
   Patch,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -25,6 +26,8 @@ import {
 @Controller('auth')
 export class AuthController {
   public constructor(private readonly authService: AuthService) {}
+
+  private readonly logger = new Logger(AuthController.name);
 
   // TODO: /auth/signup (POST) [최고관리자] 회원가입
   @Post('signup')
@@ -46,8 +49,8 @@ export class AuthController {
   })
   @HttpCode(HttpStatus.CREATED)
   public async signup(@Body() dto: SignUpRequestDto, @Res() res: Response): Promise<void> {
-    console.log('넘어오니?');
-    console.log('dto', dto);
+    this.logger.debug('넘어오니?');
+    this.logger.debug('dto', dto);
     const result = await this.authService.signup(dto);
     res.status(201).json({ msg: '회원가입에 성공했습니다.', data: result });
   }
@@ -107,7 +110,7 @@ export class AuthController {
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    console.log('dto', dto);
+    this.logger.debug('dto', dto);
     const loginResult = await this.authService.login(dto);
 
     if (!loginResult) {
@@ -119,7 +122,7 @@ export class AuthController {
     // 쿠키 인증 설정
     this.setAuthCookies(res, token);
 
-    res.status(200).json({ msg: '로그인 성공', data: user });
+    res.status(200).json({ msg: '로그인 성공', data: { token, user } });
   }
 
   @Post('logout')
