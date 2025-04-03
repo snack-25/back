@@ -1,5 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -50,6 +50,7 @@ import { WishlistsModule } from './wishlists/wishlists.module';
         secret: process.env.JWT_REFRESH_SECRET,
         signOptions: { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN },
       }),
+      inject: [ConfigService],
     }),
   ],
   controllers: [AppController],

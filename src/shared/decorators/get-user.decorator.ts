@@ -86,12 +86,14 @@ export const GetUser = createParamDecorator(
 
       // 페이로드에서 필요한 사용자 정보 추출
       // sub는 사용자 ID로 사용됨
-      const userInfo: Pick<User, 'id' | 'email' | 'role' | 'refreshToken'> = {
-        id: payload.sub,
-        email: payload.email,
-        role: 'USER',
-        refreshToken: null,
-      };
+      const userId = payload.sub;
+
+      // AuthService를 통해 사용자 정보 조회
+      const userInfo = await authService.getUserById(userId);
+
+      if (!userInfo) {
+        throw new UnauthorizedException('사용자 정보를 찾을 수 없습니다.');
+      }
 
       // 사용자 정보 반환
       return userInfo;

@@ -3,11 +3,11 @@ import {
   Controller,
   HttpCode,
   HttpStatus,
+  Param,
+  Patch,
   Post,
   Req,
   Res,
-  Param,
-  Patch,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -116,7 +116,20 @@ export class AuthController {
     // 쿠키 인증 설정
     this.setAuthCookies(res, token);
 
-    res.status(200).json({ msg: '로그인 성공', data: user });
+    // 응답 본문에 토큰 정보 포함 (클라이언트에서 필요할 수 있음)
+    res.status(200).json({
+      message: '로그인 성공',
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        company: {
+          id: user.company.id,
+          name: user.company.name,
+        },
+      },
+    });
   }
 
   @Post('logout')
@@ -160,15 +173,17 @@ export class AuthController {
     res.cookie('accessToken', token.accessToken, {
       httpOnly: true, // XSS 공격 방지
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict', // CORS 문제 방지
+      sameSite: 'lax', // CORS 문제 방지 (strict에서 lax로 변경)
       maxAge: 1000 * 60 * 60 * 24, // 24시간 (24시간 × 60분 × 60초 × 1000밀리초)
+      path: '/', // 모든 경로에서 접근 가능
     });
 
     res.cookie('refreshToken', token.refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'lax', // strict에서 lax로 변경
       maxAge: 60 * 1000 * 60 * 24 * 14, // 2w
+      path: '/', // 모든 경로에서 접근 가능
     });
   }
 

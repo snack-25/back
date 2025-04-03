@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JsonWebTokenError, JwtService, TokenExpiredError } from '@nestjs/jwt';
-import { User } from '@prisma/client';
+import { JwtPayload } from '@src/auth/dto/auth.dto';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -12,7 +12,7 @@ export class JwtAuthService {
     private readonly prisma: PrismaService,
   ) {}
 
-  public async verifyToken(token: string): Promise<User> {
+  public async verifyToken(token: string): Promise<JwtPayload> {
     try {
       return await this.jwtService.verifyAsync(token, {
         secret: this.configService.getOrThrow<string>('JWT_SECRET'),
@@ -28,7 +28,7 @@ export class JwtAuthService {
     }
   }
 
-  public async verifyRefreshToken(refreshToken: string): Promise<User> {
+  public async verifyRefreshToken(refreshToken: string): Promise<JwtPayload> {
     try {
       const storedRefreshToken = await this.prisma.user.findFirst({
         where: { refreshToken: refreshToken },

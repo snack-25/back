@@ -4,13 +4,14 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
   Req,
   Res,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { Invitation } from '@prisma/client';
+import { Invitation, User } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import * as argon2 from 'argon2';
@@ -41,6 +42,22 @@ export class AuthService {
   ) {}
 
   private readonly logger = new Logger(AuthService.name);
+
+  // 사용자 ID로 사용자 정보 조회
+  public async getUserById(
+    userId: string,
+  ): Promise<Pick<User, 'id' | 'name' | 'email' | 'role' | 'refreshToken'> | null> {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, name: true, email: true, role: true, refreshToken: true },
+      });
+      return user;
+    } catch (error) {
+      this.logger.error(`사용자 정보 조회 실패 (ID: ${userId}):`, error);
+      return null;
+    }
+  }
 
   public async getinfo(dto: InvitationCodeDto): Promise<Invitation | null> {
     const { token } = dto;
@@ -271,21 +288,57 @@ export class AuthService {
   // JWT 토큰 생성 (로그인 시 호출) – payload의 sub
   public async generateToken(userId: string): Promise<TokenResponseDto> {
     try {
-      const [accessToken, refreshToken] = await Promise.all([
-        this.generateAccessToken(userId),
-        this.generateRefreshToken(userId),
-        this.generateAccessToken(userId),
-        this.generateRefreshToken(userId),
-      ]);
+      // 1. 토큰 생성 시도
+      let accessToken: string;
+      let refreshToken: string;
 
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { refreshToken },
-      });
+      try {
+        [accessToken, refreshToken] = await Promise.all([
+          this.generateAccessToken(userId),
+          this.generateRefreshToken(userId),
+        ]);
+      } catch (tokenError) {
+        this.logger.error('토큰 생성 중 오류 발생', tokenError);
+        throw new UnauthorizedException('토큰 생성에 실패했습니다.');
+      }
+
+      // 2. DB 업데이트 시도 (트랜잭션 사용)
+      try {
+        await this.prisma.$transaction(async tx => {
+          // 사용자 정보 확인
+          const user = await tx.user.findUnique({
+            where: { id: userId },
+            select: { id: true },
+          });
+
+          if (!user) {
+            throw new NotFoundException('사용자를 찾을 수 없습니다.');
+          }
+
+          // refreshToken 업데이트
+          await tx.user.update({
+            where: { id: userId },
+            data: { refreshToken },
+          });
+        });
+      } catch (dbError) {
+        this.logger.error('DB 업데이트 중 오류 발생', dbError);
+        // DB 업데이트 실패 시 토큰 생성도 실패로 처리
+        throw new InternalServerErrorException('토큰 정보 저장에 실패했습니다.');
+      }
 
       return { accessToken, refreshToken };
     } catch (error) {
-      console.error(error);
+      // 상위 레벨 예외 처리
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof NotFoundException ||
+        error instanceof InternalServerErrorException
+      ) {
+        throw error;
+      }
+
+      this.logger.error('토큰 생성 프로세스 중 예상치 못한 오류', error);
       throw new UnauthorizedException('토큰 생성에 실패했습니다.');
     }
   }
@@ -293,12 +346,18 @@ export class AuthService {
   // accessToken 생성 (payload에 userId 포함)
   private async generateAccessToken(userId: string): Promise<string> {
     const payload: TokenRequestDto = {
-      sub: userId, // 사용자 ID
+      sub: userId,
       type: 'access', // 토큰 타입은 액세스 토큰
     };
+
+    // 만료 시간을 명시적으로 설정 (현재 시간 + JWT_EXPIRES_IN)
+    const expiresIn = this.configService.getOrThrow<string>('JWT_EXPIRES_IN');
+
+    this.logger.debug(`토큰 생성: 만료 시간 ${expiresIn}`);
+
     return this.jwtService.signAsync(payload, {
       secret: this.configService.getOrThrow<string>('JWT_SECRET'),
-      expiresIn: this.configService.getOrThrow<string>('JWT_EXPIRES_IN'),
+      expiresIn: expiresIn,
     });
   }
 
@@ -308,9 +367,15 @@ export class AuthService {
       sub: userId,
       type: 'refresh',
     };
+
+    // 만료 시간을 명시적으로 설정 (현재 시간 + JWT_REFRESH_EXPIRES_IN)
+    const expiresIn = this.configService.getOrThrow<string>('JWT_REFRESH_EXPIRES_IN');
+
+    this.logger.debug(`리프레시 토큰 생성: 만료 시간 ${expiresIn}`);
+
     return this.jwtService.signAsync(payload, {
       secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
-      expiresIn: this.configService.getOrThrow<string>('JWT_REFRESH_EXPIRES_IN'),
+      expiresIn: expiresIn,
     });
   }
 
@@ -318,12 +383,48 @@ export class AuthService {
   public async verifyAccessToken(accessToken: string): Promise<JwtPayload> {
     try {
       this.logger.log('액세스 토큰 검증 시도');
-      return await this.jwtService.verifyAsync(accessToken, {
+
+      // 토큰 형식 검증
+      if (!accessToken || typeof accessToken !== 'string') {
+        this.logger.warn('유효하지 않은 토큰 형식');
+        throw new UnauthorizedException('유효하지 않은 토큰 형식입니다.');
+      }
+
+      // 토큰 검증
+      const payload = await this.jwtService.verifyAsync<JwtPayload>(accessToken, {
         secret: this.configService.getOrThrow<string>('JWT_SECRET'),
       });
+
+      // 토큰 타입 검증
+      if (payload.type !== 'access') {
+        this.logger.warn(`잘못된 토큰 타입: ${payload.type}`);
+        throw new UnauthorizedException('잘못된 토큰 타입입니다.');
+      }
+
+      // 토큰 만료 시간 로깅 (디버깅용)
+      if (payload.exp) {
+        const expDate = new Date(payload.exp * 1000);
+        const now = new Date();
+        this.logger.debug(
+          `토큰 만료 시간: ${expDate.toISOString()}, 현재 시간: ${now.toISOString()}`,
+        );
+        this.logger.debug(
+          `토큰 만료까지 남은 시간: ${Math.floor((payload.exp * 1000 - now.getTime()) / 1000)}초`,
+        );
+      }
+
+      this.logger.debug(`토큰 검증 성공: 사용자 ID ${payload.sub}`);
+      return payload;
     } catch (error) {
-      console.error(error);
-      throw new UnauthorizedException(`액세스 토큰 검증에 실패했습니다. ${error}`);
+      // 토큰 만료 예외 처리
+      if (error.name === 'TokenExpiredError') {
+        this.logger.warn('만료된 토큰');
+        throw new UnauthorizedException('만료된 토큰입니다.');
+      }
+
+      // 기타 JWT 관련 예외 처리
+      this.logger.error('액세스 토큰 검증 실패', error);
+      throw new UnauthorizedException('액세스 토큰 검증에 실패했습니다.');
     }
   }
 
@@ -378,6 +479,9 @@ export class AuthService {
     try {
       const user = await this.verifyAccessToken(accessToken);
       // 디코딩된 토큰은 payload와 iat, exp, sub 등의 정보를 포함
+      if (!user.exp) {
+        throw new UnauthorizedException('토큰 만료 정보가 없습니다.');
+      }
       return {
         sub: user['sub'],
         exp: user['exp'],
