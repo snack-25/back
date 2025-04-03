@@ -85,7 +85,7 @@ export class OrderRequestsService {
       },
     });
   }
-  
+
   // ✅ 주문 요청 생성
   public async createOrderRequest(dto: CreateOrderRequestDto): Promise<Partial<OrderRequest>> {
     return this.prisma.$transaction(async tx => {
@@ -117,7 +117,11 @@ export class OrderRequestsService {
       );
 
       // 5. 배송비 계산
-      const shippingFee = await getShippingFeeByUserId(this.prisma, dto.requesterId, totalAmountWithoutShipping);
+      const shippingFee = await getShippingFeeByUserId(
+        this.prisma,
+        dto.requesterId,
+        totalAmountWithoutShipping,
+      );
       const totalAmount = totalAmountWithoutShipping + shippingFee;
 
       // 6. 주문 요청 생성 (트랜잭션 내에서 수행)

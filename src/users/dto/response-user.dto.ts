@@ -5,7 +5,7 @@ export class UserResponseDto {
   public name: string;
   public email: string;
   public role: (typeof UserRole)[keyof typeof UserRole];
-  public companyId: string | null;
+  public companyId: string;
   public createdAt: Date;
   public updatedAt: Date;
 }
