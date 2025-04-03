@@ -37,7 +37,7 @@ export class SigninResponseDto {
     id: string;
     email: string;
     name: string;
-    company: { name: string; id: string };
+    companyName: string;
     role: string;
     companyId: string;
   };

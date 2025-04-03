@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import { BudgetsRequestDto, BudgetsResponseDto } from './dto/budgets.dto';
+
 @Injectable()
 export class BudgetsService {
   public constructor(private readonly prisma: PrismaService) {}
@@ -43,6 +44,7 @@ export class BudgetsService {
   public async update(dto: BudgetsRequestDto): Promise<BudgetsResponseDto> {
     try {
       // 특정 예산 레코드 조회
+      console.log('dto', dto);
       const existingBudget = await this.prisma.budget.findUnique({
         where: {
           companyId_year_month: {

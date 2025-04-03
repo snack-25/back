@@ -46,6 +46,8 @@ export class AuthController {
   })
   @HttpCode(HttpStatus.CREATED)
   public async signup(@Body() dto: SignUpRequestDto, @Res() res: Response): Promise<void> {
+    console.log('넘어오니?');
+    console.log('dto', dto);
     const result = await this.authService.signup(dto);
     res.status(201).json({ msg: '회원가입에 성공했습니다.', data: result });
   }
@@ -77,7 +79,7 @@ export class AuthController {
     const user = await this.authService.getinfo({ token: req.params.token });
 
     if (!user) {
-      res.status(400).json({ ok: false, message: '유효하지 않은 초대 토큰입니다.' });
+      res.status(400).json({ message: '유효하지 않은 초대 토큰입니다.' });
     }
     const password = body.password;
 
@@ -87,11 +89,11 @@ export class AuthController {
     });
 
     if (!result) {
-      res.status(500).json({ ok: false, message: '회원가입 처리 중 문제가 발생했습니다.' });
+      res.status(500).json({ message: '회원가입 처리 중 문제가 발생했습니다.' });
       return;
     }
 
-    res.status(200).json({ ok: true, message: '회원가입에 성공했습니다' });
+    res.status(200).json({ message: '회원가입에 성공했습니다' });
   }
 
   @Post('login')
@@ -105,6 +107,7 @@ export class AuthController {
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
+    console.log('dto', dto);
     const loginResult = await this.authService.login(dto);
 
     if (!loginResult) {
@@ -153,7 +156,7 @@ export class AuthController {
       company: body.company,
     });
 
-    res.status(200).json({ msg: '변경 성공', data: result, ok: true });
+    res.status(200).json({ msg: '변경 성공', data: result });
   }
 
   private setAuthCookies(@Res() res: Response, token: TokenResponseDto): void {
