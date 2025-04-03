@@ -24,6 +24,10 @@ import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from '@src/auth/auth.service'; // AuthService 가져오기
 import { PrismaService } from '@src/shared/prisma/prisma.service'; // PrismaService 가져오기
 import { UserResponseDto } from '@src/users/dto/response-user.dto';
+import {
+  OrderRequestDetailResponse,
+  OrderRequestResponseDto,
+} from './dto/order-request-detail-response.interface';
 
 @ApiBearerAuth()
 @ApiTags('OrderRequests')
@@ -77,9 +81,11 @@ export class OrderRequestsController {
     description: '정렬 기준 (latest: 최신순, lowPrice: 낮은 가격순, highPrice: 높은 가격순)',
   })
   @Get()
-  // FIXME: 반환 타입(dto) 추가 부탁드려요
-  public async getOrderRequests(@Req() req: Request, @Query() query: GetOrderRequestsDto) {
-    const user = await this.getUserFromCookie(req); // 유저 정보를 가져옵니다.
+  public async getOrderRequests(
+    @Req() req: Request,
+    @Query() query: GetOrderRequestsDto,
+  ): Promise<OrderRequestResponseDto[]> {
+    const user = await this.getUserFromCookie(req);
 
     const { page = 1, pageSize = 10, sort = OrderSort.LATEST } = query;
 
@@ -109,7 +115,10 @@ export class OrderRequestsController {
   @ApiResponse({ status: 201, description: '주문 요청 생성 성공' })
   @ApiResponse({ status: 401, description: '인증되지 않은 사용자' })
   @Post()
-  public async createOrderRequest(@Req() req: Request, @Body() dto: CreateOrderRequestDto) {
+  public async createOrderRequest(
+    @Req() req: Request,
+    @Body() dto: CreateOrderRequestDto,
+  ): Promise<OrderRequestResponseDto> {
     const user = await this.getUserFromCookie(req); // 유저 정보를 가져옵니다.
 
     dto.requesterId = user.id;
@@ -127,7 +136,9 @@ export class OrderRequestsController {
   @ApiResponse({ status: 200, description: '주문 요청 상세 정보 반환' })
   @ApiResponse({ status: 404, description: '주문 요청을 찾을 수 없음' })
   @Get(':orderRequestId')
-  public async getOrderRequestDetail(@Param('orderRequestId') orderRequestId: string) {
+  public async getOrderRequestDetail(
+    @Param('orderRequestId') orderRequestId: string,
+  ): Promise<OrderRequestDetailResponse> {
     return this.orderRequestsService.getOrderRequestDetail(orderRequestId);
   }
 
@@ -138,12 +149,11 @@ export class OrderRequestsController {
   @ApiResponse({ status: 403, description: '권한 없음' })
   @ApiResponse({ status: 404, description: '주문 요청을 찾을 수 없음' })
   @Post(':orderRequestId/accept')
-  // FIXME: 반환 타입(dto) 추가 부탁드려요
   public async approveOrderRequest(
     @Req() req: Request,
     @Param('orderRequestId') orderRequestId: string,
     @Body() dto: ApproveOrderRequestDto,
-  ) {
+  ): Promise<OrderRequestResponseDto> {
     const user = await this.getUserFromCookie(req); // 유저 정보를 가져옵니다.
 
     if (user.role === UserRole.USER) {
@@ -168,12 +178,11 @@ export class OrderRequestsController {
   @ApiResponse({ status: 403, description: '권한 없음' })
   @ApiResponse({ status: 404, description: '주문 요청을 찾을 수 없음' })
   @Post(':orderRequestId/reject')
-  // FIXME: 반환 타입(dto) 추가 부탁드려요
   public async rejectOrderRequest(
     @Req() req: Request,
     @Param('orderRequestId') orderRequestId: string,
     @Body() dto: RejectOrderRequestDto,
-  ) {
+  ): Promise<OrderRequestResponseDto> {
     const user = await this.getUserFromCookie(req); // 유저 정보를 가져옵니다.
 
     if (user.role === UserRole.USER) {

@@ -19,7 +19,7 @@ class OrderRequestItemDto {
     example: '구매 부탁드립니다.',
   })
   @IsString()
-  public notes?: string;
+  public requestMessage?: string;
 }
 
 export class CreateOrderRequestDto {
