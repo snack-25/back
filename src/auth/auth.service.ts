@@ -242,7 +242,6 @@ export class AuthService {
         },
       });
 
-      console.log('user', user);
       if (!user) {
         throw new BadRequestException('이메일 또는 비밀번호가 잘못되었습니다.');
       }
@@ -522,6 +521,7 @@ export class AuthService {
   }): Promise<ReulstDto> {
     // 비밀번호 업데이트 처리 (비밀번호가 전달된 경우)
     const passwordPromise = (async (): Promise<string | null> => {
+      console.log('body', body);
       if (!body.password) return null;
       const hashedPassword = await argon2.hash(body.password);
 
@@ -529,6 +529,8 @@ export class AuthService {
         where: { id: body.userId },
         select: { password: true, company: true },
       });
+
+      console.log('currentData', currentData);
 
       if (!currentData) {
         throw new UnauthorizedException('유저가 없습니다');
@@ -539,6 +541,8 @@ export class AuthService {
       if (isSamePassword) {
         throw new BadRequestException('전과 동일한 비밀번호는 사용할 수 없습니다');
       }
+
+      console.log('currentData.company.name ', currentData.company.name);
 
       if (currentData.company.name === body.company) {
         throw new BadRequestException('전과 동일한 회사명은 사용할 수 없습니다');

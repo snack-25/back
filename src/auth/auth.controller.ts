@@ -122,16 +122,7 @@ export class AuthController {
     // 응답 본문에 토큰 정보 포함 (클라이언트에서 필요할 수 있음)
     res.status(200).json({
       message: '로그인 성공',
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        company: {
-          id: user.company.id,
-          name: user.company.name,
-        },
-      },
+      data: user,
     });
   }
 
@@ -169,7 +160,9 @@ export class AuthController {
       company: body.company,
     });
 
-    res.status(200).json({ msg: '변경 성공', data: result });
+    console.log('res', res);
+
+    res.status(200).json({ message: '비밀번호 변경에 성공하였습니다', data: result });
   }
 
   private setAuthCookies(@Res() res: Response, token: TokenResponseDto): void {
