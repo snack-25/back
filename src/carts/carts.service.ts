@@ -1,7 +1,8 @@
 import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
-import { Cart, CartItem } from './dto/cart.interface';
+import { Cart, CartItem, GetCartItemsResponse } from './dto/cart.interface';
 import { getShippingFeeByUserId } from '@src/shared/helpers/shipping.helper';
+import { getEstimatedRemainingBudgetByUserId } from '@src/shared/helpers/budget.helper';
 
 @Injectable()
 export class CartsService {
@@ -40,14 +41,7 @@ export class CartsService {
     return item;
   }
 
-  public async getCartItems(
-    userId: string,
-    cartId: string,
-  ): Promise<{
-    items: CartItem[];
-    totalAmount: number;
-    shippingFee: number;
-  }> {
+  public async getCartItems(userId: string, cartId: string): Promise<GetCartItemsResponse> {
     const cart = await this.prisma.cart.findUnique({
       where: { id: cartId },
       include: {
@@ -76,10 +70,22 @@ export class CartsService {
       }
     }
 
+    let estimatedRemainingBudget: number | null = null;
+    try {
+      estimatedRemainingBudget = await getEstimatedRemainingBudgetByUserId(
+        this.prisma,
+        userId,
+        totalAmount + shippingFee,
+      );
+    } catch (error) {
+      this.logger.warn('예산 조회 실패 (장바구니 예상 금액)', error);
+    }
+
     return {
       items: cart.cartItems,
       totalAmount,
       shippingFee,
+      estimatedRemainingBudget,
     };
   }
 
