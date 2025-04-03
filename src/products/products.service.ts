@@ -148,7 +148,7 @@ export class ProductsService {
 
   public async createProduct(
     createProductDto: CreateProductDto,
-    file: Express.Multer.File,
+    file: any,
   ): Promise<ProductResponseDto> {
     const isFileExist = !!file; // 업로드한 파일이 있는지 확인
     let isImgUploaded = false; // 이미지가 s3 버킷에 업로드 성공했는지 확인

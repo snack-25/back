@@ -50,7 +50,7 @@ export class ProductsController {
   @ApiResponse({ status: 400, description: '상품 생성 실패' })
   public async create(
     @Body() createProductDto: CreateProductDto,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: any,
   ): Promise<ProductResponseDto> {
     return this.productsService.createProduct(createProductDto, file);
   }
