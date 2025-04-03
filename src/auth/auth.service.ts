@@ -29,6 +29,7 @@ import {
   TokenResponseDto,
   ReulstDto,
 } from './dto/auth.dto';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class AuthService {
@@ -38,6 +39,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
+
+  private readonly logger = new Logger(AuthService.name);
 
   public async getinfo(dto: InvitationCodeDto): Promise<Invitation | null> {
     const { token } = dto;
@@ -190,9 +193,9 @@ export class AuthService {
         select: { id: true },
       });
       return { msg: '성공', id: companyRecord.id };
-    } catch (err: any) {
+    } catch (err) {
       const result = { msg: '', id: '' };
-      if (err.code === 'P2002') {
+      if (err instanceof PrismaClientKnownRequestError && err.code === 'P2002') {
         result.msg = '회사가 있습니다.';
       }
       return result;
@@ -203,8 +206,6 @@ export class AuthService {
   public async login(dto: SignInRequestDto): Promise<SigninResponseDto | null> {
     try {
       const { email, password } = dto;
-      console.log(email, password);
-
       const user = await this.prisma.user.findUnique({
         where: { email },
         select: {
@@ -223,11 +224,11 @@ export class AuthService {
         throw new BadRequestException('이메일 또는 비밀번호가 잘못되었습니다.');
       }
 
-      Logger.log('User found: ', user);
+      this.logger.log('User found: ', user);
 
       const isPasswordValid = await argon2.verify(user.password, password);
 
-      Logger.log('Password verification result: ', isPasswordValid);
+      this.logger.log('Password verification result: ', isPasswordValid);
 
       if (!isPasswordValid) {
         throw new BadRequestException('이메일 또는 비밀번호가 잘못되었습니다.');
@@ -314,13 +315,12 @@ export class AuthService {
   // accessToken 검증
   public async verifyAccessToken(accessToken: string): Promise<JwtPayload> {
     try {
-      console.log('쉐리');
-
+      this.logger.log('액세스 토큰 검증 시도');
       return await this.jwtService.verifyAsync(accessToken, {
         secret: this.configService.getOrThrow<string>('JWT_SECRET'),
       });
     } catch (error) {
-      console.error(error);
+      this.logger.error('액세스 토큰 검증 실패', error);
       throw new UnauthorizedException('액세스 토큰 검증에 실패했습니다.');
     }
   }
@@ -342,7 +342,8 @@ export class AuthService {
         secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
       });
     } catch (error) {
-      throw new UnauthorizedException('리프레시 토큰 검증에 실패했습니다.', error.message);
+      this.logger.error('리프레시 토큰 검증 실패', error);
+      throw new UnauthorizedException('리프레시 토큰 검증에 실패했습니다.');
     }
   }
 
@@ -366,7 +367,7 @@ export class AuthService {
         throw new ConflictException(`회원가입에 실패했습니다.`);
       }
       // 예외 상황에 대한 HTTP 응답 반환
-      return res.status(400).json({ message: '로그아웃 실패', error: error.message });
+      throw new UnauthorizedException('로그아웃 실패');
     }
   }
 
@@ -380,13 +381,17 @@ export class AuthService {
         exp: user['exp'],
       };
     } catch (error) {
-      throw new UnauthorizedException('액세스 토큰 디코딩에 실패했습니다.', error.message);
+      this.logger.error(
+        '액세스 토큰 디코딩 실패',
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw new UnauthorizedException('액세스 토큰 디코딩에 실패했습니다.');
     }
   }
 
   // 쿠키에서 사용자 정보 가져오기
   public async getUserFromCookie(@Req() req: Request): Promise<decodeAccessToken> {
-    const accessToken: string | undefined = req.cookies.accessToken;
+    const accessToken: string | undefined = req.cookies?.accessToken as string | undefined;
     if (!accessToken) {
       throw new BadRequestException('로그인이 필요합니다.');
     }
@@ -469,7 +474,7 @@ export class AuthService {
       ...(companyResult && { company: companyResult }),
     };
 
-    console.log('업데이트 결과:', result);
+    this.logger.log('업데이트 결과:', result);
     return result;
   }
 }
