@@ -1,4 +1,4 @@
-import { OmitType, PickType, ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, OmitType, PickType } from '@nestjs/swagger';
 import { UserDto } from 'src/users/dto/user.dto';
 
 // 회원가입 요청 DTO
@@ -45,7 +45,6 @@ export class SigninResponseDto {
 // 토큰 생성 요청 DTO
 export class TokenRequestDto {
   public sub: string;
-  public joinDate: string;
   public type: 'access' | 'refresh';
 }
 

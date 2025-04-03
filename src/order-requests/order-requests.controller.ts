@@ -13,15 +13,15 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { OrderRequestStatus, UserRole } from '@prisma/client';
+import { AuthGuard } from '@src/auth/auth.guard'; // 인증 가드 추가
 import type { Request } from 'express';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
 import { CreateOrderRequestDto } from './dto/create-order-request.dto';
-import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
 import { GetOrderRequestsDto, OrderSort } from './dto/getOrderRequest.dto';
+import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
 import { OrderRequestsService } from './order-requests.service';
-import { AuthGuard } from '@src/auth/auth.guard'; // 인증 가드 추가
 
 @ApiTags('OrderRequests') // Swagger 그룹 태그 추가
 @UseGuards(AuthGuard) // 인증 가드 적용

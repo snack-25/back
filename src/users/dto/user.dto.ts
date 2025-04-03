@@ -1,7 +1,9 @@
 import { ApiProperty, PickType } from '@nestjs/swagger';
 import { createId } from '@paralleldrive/cuid2';
+import { UserRole } from '@prisma/client';
 import {
   IsEmail,
+  IsEnum,
   IsJWT,
   IsNotEmpty,
   IsString,
@@ -64,6 +66,19 @@ export class UserDto {
   public name: string;
 
   @ApiProperty({
+    nullable: false,
+    description: '유저 권한',
+    example: UserRole.SUPERADMIN,
+    type: UserRole,
+    enum: UserRole,
+    enumName: 'UserRole',
+  })
+  @IsEnum(UserRole)
+  @IsNotEmpty()
+  // 유저 권한(필수)
+  public role: UserRole;
+
+  @ApiProperty({
     nullable: true,
     description: 'JWT 리프레시 토큰',
     example: '생략',
@@ -99,3 +114,5 @@ export class CheckEmailResponseDto {
 export class ProfileResponseDto extends PickType(UserDto, ['id', 'email', 'name']) {}
 
 export class CheckNameDto extends PickType(UserDto, ['name']) {}
+
+export class GetMeResponseDto extends PickType(UserDto, ['id', 'email', 'name', 'role']) {}
