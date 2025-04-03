@@ -34,6 +34,7 @@ export class SigninResponseDto {
 
   @ApiProperty({ description: '사용자 정보', type: Object })
   public user: {
+    id: string;
     email: string;
     name: string;
     company: { name: string; id: string };

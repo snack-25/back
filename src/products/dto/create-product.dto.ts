@@ -55,5 +55,5 @@ export class CreateProductDto {
     format: 'binary',
     required: false,
   })
-  public imageUrl?: any;
+  public imageUrl?: Express.Multer.File | string;
 }

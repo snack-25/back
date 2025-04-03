@@ -112,18 +112,20 @@ export class InvitationsService {
       // 초대 생성 후 이메일 발송 처리되도록 트랜잭션 처리
       const invitation = await this.prisma.$transaction(async tx => {
         // 테이블에 초대 정보 생성(id, email, name, token, role, expiresAt, companyId, inviterId)
-        const createdInvitation = await tx.invitation.create({
+        // 트랜잭션 없이 단순 초대 저장
+        const createdInvitation = await this.prisma.invitation.create({
           data: {
             email: dto.email,
             name: dto.name,
-            token: token,
+            token,
             role: dto.role,
-            expiresAt: expiresAt,
+            expiresAt,
             companyId: dto.companyId,
             inviterId: dto.inviterId,
           },
         });
-        // 초대 id를 기반으로 초대 메일 발송
+
+        // 트랜잭션 외부에서 메일 발송 (추천)
         await this.sendInvitationEmail(createdInvitation.id);
         return createdInvitation;
       });

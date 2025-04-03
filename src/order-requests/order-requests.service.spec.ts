@@ -58,7 +58,7 @@ describe('OrderRequestsService', () => {
       };
 
       // Mocking $transaction
-      (prisma.$transaction as jest.Mock).mockImplementationOnce(async (callback) => {
+      (prisma.$transaction as jest.Mock).mockImplementationOnce(callback => {
         const mockTx = {
           product: {
             findMany: jest.fn().mockResolvedValue([
@@ -70,6 +70,7 @@ describe('OrderRequestsService', () => {
             create: jest.fn().mockResolvedValue(mockOrderRequest),
           },
         };
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         return callback(mockTx);
       });
 
@@ -78,7 +79,9 @@ describe('OrderRequestsService', () => {
 
       // Assert
       expect(result).toEqual(mockOrderRequest);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function));
     });
 
@@ -87,13 +90,11 @@ describe('OrderRequestsService', () => {
       const createOrderRequestDto: CreateOrderRequestDto = {
         requesterId: 'user-uuid-1234',
         companyId: 'company-uuid-5678',
-        items: [
-          { productId: 'product-uuid-unknown', quantity: 2, notes: '메모 1' },
-        ],
+        items: [{ productId: 'product-uuid-unknown', quantity: 2, notes: '메모 1' }],
       };
 
       // Mocking $transaction
-      (prisma.$transaction as jest.Mock).mockImplementationOnce(async (callback) => {
+      (prisma.$transaction as jest.Mock).mockImplementationOnce(callback => {
         const mockTx = {
           product: {
             findMany: jest.fn().mockResolvedValue([]), // No product found
@@ -102,11 +103,18 @@ describe('OrderRequestsService', () => {
             create: jest.fn(),
           },
         };
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         return callback(mockTx);
       });
 
       // Act & Assert
-      await expect(service.createOrderRequest(createOrderRequestDto)).rejects.toThrow(NotFoundException);
+      await expect(service.createOrderRequest(createOrderRequestDto)).rejects.toThrow(
+        NotFoundException,
+      );
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function));
     });
   });
 });
