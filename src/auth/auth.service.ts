@@ -393,6 +393,20 @@ export class AuthService {
     }
   }
 
+  //TODO: Header에서 토큰을 추출하는 로직
+  public extractTokenFromHeader(header: string): string {
+    const splitToken = header.split(' ');
+    const validPrefix = ['bearer', 'basic'];
+
+    if (splitToken.length !== 2 || !validPrefix.includes(splitToken[0].toLowerCase())) {
+      throw new UnauthorizedException('유효하지 않은 토큰 형식입니다.');
+    }
+
+    const token = splitToken[1] ?? '';
+
+    return token;
+  }
+
   // 쿠키에서 사용자 정보 가져오기
   public async getUserFromCookie(@Req() req: Request): Promise<decodeAccessToken> {
     const accessToken: string | undefined = req.cookies?.accessToken as string | undefined;

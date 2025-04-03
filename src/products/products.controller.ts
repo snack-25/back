@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Logger,
   Patch,
   Post,
   Query,
@@ -37,6 +38,12 @@ import { ApiBearerAuth } from '@nestjs/swagger';
 export class ProductsController {
   public constructor(private readonly productsService: ProductsService) {}
 
+  private readonly logger = new Logger(ProductsController.name);
+
+  //TODO: 토큰 기반으로 상품 생성자 추가
+  // 인증이 필요한 경로에 접근 할 떄 accessToken을 헤더에 추가 ex) Authorization: Bearer <token>
+  // 클라이언트에서 요청과 함께 받은 토큰으로 서버에서 검증 -> 사용자 정보 확인 가능
+  // 토큰에 담긴 사용자 정보가 없거나 요청한 사람과 일치하지 않으면 실패 처리(접근 불가)
   @Post()
   @UseInterceptors(
     FileInterceptor('imageUrl', {
@@ -52,6 +59,7 @@ export class ProductsController {
     @Body() createProductDto: CreateProductDto,
     @UploadedFile() file?: Express.Multer.File,
   ): Promise<ProductResponseDto> {
+    this.logger.debug('상품 생성', createProductDto);
     return this.productsService.createProduct(createProductDto, file);
   }
 
@@ -124,6 +132,7 @@ export class ProductsController {
   @ApiResponse({ status: 200, description: '상품 정보', type: ProductResponseDto })
   @ApiResponse({ status: 404, description: '상품을 찾을 수 없습니다.' })
   public async findOne(@Param('id') id: string): Promise<ProductResponseDto> {
+    this.logger.debug('상품 조회', id);
     return this.productsService.findOneProduct(id);
   }
 
@@ -137,6 +146,7 @@ export class ProductsController {
     @Param('id') id: string,
     @Body() updateProductDto: UpdateProductDto,
   ): Promise<ProductResponseDto> {
+    this.logger.debug('상품 수정', updateProductDto);
     return this.productsService.updateProduct(id, updateProductDto);
   }
 
@@ -146,6 +156,7 @@ export class ProductsController {
   @ApiResponse({ status: 200, description: '상품 삭제 성공' })
   @ApiResponse({ status: 404, description: '상품을 찾을 수 없습니다.' })
   public remove(@Param('id') id: string): Promise<string> {
+    this.logger.debug('상품 삭제', id);
     return this.productsService.deleteProduct(id);
   }
 }
