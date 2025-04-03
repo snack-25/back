@@ -402,8 +402,6 @@ export class AuthService {
     password?: string;
     company?: string;
   }): Promise<ReulstDto> {
-    console.log('여기 서비스임', body);
-
     // 비밀번호 업데이트 처리 (비밀번호가 전달된 경우)
     const passwordPromise = (async (): Promise<string | null> => {
       if (!body.password) return null;
