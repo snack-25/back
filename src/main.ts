@@ -39,7 +39,7 @@ async function bootstrap(): Promise<void> {
     optionsSuccessStatus: 204,
   });
   // Cookie Parser 사용
-  app.use(cookieParser());
+  app.use(cookieParser(process.env.DEPLOY_VERIFY_KEY));
   // 4000번 포트에서 서버 실행
   await app.listen(process.env.PORT ?? 4000, process.env.HOST ?? '0.0.0.0');
 }

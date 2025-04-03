@@ -12,22 +12,29 @@ import {
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { OrderRequestStatus, UserRole } from '@prisma/client';
-import type { Request } from 'express';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
-import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
-import { CreateOrderRequestDto } from './dto/create-order-request.dto';
-import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
-import { GetOrderRequestsDto, OrderSort } from './dto/getOrderRequest.dto';
-import { OrderRequestsService } from './order-requests.service';
-import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from '@src/auth/auth.service'; // AuthService 가져오기
 import { PrismaService } from '@src/shared/prisma/prisma.service'; // PrismaService 가져오기
 import { UserResponseDto } from '@src/users/dto/response-user.dto';
+import type { Request } from 'express';
+import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
+import { CreateOrderRequestDto } from './dto/create-order-request.dto';
+import { GetOrderRequestsDto, OrderSort } from './dto/getOrderRequest.dto';
 import {
   OrderRequestDetailResponse,
   OrderRequestResponseDto,
 } from './dto/order-request-detail-response.interface';
+import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
+import { OrderRequestsService } from './order-requests.service';
 
 @ApiBearerAuth()
 @ApiTags('OrderRequests')
@@ -90,19 +97,14 @@ export class OrderRequestsController {
     const { page = 1, pageSize = 10, sort = OrderSort.LATEST } = query;
 
     if (user.role === UserRole.USER) {
-      return this.orderRequestsService.getUserOrderRequests(
-        user.id,
-        page,
-        pageSize.toString(),
-        sort,
-      );
+      return this.orderRequestsService.getUserOrderRequests(user.id, page, pageSize, sort);
     }
 
     if (user.role === UserRole.ADMIN || user.role === UserRole.SUPERADMIN) {
       return this.orderRequestsService.getCompanyOrderRequests(
         user.companyId,
         page,
-        pageSize.toString(),
+        pageSize,
         sort,
       );
     }

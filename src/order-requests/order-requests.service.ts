@@ -1,15 +1,15 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { OrderRequest, OrderRequestStatus, Prisma } from '@prisma/client';
-import { CreateOrderRequestDto } from './dto/create-order-request.dto';
-import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
-import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
-import { PrismaService } from '@src/shared/prisma/prisma.service';
 import { getShippingFeeByUserId } from '@src/shared/helpers/shipping.helper';
+import { PrismaService } from '@src/shared/prisma/prisma.service';
 import { getOrderBy } from '@src/shared/utils/order-requestsSort.util';
+import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
+import { CreateOrderRequestDto } from './dto/create-order-request.dto';
 import {
   OrderRequestDetailResponse,
   OrderRequestResponseDto,
 } from './dto/order-request-detail-response.interface';
+import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
 
 @Injectable()
 export class OrderRequestsService {
@@ -20,20 +20,14 @@ export class OrderRequestsService {
   public async getUserOrderRequests(
     userId: string,
     page: number,
-    pageSize: string,
+    pageSize: number,
     sort: string,
   ): Promise<OrderRequestResponseDto[]> {
-    const parsedPageSize = parseInt(pageSize, 10);
-
-    if (isNaN(parsedPageSize)) {
-      throw new Error('pageSize는 숫자여야 합니다.');
-    }
-
     const orders = await this.prisma.orderRequest.findMany({
       where: { requesterId: userId },
       orderBy: getOrderBy(sort),
-      skip: (page - 1) * parsedPageSize,
-      take: parsedPageSize,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
       select: {
         id: true,
         companyId: true,
@@ -84,20 +78,14 @@ export class OrderRequestsService {
   public async getCompanyOrderRequests(
     companyId: string,
     page: number,
-    pageSize: string,
+    pageSize: number,
     sort: string,
   ): Promise<OrderRequestResponseDto[]> {
-    const parsedPageSize = parseInt(pageSize, 10);
-
-    if (isNaN(parsedPageSize)) {
-      throw new Error('pageSize는 숫자여야 합니다.');
-    }
-
     const orders = await this.prisma.orderRequest.findMany({
       where: { companyId },
       orderBy: getOrderBy(sort),
-      skip: (page - 1) * parsedPageSize,
-      take: parsedPageSize,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
       select: {
         id: true,
         companyId: true,
@@ -153,14 +141,14 @@ export class OrderRequestsService {
         where: { id: { in: dto.items.map(item => item.productId) } },
         select: { id: true, price: true, name: true, imageUrl: true },
       });
-  
+
       if (products.length !== dto.items.length) {
         throw new NotFoundException('존재하지 않는 상품이 포함되어 있습니다.');
       }
-  
+
       // 2. 상품 ID → 가격 및 기타 정보 매핑
       const productMap = new Map(products.map(p => [p.id, p]));
-  
+
       // 3. 주문 요청 아이템 생성
       const orderRequestItems = dto.items.map(item => ({
         productId: item.productId,
@@ -168,13 +156,13 @@ export class OrderRequestsService {
         price: productMap.get(item.productId)?.price || 0,
         notes: item.requestMessage || null, // requestMessage 대신 notes 사용
       }));
-  
+
       // 4. 총액 계산
       const totalAmountWithoutShipping = dto.items.reduce(
         (sum, item) => sum + item.quantity * (productMap.get(item.productId)?.price || 0),
         0,
       );
-  
+
       // 5. 배송비 계산
       const shippingFee = await getShippingFeeByUserId(
         this.prisma,
@@ -182,7 +170,7 @@ export class OrderRequestsService {
         totalAmountWithoutShipping,
       );
       const totalAmount = totalAmountWithoutShipping + shippingFee;
-  
+
       // 6. 주문 요청 생성
       const orderRequest = await tx.orderRequest.create({
         data: {
@@ -209,7 +197,7 @@ export class OrderRequestsService {
           resolver: { select: { name: true } }, // 처리자 이름 조회 (없을 수도 있음)
         },
       });
-  
+
       // 7. DTO 형태로 변환하여 반환
       return {
         id: orderRequest.id,
@@ -235,7 +223,6 @@ export class OrderRequestsService {
       };
     });
   }
-  
 
   // ✅ 주문 요청 상세 조회
   public async getOrderRequestDetail(orderRequestId: string): Promise<OrderRequestDetailResponse> {
