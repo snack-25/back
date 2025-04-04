@@ -202,8 +202,11 @@ const main = async (): Promise<void> => {
             ...(matchingZipcode ? { zipcode: { connect: { id: matchingZipcode.id } } } : {}),
           };
         });
-        // 배치 생성 또는 createMany를 지원하지 않는 경우 효율적인 방식으로 처리
-        await Promise.all(addressesToCreate.map(data => tx.companyAddress.create({ data })));
+
+        // 배치 생성
+        for (const data of addressesToCreate) {
+          await tx.companyAddress.create({ data });
+        }
 
         // 2. Category 데이터 추가
         const parentCategories: Category[] = categories.map(category => ({
