@@ -20,14 +20,20 @@ export class OrderRequestsService {
   public async getUserOrderRequests(
     userId: string,
     page: number,
-    pageSize: number,
+    pageSize: string,
     sort: string,
   ): Promise<OrderRequestResponseDto[]> {
+    const parsedPageSize = parseInt(pageSize, 10);
+
+    if (isNaN(parsedPageSize)) {
+      throw new Error('pageSize는 숫자여야 합니다.');
+    }
+
     const orders = await this.prisma.orderRequest.findMany({
       where: { requesterId: userId },
       orderBy: getOrderBy(sort),
-      skip: (page - 1) * pageSize,
-      take: pageSize,
+      skip: (page - 1) * parsedPageSize,
+      take: parsedPageSize,
       select: {
         id: true,
         companyId: true,
@@ -78,14 +84,20 @@ export class OrderRequestsService {
   public async getCompanyOrderRequests(
     companyId: string,
     page: number,
-    pageSize: number,
+    pageSize: string,
     sort: string,
   ): Promise<OrderRequestResponseDto[]> {
+    const parsedPageSize = parseInt(pageSize, 10);
+
+    if (isNaN(parsedPageSize)) {
+      throw new Error('pageSize는 숫자여야 합니다.');
+    }
+
     const orders = await this.prisma.orderRequest.findMany({
       where: { companyId },
       orderBy: getOrderBy(sort),
-      skip: (page - 1) * pageSize,
-      take: pageSize,
+      skip: (page - 1) * parsedPageSize,
+      take: parsedPageSize,
       select: {
         id: true,
         companyId: true,
@@ -186,6 +198,7 @@ export class OrderRequestsService {
               notes: item.notes, // requestMessage -> notes로 변경
             })),
           },
+          
         },
         include: {
           orderRequestItems: {
