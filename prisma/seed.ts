@@ -104,12 +104,6 @@ const main = async (): Promise<void> => {
 
         Logger.log(`📄 TSV 데이터: ${zipcodes.length}개의 데이터 로드 완료`);
 
-        let zipcodeResultMessage = '';
-        const noExistsMessage = '🎉 우편번호 데이터가 없어 새로 생성했습니다.';
-        const allExistsMessage =
-          '🎉 우편번호 데이터가 모두 있어 테이블에 있는 데이터를 삭제하지 않았습니다.';
-        const someExistsMessage =
-          '🎉 우편번호 데이터가 일부분만 있어 테이블에 있는 데이터를 삭제한 뒤 다시 생성했습니다.';
         // 우편번호 데이터 추가(도서산간지역 배송비 추가 관련)
         const existingZipcode = await tx.zipcode.aggregate({
           _count: { id: true },
@@ -121,66 +115,53 @@ const main = async (): Promise<void> => {
             data: zipcodes,
             skipDuplicates: true,
           });
-          zipcodeResultMessage = noExistsMessage;
+          Logger.log('🎉 우편번호 데이터가 없어 새로 생성했습니다.');
         } else {
-          // 만약 시딩할 데이터가 DB에 모두 있는 경우 deleteMany() 패스
-          if (existingZipcode._count.id === zipcodes.length) {
-            // 데이터 해시 함수
-            const hashData = (
-              data: { postalCode: string; feeType: FeeType; isActive: boolean }[],
-            ): string => {
-              return createHash('sha256')
-                .update(
-                  JSON.stringify(
-                    data.map(d => ({
-                      postalCode: d.postalCode,
-                      feeType: d.feeType,
-                      isActive: d.isActive,
-                    })),
-                  ),
-                )
-                .digest('hex');
-            };
+          // 데이터 해시 함수
+          const hashData = (
+            data: { postalCode: string; feeType: FeeType; isActive: boolean }[],
+          ): string => {
+            return createHash('sha256')
+              .update(
+                JSON.stringify(
+                  data.map(d => ({
+                    postalCode: d.postalCode,
+                    feeType: d.feeType,
+                    isActive: d.isActive,
+                  })),
+                ),
+              )
+              .digest('hex');
+          };
 
-            // DB 데이터와 새 데이터의 해시 비교
-            const existingDataHash = hashData(await tx.zipcode.findMany());
-            const newDataHash = hashData(zipcodes);
-            const hasChanges = existingDataHash !== newDataHash;
+          // DB 데이터와 새 데이터의 해시 비교
+          const existingDataHash = hashData(await tx.zipcode.findMany());
+          const newDataHash = hashData(zipcodes);
+          const hasChanges = existingDataHash !== newDataHash;
 
-            if (hasChanges) {
-              await tx.zipcode.deleteMany();
-              await tx.zipcode.createMany({
-                data: zipcodes,
-                skipDuplicates: true,
-              });
-              zipcodeResultMessage = '🎉 우편번호 데이터가 변경되어 업데이트했습니다.';
-            } else {
-              zipcodeResultMessage = allExistsMessage;
-            }
-          } else {
-            // DB에 데이터가 일부라도 있는 경우(11931개 미만) 기존 데이터 삭제 후 새로운 데이터 추가
-            // 기존 데이터의 ID Map 생성
-            const existingZipcodes = await tx.zipcode.findMany({
-              select: { id: true, postalCode: true, juso: true },
+          if (hasChanges) {
+            // company_addresses 테이블의 zipcodeId를 null로 설정
+            await tx.companyAddress.updateMany({
+              where: {},
+              data: { zipcodeId: null },
             });
-            const existingMap = new Map(
-              existingZipcodes.map(z => [`${z.postalCode}-${z.juso}`, z.id]),
+
+            // zipcode 테이블 데이터 삭제
+            await tx.zipcode.deleteMany();
+
+            // 새로운 데이터 추가
+            await tx.zipcode.createMany({
+              data: zipcodes,
+              skipDuplicates: true,
+            });
+
+            Logger.log('🎉 우편번호 데이터가 변경되어 업데이트했습니다.');
+          } else {
+            Logger.log(
+              '🎉 우편번호 데이터가 모두 있어 테이블에 있는 데이터를 삭제하지 않았습니다.',
             );
-
-            // 새로운 데이터와 기존 데이터 비교 후 변경된 부분만 처리
-            const toCreate = zipcodes.filter(z => !existingMap.has(`${z.postalCode}-${z.juso}`));
-
-            if (toCreate.length > 0) {
-              await tx.zipcode.createMany({
-                data: toCreate,
-                skipDuplicates: true,
-              });
-            }
-            zipcodeResultMessage = someExistsMessage;
           }
         }
-
-        Logger.log(zipcodeResultMessage);
 
         Logger.log(`📄 우편번호 데이터 추가 완료`);
       } catch (error) {
