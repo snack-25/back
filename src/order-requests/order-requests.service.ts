@@ -317,7 +317,7 @@ export class OrderRequestsService {
         data: {
           status: OrderRequestStatus.APPROVED,
           resolverId: dto.resolverId,
-          notes: dto.notes,
+          notes: dto.resolvedMessage,
           resolvedAt: new Date(),
         },
         include: {
@@ -382,7 +382,7 @@ export class OrderRequestsService {
         data: {
           status: OrderRequestStatus.REJECTED,
           resolverId: dto.resolverId,
-          notes: dto.notes || null,
+          notes: dto.resolvedMessage || null,
           resolvedAt: new Date(),
         },
         include: {
