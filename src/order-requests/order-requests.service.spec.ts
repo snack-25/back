@@ -58,7 +58,7 @@ describe('OrderRequestsService', () => {
       };
 
       // Mocking $transaction
-      (prisma.$transaction as jest.Mock).mockImplementationOnce(async (callback) => {
+      (prisma.$transaction as jest.Mock).mockImplementationOnce(async callback => {
         const mockTx = {
           product: {
             findMany: jest.fn().mockResolvedValue([
@@ -87,13 +87,11 @@ describe('OrderRequestsService', () => {
       const createOrderRequestDto: CreateOrderRequestDto = {
         requesterId: 'user-uuid-1234',
         companyId: 'company-uuid-5678',
-        items: [
-          { productId: 'product-uuid-unknown', quantity: 2, notes: '메모 1' },
-        ],
+        items: [{ productId: 'product-uuid-unknown', quantity: 2, notes: '메모 1' }],
       };
 
       // Mocking $transaction
-      (prisma.$transaction as jest.Mock).mockImplementationOnce(async (callback) => {
+      (prisma.$transaction as jest.Mock).mockImplementationOnce(async callback => {
         const mockTx = {
           product: {
             findMany: jest.fn().mockResolvedValue([]), // No product found
@@ -106,7 +104,9 @@ describe('OrderRequestsService', () => {
       });
 
       // Act & Assert
-      await expect(service.createOrderRequest(createOrderRequestDto)).rejects.toThrow(NotFoundException);
+      await expect(service.createOrderRequest(createOrderRequestDto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

@@ -1,0 +1,58 @@
+POST http://localhost:4000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "qkrtnghks123@example.com",
+  "password": "qkrtnghks123!@#A"
+}
+
+###
+
+POST http://localhost:4000/api/orders
+Content-Type: application/json
+Cookie: accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJxNDZkb2htdGdsZGo1aGl5ajNoeHVlNDQiLCJqb2luRGF0ZSI6IjIwMjUtMDQtMDJUMDI6MjI6MTUuNDQxWiIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NDM1NjE5OTQsImV4cCI6MTc0MzU2MjU5NH0.Y39jxSAfd4_iKUxS8OFPutonwRZ8TJx4BwIw_vqL8kQ; refreshToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJxNDZkb2htdGdsZGo1aGl5ajNoeHVlNDQiLCJqb2luRGF0ZSI6IjIwMjUtMDQtMDJUMDI6MjI6MTUuNDQxWiIsInR5cGUiOiJyZWZyZXNoIiwiaWF0IjoxNzQzNTYxOTk0LCJleHAiOjE3NDQxNjY3OTR9.FY18QCYWmX4jWTffElnh7M-vNQ_uT47N_hPSn9dtLbY
+
+{
+  "items": [
+    {
+      "productId": "a3lhkbvzo8868yot73ofqu3s",
+      "quantity": 10
+    }
+  ]
+}
+
+###
+POST http://localhost:4000/api/carts/1/items
+Content-Type: application/json
+Cookie: accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJxNDZkb2htdGdsZGo1aGl5ajNoeHVlNDQiLCJqb2luRGF0ZSI6IjIwMjUtMDQtMDJUMDI6MjI6MTUuNDQxWiIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NDM1NjA3MDksImV4cCI6MTc0MzU2MTMwOX0.Kc0Salnsy-zSMCSe2xDGMPkVnObvo0zoopAsZQm80DU;
+
+
+{
+  "productId": "a3lhkbvzo8868yot73ofqu3s"
+}
+
+###
+GET http://localhost:4000/api/carts/1/items
+Content-Type: application/json
+Cookie: accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJxNDZkb2htdGdsZGo1aGl5ajNoeHVlNDQiLCJqb2luRGF0ZSI6IjIwMjUtMDQtMDJUMDI6MjI6MTUuNDQxWiIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NDM1NjA3MDksImV4cCI6MTc0MzU2MTMwOX0.Kc0Salnsy-zSMCSe2xDGMPkVnObvo0zoopAsZQm80DU;
+
+
+###
+PATCH http://localhost:4000/api/carts/1/items/q2y6at8v7srhekpgqpl743gu
+Content-Type: application/json
+Cookie: accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJxNDZkb2htdGdsZGo1aGl5ajNoeHVlNDQiLCJqb2luRGF0ZSI6IjIwMjUtMDQtMDJUMDI6MjI6MTUuNDQxWiIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NDM1NjA3MDksImV4cCI6MTc0MzU2MTMwOX0.Kc0Salnsy-zSMCSe2xDGMPkVnObvo0zoopAsZQm80DU;
+
+
+{
+  "quantity": 12
+}
+
+###
+DELETE http://localhost:4000/api/carts/1/items
+Content-Type: application/json
+Cookie: accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJxNDZkb2htdGdsZGo1aGl5ajNoeHVlNDQiLCJqb2luRGF0ZSI6IjIwMjUtMDQtMDJUMDI6MjI6MTUuNDQxWiIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NDM1NjA3MDksImV4cCI6MTc0MzU2MTMwOX0.Kc0Salnsy-zSMCSe2xDGMPkVnObvo0zoopAsZQm80DU;
+
+
+{
+  "itemIds": ["a3lhkbvzo8868yot73ofqu3s"]
+}
