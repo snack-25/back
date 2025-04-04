@@ -417,16 +417,35 @@ const main = async (): Promise<void> => {
 
         // 10. Budget 데이터 추가
         if (budgets.length > 0) {
-          const existingBudgets = await tx.budget.findMany({
+          // CUID2 형식 검증 함수
+          const isValidCuid2 = (id: string): boolean => {
+            return /^[a-z0-9]{24}$/.test(id);
+          };
+
+          // 잘못된 ID를 가진 Budget 데이터 찾기
+          const invalidBudgets = await tx.budget.findMany({
             where: {
-              id: { in: budgets.map(b => b.id) },
+              NOT: {
+                id: {
+                  in: budgets.filter(b => isValidCuid2(b.id)).map(b => b.id),
+                },
+              },
             },
             select: { id: true },
           });
 
-          const existingIds = new Set(existingBudgets.map(b => b.id));
-          const newBudgets = budgets.filter(b => !existingIds.has(b.id));
+          // 잘못된 ID를 가진 데이터 삭제
+          if (invalidBudgets.length > 0) {
+            await tx.budget.deleteMany({
+              where: {
+                id: { in: invalidBudgets.map(b => b.id) },
+              },
+            });
+            Logger.log(`💰 잘못된 ID를 가진 Budget 데이터 ${invalidBudgets.length}개 삭제 완료`);
+          }
 
+          // 새로운 Budget 데이터 생성
+          const newBudgets = budgets.filter(b => !isValidCuid2(b.id));
           if (newBudgets.length > 0) {
             await tx.budget.createMany({
               data: newBudgets,
@@ -434,7 +453,7 @@ const main = async (): Promise<void> => {
             });
             Logger.log(`💰 Budget 데이터 ${newBudgets.length}개 추가 완료`);
           } else {
-            Logger.log('💰 Budget 데이터가 이미 존재하여 추가하지 않았습니다.');
+            Logger.log(`💰 모든 Budget 데이터가 유효하므로 추가하지 않았습니다.`);
           }
         } else {
           Logger.warn('⚠️ Budget JSON 데이터가 비어있습니다.');
