@@ -3,16 +3,13 @@ import {
   Controller,
   HttpCode,
   HttpStatus,
+  Logger,
   Param,
   Patch,
   Post,
   Req,
   Res,
-  Param,
-  Logger,
-  Patch,
   UnauthorizedException,
-  Headers,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { type Invitation } from '@prisma/client';
@@ -109,7 +106,7 @@ export class AuthController {
       '모든 테스트용 계정(user1~5,admin1~2,superadmin1)의 비밀번호는 아이디(user1)과 동일합니다',
   })
   public async login(
-    @Headers('authorization') rawToken: string,
+    // @Headers('authorization') rawToken: string,
     @Body() dto: SignInRequestDto,
     // @Req() req: Request,
     @Res() res: Response,
