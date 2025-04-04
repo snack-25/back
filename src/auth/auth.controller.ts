@@ -46,9 +46,8 @@ export class AuthController {
   })
   @HttpCode(HttpStatus.CREATED)
   public async signup(@Body() dto: SignUpRequestDto, @Res() res: Response): Promise<void> {
-    console.log('넘어오니?');
-    console.log('dto', dto);
     const result = await this.authService.signup(dto);
+
     res.status(201).json({ msg: '회원가입에 성공했습니다.', data: result });
   }
 
@@ -107,7 +106,6 @@ export class AuthController {
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    console.log('dto', dto);
     const loginResult = await this.authService.login(dto);
 
     if (!loginResult) {
@@ -160,9 +158,7 @@ export class AuthController {
       company: body.company,
     });
 
-    console.log('res', res);
-
-    res.status(200).json({ message: '비밀번호 변경에 성공하였습니다', data: result });
+    res.status(200).json({ message: '프로필 변경에 성공하였습니다', data: result });
   }
 
   private setAuthCookies(@Res() res: Response, token: TokenResponseDto): void {

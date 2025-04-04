@@ -135,6 +135,8 @@ export class AuthService {
         throw new BadRequestException('초대 코드 상태 업데이트 실패');
       }
 
+      const cartId = await this.cart(userAdd.id);
+
       // 6. 회원가입 성공, 유저 정보 프론트로 반환
       const response = {
         name: invitation.name,
@@ -142,6 +144,7 @@ export class AuthService {
         companyId: invitation.company.id,
         email: invitation.email,
         role: invitation.role,
+        cartId,
       };
 
       return response; // 프론트엔드로 유저 정보 반환
@@ -156,7 +159,6 @@ export class AuthService {
   public async signup(dto: SignUpRequestDto): Promise<SignUpResponseDto> {
     const { email, password, name, company, bizno } = dto;
 
-    console.log('여긴 서비스야', dto);
     // 이름, 이메일, 회사 중복 확인
     await this.usersService.checkName({ name });
     await this.usersService.checkEmail({ email });
@@ -190,7 +192,8 @@ export class AuthService {
         createdAt: true,
       },
     });
-    console.log('superAdmin', superAdmin);
+
+    const cartId = await this.cart(superAdmin.id);
 
     const response: SignUpResponseDto = {
       email: superAdmin.email,
@@ -198,9 +201,8 @@ export class AuthService {
       company: company,
       companyId: companyIdCheck.id,
       role: superAdmin.role,
+      cartId,
     };
-
-    console.log('response', response);
 
     return response;
   }
@@ -217,9 +219,24 @@ export class AuthService {
     } catch (err) {
       const result = { msg: '', id: '' };
       if (err instanceof PrismaClientKnownRequestError && err.code === 'P2002') {
-        result.msg = '회사가 있습니다.';
+        result.msg = '회사가 있습니다';
       }
       return result;
+    }
+  }
+  // 장바구니 생성
+  public async cart(userId: string): Promise<string> {
+    try {
+      const cartCreate = await this.prisma.cart.create({
+        data: {
+          userId,
+        },
+      });
+      const cartId = cartCreate.id;
+      return cartId;
+    } catch (err) {
+      console.error('장바구니 생성 오류:', err);
+      throw new BadRequestException('장바구니 생성에 실패했습니다');
     }
   }
 
@@ -227,23 +244,32 @@ export class AuthService {
   public async login(dto: SignInRequestDto): Promise<SigninResponseDto | null> {
     try {
       const { email, password } = dto;
-      console.log(email);
       const user = await this.prisma.user.findUnique({
         where: { email },
         select: {
           id: true,
           companyId: true,
-          company: true,
+          company: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
           email: true,
           name: true,
           role: true,
           password: true,
-          createdAt: true, // 가입 날짜
+          createdAt: true,
+          cart: {
+            select: {
+              id: true,
+            },
+          },
         },
       });
 
       if (!user) {
-        throw new BadRequestException('이메일 또는 비밀번호가 잘못되었습니다.');
+        throw new BadRequestException('이메일 또는 비밀번호가 잘못되었습니다');
       }
 
       this.logger.log('User found: ', user);
@@ -253,7 +279,11 @@ export class AuthService {
       this.logger.log('Password verification result: ', isPasswordValid);
 
       if (!isPasswordValid) {
-        throw new BadRequestException('이메일 또는 비밀번호가 잘못되었습니다.');
+        throw new BadRequestException('이메일 또는 비밀번호가 잘못되었습니다');
+      }
+
+      if (!user.cart) {
+        throw new BadRequestException('장바구니를 찾을 수 없습니다');
       }
 
       // JWT 토큰 생성 시, payload의 sub 대신 userId 사용
@@ -271,6 +301,7 @@ export class AuthService {
           role: user.role,
           companyName: user.company.name,
           companyId: user.companyId,
+          cartId: user.cart.id,
         },
       };
 
@@ -519,19 +550,28 @@ export class AuthService {
     password?: string;
     company?: string;
   }): Promise<ReulstDto> {
-    // 비밀번호 업데이트 처리 (비밀번호가 전달된 경우)
-    const passwordPromise = (async (): Promise<string | null> => {
-      console.log('body', body);
-      if (!body.password) return null;
+    if (!body.userId) {
+      throw new BadRequestException('잘못된 요청입니다');
+    }
+
+    const userWithCompany = await this.prisma.user.findUnique({
+      where: { id: body.userId },
+      include: { company: true },
+    });
+    if (!userWithCompany) {
+      throw new BadRequestException('해당하는 사용자가 존재하지 않습니다.');
+    }
+    if (!userWithCompany.company) {
+      throw new BadRequestException('연결된 회사가 존재하지 않습니다.');
+    }
+
+    if (body.password) {
       const hashedPassword = await argon2.hash(body.password);
 
       const currentData = await this.prisma.user.findUnique({
         where: { id: body.userId },
         select: { password: true, company: true },
       });
-
-      console.log('currentData', currentData);
-
       if (!currentData) {
         throw new UnauthorizedException('유저가 없습니다');
       }
@@ -542,52 +582,25 @@ export class AuthService {
         throw new BadRequestException('전과 동일한 비밀번호는 사용할 수 없습니다');
       }
 
-      console.log('currentData.company.name ', currentData.company.name);
-
-      if (currentData.company.name === body.company) {
-        throw new BadRequestException('전과 동일한 회사명은 사용할 수 없습니다');
-      }
-
       await this.prisma.user.update({
         where: { id: body.userId },
         data: { password: hashedPassword },
         select: { id: true },
       });
+    }
 
-      return '비밀번호 변경 성공';
-    })();
+    if (userWithCompany.company.name === body.company) {
+      return { message: '성공', company: { name: userWithCompany.company.name } };
+    }
+    const { name } = await this.prisma.company.update({
+      where: { id: userWithCompany.company.id },
+      data: { name: body.company },
+      select: { name: true },
+    });
 
-    // 회사 업데이트 처리 (회사명이 전달된 경우)
-    const companyPromise = (async (): Promise<{ name: string } | null> => {
-      if (!body.company) return null;
-      const userWithCompany = await this.prisma.user.findUnique({
-        where: { id: body.userId },
-        include: { company: true },
-      });
-      if (!userWithCompany) {
-        throw new BadRequestException('해당하는 사용자가 존재하지 않습니다.');
-      }
-      if (!userWithCompany.company) {
-        throw new BadRequestException('연결된 회사가 존재하지 않습니다.');
-      }
-      const updatedCompany = await this.prisma.company.update({
-        where: { id: userWithCompany.company.id },
-        data: { name: body.company },
-        select: { name: true },
-      });
-      return updatedCompany;
-    })();
-
-    // 동시에 두 작업 실행
-    const [passwordResult, companyResult] = await Promise.all([passwordPromise, companyPromise]);
-
-    // 결과 구성 (두 작업 중 하나 또는 둘 다 실행된 경우)
-    const result = {
-      ...(passwordResult && { msg: passwordResult }),
-      ...(companyResult && { company: companyResult }),
+    return {
+      message: '성공',
+      company: { name },
     };
-
-    this.logger.log('업데이트 결과:', result);
-    return result;
   }
 }

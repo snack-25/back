@@ -13,6 +13,7 @@ export class SignUpResponseDto extends PickType(UserDto, ['email', 'name']) {
   public company: string;
   public companyId: string;
   public role: string;
+  public cartId: string;
 }
 
 export class SignUpComponeyRequestDto extends PickType(SignUpRequestDto, ['company', 'bizno']) {}
@@ -41,6 +42,7 @@ export class SigninResponseDto {
     companyName: string;
     role: string;
     companyId: string;
+    cartId: string;
   };
 }
 

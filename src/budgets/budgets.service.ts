@@ -7,6 +7,7 @@ export class BudgetsService {
   public constructor(private readonly prisma: PrismaService) {}
 
   public async getinfo(dto: BudgetsRequestDto): Promise<BudgetsResponseDto | null> {
+    console.log('dto', dto);
     try {
       const info = await this.prisma.budget.findFirst({
         where: {
