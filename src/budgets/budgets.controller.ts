@@ -18,6 +18,7 @@ export class BudgetsController {
   @ApiResponse({ status: 200, description: '예산 조회에 성공했습니다' })
   @Post('/inquiry')
   public async inquiry(@Body() dto: BudgetsRequestDto, @Res() res: Response): Promise<void> {
+    console.log('e32444');
     const inquiry = await this.budgetsService.getinfo(dto);
 
     res.status(200).json({ data: inquiry, message: '예산 조회에 성공했습니다' });
