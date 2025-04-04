@@ -10,6 +10,8 @@ export async function getShippingFeeByUserId(
   userId: string,
   totalAmount: number,
 ): Promise<number> {
+  if (totalAmount === 0) return 0;
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
