@@ -9,5 +9,5 @@ export class ApproveOrderRequestDto {
 
   @ApiProperty({ description: '승인 메시지', example: '요청이 승인되었습니다.' })
   @IsString()
-  public notes: string;
+  public resolvedMessage: string;
 }
