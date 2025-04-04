@@ -198,7 +198,6 @@ export class OrderRequestsService {
               notes: item.notes, // requestMessage -> notes로 변경
             })),
           },
-          
         },
         include: {
           orderRequestItems: {
