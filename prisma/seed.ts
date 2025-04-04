@@ -198,15 +198,16 @@ const main = async (): Promise<void> => {
 
           return {
             ...rest,
-            company: { connect: { id: companyId } },
-            ...(matchingZipcode ? { zipcode: { connect: { id: matchingZipcode.id } } } : {}),
+            companyId, // companyId를 직접 지정
+            ...(matchingZipcode ? { zipcodeId: matchingZipcode.id } : {}),
           };
         });
 
         // 배치 생성
-        for (const data of addressesToCreate) {
-          await tx.companyAddress.create({ data });
-        }
+        await tx.companyAddress.createMany({
+          data: addressesToCreate,
+          skipDuplicates: true,
+        });
 
         // 2. Category 데이터 추가
         const parentCategories: Category[] = categories.map(category => ({
