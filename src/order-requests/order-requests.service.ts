@@ -1,15 +1,15 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { OrderRequest, OrderRequestStatus, Prisma } from '@prisma/client';
-import { CreateOrderRequestDto } from './dto/create-order-request.dto';
-import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
-import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
-import { PrismaService } from '@src/shared/prisma/prisma.service';
 import { getShippingFeeByUserId } from '@src/shared/helpers/shipping.helper';
+import { PrismaService } from '@src/shared/prisma/prisma.service';
 import { getOrderBy } from '@src/shared/utils/order-requestsSort.util';
+import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
+import { CreateOrderRequestDto } from './dto/create-order-request.dto';
 import {
   OrderRequestDetailResponse,
   OrderRequestResponseDto,
 } from './dto/order-request-detail-response.interface';
+import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
 
 @Injectable()
 export class OrderRequestsService {
@@ -20,20 +20,14 @@ export class OrderRequestsService {
   public async getUserOrderRequests(
     userId: string,
     page: number,
-    pageSize: string,
+    pageSize: number,
     sort: string,
   ): Promise<OrderRequestResponseDto[]> {
-    const parsedPageSize = parseInt(pageSize, 10);
-
-    if (isNaN(parsedPageSize)) {
-      throw new Error('pageSize는 숫자여야 합니다.');
-    }
-
     const orders = await this.prisma.orderRequest.findMany({
       where: { requesterId: userId },
       orderBy: getOrderBy(sort),
-      skip: (page - 1) * parsedPageSize,
-      take: parsedPageSize,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
       select: {
         id: true,
         companyId: true,
@@ -53,6 +47,7 @@ export class OrderRequestsService {
         orderRequestItems: {
           select: {
             price: true,
+            quantity: true,
             product: {
               select: {
                 name: true,
@@ -83,20 +78,14 @@ export class OrderRequestsService {
   public async getCompanyOrderRequests(
     companyId: string,
     page: number,
-    pageSize: string,
+    pageSize: number,
     sort: string,
   ): Promise<OrderRequestResponseDto[]> {
-    const parsedPageSize = parseInt(pageSize, 10);
-
-    if (isNaN(parsedPageSize)) {
-      throw new Error('pageSize는 숫자여야 합니다.');
-    }
-
     const orders = await this.prisma.orderRequest.findMany({
       where: { companyId },
       orderBy: getOrderBy(sort),
-      skip: (page - 1) * parsedPageSize,
-      take: parsedPageSize,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
       select: {
         id: true,
         companyId: true,
@@ -116,6 +105,7 @@ export class OrderRequestsService {
         orderRequestItems: {
           select: {
             price: true,
+            quantity: true,
             product: {
               select: {
                 name: true,
@@ -223,6 +213,7 @@ export class OrderRequestsService {
         companyId: orderRequest.companyId,
         orderRequestItems: orderRequest.orderRequestItems.map(item => ({
           price: item.price,
+          quantity: item.quantity,
           product: {
             name: item.product.name,
             imageUrl: item.product.imageUrl,
@@ -339,6 +330,7 @@ export class OrderRequestsService {
         companyId: updatedOrderRequest.companyId,
         orderRequestItems: updatedOrderRequest.orderRequestItems.map(item => ({
           price: item.price,
+          quantity: item.quantity,
           product: {
             name: item.product?.name || '상품 정보 없음',
             imageUrl: item.product?.imageUrl || null,
@@ -403,6 +395,7 @@ export class OrderRequestsService {
         companyId: updatedOrderRequest.companyId,
         orderRequestItems: updatedOrderRequest.orderRequestItems.map(item => ({
           price: item.price,
+          quantity: item.quantity,
           product: {
             name: item.product?.name || '상품 정보 없음',
             imageUrl: item.product?.imageUrl || null,

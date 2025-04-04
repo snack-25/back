@@ -3,6 +3,8 @@ import {
   Controller,
   HttpCode,
   HttpStatus,
+  Param,
+  Patch,
   Post,
   Req,
   Res,
@@ -162,22 +164,26 @@ export class AuthController {
       company: body.company,
     });
 
-    res.status(200).json({ msg: '변경 성공', data: result });
+    console.log('res', res);
+
+    res.status(200).json({ message: '비밀번호 변경에 성공하였습니다', data: result });
   }
 
   private setAuthCookies(@Res() res: Response, token: TokenResponseDto): void {
     res.cookie('accessToken', token.accessToken, {
       httpOnly: true, // XSS 공격 방지
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict', // CORS 문제 방지
+      sameSite: 'lax', // CORS 문제 방지 (strict에서 lax로 변경)
       maxAge: 1000 * 60 * 60 * 24, // 24시간 (24시간 × 60분 × 60초 × 1000밀리초)
+      path: '/', // 모든 경로에서 접근 가능
     });
 
     res.cookie('refreshToken', token.refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'lax', // strict에서 lax로 변경
       maxAge: 60 * 1000 * 60 * 24 * 14, // 2w
+      path: '/', // 모든 경로에서 접근 가능
     });
   }
 

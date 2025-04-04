@@ -21,6 +21,7 @@ export interface OrderRequestDetailResponse {
 
 export interface OrderRequestItemDto {
   price: number;
+  quantity: number;
   product: {
     name: string;
     imageUrl: string | null;

@@ -1,12 +1,13 @@
-import { OrderRequestsService } from './order-requests.service';
-import { OrderRequestsController } from './order-requests.controller';
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+import { ForbiddenException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { OrderRequestStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
-import { UserRole, OrderRequestStatus } from '@prisma/client';
-import { UnauthorizedException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { AuthService } from '../auth/auth.service';
+import { OrderRequestsController } from './order-requests.controller';
+import { OrderRequestsService } from './order-requests.service';
 
 describe('OrderRequestsController', () => {
   let service: OrderRequestsService;
@@ -36,7 +37,7 @@ describe('OrderRequestsController', () => {
             },
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             $transaction: jest.fn((cb: any) =>
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-call
               cb({
                 orderRequest: {
                   findMany: jest.fn(),
