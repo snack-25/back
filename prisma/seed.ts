@@ -104,12 +104,6 @@ const main = async (): Promise<void> => {
 
         Logger.log(`📄 TSV 데이터: ${zipcodes.length}개의 데이터 로드 완료`);
 
-        let zipcodeResultMessage = '';
-        const noExistsMessage = '🎉 우편번호 데이터가 없어 새로 생성했습니다.';
-        const allExistsMessage =
-          '🎉 우편번호 데이터가 모두 있어 테이블에 있는 데이터를 삭제하지 않았습니다.';
-        const someExistsMessage =
-          '🎉 우편번호 데이터가 일부분만 있어 테이블에 있는 데이터를 삭제한 뒤 다시 생성했습니다.';
         // 우편번호 데이터 추가(도서산간지역 배송비 추가 관련)
         const existingZipcode = await tx.zipcode.aggregate({
           _count: { id: true },
@@ -121,66 +115,53 @@ const main = async (): Promise<void> => {
             data: zipcodes,
             skipDuplicates: true,
           });
-          zipcodeResultMessage = noExistsMessage;
+          Logger.log('🎉 우편번호 데이터가 없어 새로 생성했습니다.');
         } else {
-          // 만약 시딩할 데이터가 DB에 모두 있는 경우 deleteMany() 패스
-          if (existingZipcode._count.id === zipcodes.length) {
-            // 데이터 해시 함수
-            const hashData = (
-              data: { postalCode: string; feeType: FeeType; isActive: boolean }[],
-            ): string => {
-              return createHash('sha256')
-                .update(
-                  JSON.stringify(
-                    data.map(d => ({
-                      postalCode: d.postalCode,
-                      feeType: d.feeType,
-                      isActive: d.isActive,
-                    })),
-                  ),
-                )
-                .digest('hex');
-            };
+          // 데이터 해시 함수
+          const hashData = (
+            data: { postalCode: string; feeType: FeeType; isActive: boolean }[],
+          ): string => {
+            return createHash('sha256')
+              .update(
+                JSON.stringify(
+                  data.map(d => ({
+                    postalCode: d.postalCode,
+                    feeType: d.feeType,
+                    isActive: d.isActive,
+                  })),
+                ),
+              )
+              .digest('hex');
+          };
 
-            // DB 데이터와 새 데이터의 해시 비교
-            const existingDataHash = hashData(await tx.zipcode.findMany());
-            const newDataHash = hashData(zipcodes);
-            const hasChanges = existingDataHash !== newDataHash;
+          // DB 데이터와 새 데이터의 해시 비교
+          const existingDataHash = hashData(await tx.zipcode.findMany());
+          const newDataHash = hashData(zipcodes);
+          const hasChanges = existingDataHash !== newDataHash;
 
-            if (hasChanges) {
-              await tx.zipcode.deleteMany();
-              await tx.zipcode.createMany({
-                data: zipcodes,
-                skipDuplicates: true,
-              });
-              zipcodeResultMessage = '🎉 우편번호 데이터가 변경되어 업데이트했습니다.';
-            } else {
-              zipcodeResultMessage = allExistsMessage;
-            }
-          } else {
-            // DB에 데이터가 일부라도 있는 경우(11931개 미만) 기존 데이터 삭제 후 새로운 데이터 추가
-            // 기존 데이터의 ID Map 생성
-            const existingZipcodes = await tx.zipcode.findMany({
-              select: { id: true, postalCode: true, juso: true },
+          if (hasChanges) {
+            // company_addresses 테이블의 zipcodeId를 null로 설정
+            await tx.companyAddress.updateMany({
+              where: {},
+              data: { zipcodeId: null },
             });
-            const existingMap = new Map(
-              existingZipcodes.map(z => [`${z.postalCode}-${z.juso}`, z.id]),
+
+            // zipcode 테이블 데이터 삭제
+            await tx.zipcode.deleteMany();
+
+            // 새로운 데이터 추가
+            await tx.zipcode.createMany({
+              data: zipcodes,
+              skipDuplicates: true,
+            });
+
+            Logger.log('🎉 우편번호 데이터가 변경되어 업데이트했습니다.');
+          } else {
+            Logger.log(
+              '🎉 우편번호 데이터가 모두 있어 테이블에 있는 데이터를 삭제하지 않았습니다.',
             );
-
-            // 새로운 데이터와 기존 데이터 비교 후 변경된 부분만 처리
-            const toCreate = zipcodes.filter(z => !existingMap.has(`${z.postalCode}-${z.juso}`));
-
-            if (toCreate.length > 0) {
-              await tx.zipcode.createMany({
-                data: toCreate,
-                skipDuplicates: true,
-              });
-            }
-            zipcodeResultMessage = someExistsMessage;
           }
         }
-
-        Logger.log(zipcodeResultMessage);
 
         Logger.log(`📄 우편번호 데이터 추가 완료`);
       } catch (error) {
@@ -217,12 +198,16 @@ const main = async (): Promise<void> => {
 
           return {
             ...rest,
-            company: { connect: { id: companyId } },
-            ...(matchingZipcode ? { zipcode: { connect: { id: matchingZipcode.id } } } : {}),
+            companyId, // companyId를 직접 지정
+            ...(matchingZipcode ? { zipcodeId: matchingZipcode.id } : {}),
           };
         });
-        // 배치 생성 또는 createMany를 지원하지 않는 경우 효율적인 방식으로 처리
-        await Promise.all(addressesToCreate.map(data => tx.companyAddress.create({ data })));
+
+        // 배치 생성
+        await tx.companyAddress.createMany({
+          data: addressesToCreate,
+          skipDuplicates: true,
+        });
 
         // 2. Category 데이터 추가
         const parentCategories: Category[] = categories.map(category => ({
@@ -432,16 +417,35 @@ const main = async (): Promise<void> => {
 
         // 10. Budget 데이터 추가
         if (budgets.length > 0) {
-          const existingBudgets = await tx.budget.findMany({
+          // CUID2 형식 검증 함수
+          const isValidCuid2 = (id: string): boolean => {
+            return /^[a-z0-9]{24}$/.test(id);
+          };
+
+          // 잘못된 ID를 가진 Budget 데이터 찾기
+          const invalidBudgets = await tx.budget.findMany({
             where: {
-              id: { in: budgets.map(b => b.id) },
+              NOT: {
+                id: {
+                  in: budgets.filter(b => isValidCuid2(b.id)).map(b => b.id),
+                },
+              },
             },
             select: { id: true },
           });
 
-          const existingIds = new Set(existingBudgets.map(b => b.id));
-          const newBudgets = budgets.filter(b => !existingIds.has(b.id));
+          // 잘못된 ID를 가진 데이터 삭제
+          if (invalidBudgets.length > 0) {
+            await tx.budget.deleteMany({
+              where: {
+                id: { in: invalidBudgets.map(b => b.id) },
+              },
+            });
+            Logger.log(`💰 잘못된 ID를 가진 Budget 데이터 ${invalidBudgets.length}개 삭제 완료`);
+          }
 
+          // 새로운 Budget 데이터 생성
+          const newBudgets = budgets.filter(b => !isValidCuid2(b.id));
           if (newBudgets.length > 0) {
             await tx.budget.createMany({
               data: newBudgets,
@@ -449,7 +453,7 @@ const main = async (): Promise<void> => {
             });
             Logger.log(`💰 Budget 데이터 ${newBudgets.length}개 추가 완료`);
           } else {
-            Logger.log('💰 Budget 데이터가 이미 존재하여 추가하지 않았습니다.');
+            Logger.log(`💰 모든 Budget 데이터가 유효하므로 추가하지 않았습니다.`);
           }
         } else {
           Logger.warn('⚠️ Budget JSON 데이터가 비어있습니다.');

@@ -9,7 +9,12 @@ export class CartsService {
   private readonly logger = new Logger(CartsService.name);
   public constructor(private readonly prisma: PrismaService) {}
 
-  public async addToCart(userId: string, cartId: string, productId: string): Promise<CartItem> {
+  public async addToCart(
+    userId: string,
+    cartId: string,
+    productId: string,
+    quantity: number = 1,
+  ): Promise<CartItem> {
     const cart = await this.prisma.cart.findUnique({ where: { id: cartId } });
 
     if (!cart) {
@@ -34,7 +39,12 @@ export class CartsService {
 
     if (!item) {
       item = await this.prisma.cartItem.create({
-        data: { cartId, productId, quantity: 1 },
+        data: { cartId, productId, quantity },
+      });
+    } else {
+      item = await this.prisma.cartItem.update({
+        where: { id: item.id },
+        data: { quantity: item.quantity + quantity },
       });
     }
 

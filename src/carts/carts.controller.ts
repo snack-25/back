@@ -5,7 +5,7 @@ import { CartsService } from './carts.service';
 import { CreateCartDto } from './dto/create-cart.dto';
 import { DeleteCartItemsDto, UpdateCartItemDto } from './dto/update-cart.dto';
 import { Request } from 'express';
-import { AuthService } from '@src/auth/auth.service'; // ✅ 추가
+import { AuthService } from '@src/auth/auth.service';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { GetCartItemsResponse } from './dto/cart.interface';
 
@@ -33,21 +33,27 @@ export class CartsController {
     return await this.cartsService.getCartItems(userId, cartId);
   }
 
+  @Post(':cartId/items')
   @ApiOperation({
     summary: '장바구니 상품 추가',
     description: '특정 장바구니에 상품을 추가합니다.',
   })
   @ApiParam({ name: 'cartId', required: true, description: '상품을 추가할 장바구니 ID' })
-  @ApiBody({ type: CreateCartDto, description: '추가할 상품의 ID' })
+  @ApiBody({ type: CreateCartDto, description: '추가할 상품의 ID와 수량 (기본값 1)' })
   @ApiResponse({ status: 201, description: '상품 추가 성공' })
-  @Post(':cartId/items')
   public async addToCart(
     @Param('cartId') cartId: string,
     @Body() createDto: CreateCartDto,
     @Req() req: Request,
   ): Promise<CartItem> {
     const { sub: userId } = await this.authService.getUserFromCookie(req);
-    return await this.cartsService.addToCart(userId, cartId, createDto.productId);
+
+    return await this.cartsService.addToCart(
+      userId,
+      cartId,
+      createDto.productId,
+      createDto.quantity ?? 1,
+    );
   }
 
   @ApiOperation({

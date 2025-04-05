@@ -14,5 +14,5 @@ export class RejectOrderRequestDto {
   })
   @IsString()
   @IsOptional()
-  public notes: string;
+  public resolvedMessage: string;
 }

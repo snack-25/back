@@ -100,7 +100,7 @@ describe('OrderRequestsController', () => {
       } as unknown as Request;
       await expect(
         controller.approveOrderRequest(req, 'order1', {
-          notes: 'Approved',
+          resolvedMessage: 'Approved',
           resolverId: 'admin123',
         }),
       ).rejects.toThrow(ForbiddenException);
@@ -113,7 +113,7 @@ describe('OrderRequestsController', () => {
       } as unknown as Request;
       await expect(
         controller.approveOrderRequest(req, 'order1', {
-          notes: 'Approved',
+          resolvedMessage: 'Approved',
           resolverId: 'admin123',
         }),
       ).rejects.toThrow(NotFoundException);

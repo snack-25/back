@@ -41,7 +41,7 @@
     "prisma:generate:prod": "dotenv -e .env.production -- npx prisma generate",
     "prisma:deploy:prod": "dotenv -e .env.production -- npx prisma migrate deploy",
     "prisma:reset:prod": "dotenv -e .env.production -- npx prisma migrate reset",
-    "prisma:seed:prod": "dotenv -e .env.production -- ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts",
+    "prisma:seed:prod": "dotenv -e .env.production -- npx ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts",
     "db:seed": "ts-node prisma/seed.ts"
   },
   "lint-staged": {
@@ -55,6 +55,7 @@
     "@aws-sdk/lib-storage": "^3.775.0",
     "@aws-sdk/s3-request-presigner": "3.775.0",
     "@aws-sdk/types": "3.775.0",
+    "@nestjs/cli": "^11.0.5",
     "@nestjs/common": "^11.0.12",
     "@nestjs/config": "^4.0.1",
     "@nestjs/core": "^11.0.12",
@@ -82,7 +83,8 @@
     "prisma": "6.5.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "@nestjs/cli": "^11.0.5"
+    "ts-node": "10.9.2",
+    "typescript": "5.8.2"
   },
   "devDependencies": {
     "@commitlint/cli": "19.8.0",
@@ -114,9 +116,7 @@
     "supertest": "^7.1.0",
     "ts-jest": "^29.3.0",
     "ts-loader": "^9.5.2",
-    "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "5.8.2",
     "typescript-eslint": "^8.28.0"
   },
   "jest": {

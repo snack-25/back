@@ -412,8 +412,8 @@ jobs:
             exit 1
           fi
 
-          mv .env.tmp .env
-          chmod 600 .env
+          mv .env.tmp .env.production
+          chmod 600 .env.production
 
           # PM2 프로세스 정리
           if ! "$PM2" stop all 2>/dev/null; then
