@@ -48,7 +48,7 @@ export class AuthController {
   public async signup(@Body() dto: SignUpRequestDto, @Res() res: Response): Promise<void> {
     const result = await this.authService.signup(dto);
 
-    res.status(201).json({ msg: '회원가입에 성공했습니다.', data: result });
+    res.status(201).json({ message: '회원가입에 성공했습니다.', data: result });
   }
 
   @Post('signup/invitationcode')
@@ -119,7 +119,7 @@ export class AuthController {
 
     // 응답 본문에 토큰 정보 포함 (클라이언트에서 필요할 수 있음)
     res.status(200).json({
-      message: '로그인 성공',
+      message: '로그인에 성공하였습니다',
       data: user,
     });
   }
