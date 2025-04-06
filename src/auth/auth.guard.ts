@@ -27,8 +27,13 @@ export class AuthGuard implements CanActivate {
     const accessToken: string | undefined = cookies?.accessToken;
     const refreshToken: string | undefined = cookies?.refreshToken;
 
-    if (!accessToken || !refreshToken) {
+    if (!accessToken && !refreshToken) {
+      console.log(accessToken, refreshToken);
       throw new UnauthorizedException('로그인이 필요합니다.(토큰 없음)');
+    }
+
+    if (refreshToken) {
+      return true;
     }
     try {
       await this.authService.verifyAccessToken(accessToken);

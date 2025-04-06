@@ -22,7 +22,6 @@ import {
   InvitationCodeDto,
   InvitationSignupDto,
   JwtPayload,
-  ReulstDto,
   SignInRequestDto,
   SigninResponseDto,
   SignUpComponeyRequestDto,
@@ -466,13 +465,13 @@ export class AuthService {
     try {
       // DB에서 저장된 refreshToken을 검증하여 리프레시토큰이 없거나
       // 저장된 리프레시토큰이 비어있으면 예외 발생
-      const storedRefreshToken = await this.prisma.user.findFirst({
-        where: { refreshToken: refreshToken },
-      });
-
-      if (!refreshToken || !storedRefreshToken) {
-        throw new UnauthorizedException('유효하지 않은 리프레시 토큰입니다.');
-      }
+      console.log(refreshToken);
+      // const storedRefreshToken = await this.prisma.user.findFirst({
+      //   where: { refreshToken: refreshToken },
+      // });
+      // if (!refreshToken || !storedRefreshToken) {
+      //   throw new UnauthorizedException('유효하지 않은 리프레시 토큰입니다.');
+      // }
 
       return await this.jwtService.verifyAsync(refreshToken, {
         secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
@@ -542,65 +541,5 @@ export class AuthService {
       throw new UnauthorizedException('토큰이 만료되었습니다.');
     }
     return decoded;
-  }
-
-  // 비밀번호 및 회사명 업데이트
-  public async updateData(body: {
-    userId: string;
-    password?: string;
-    company?: string;
-  }): Promise<ReulstDto> {
-    if (!body.userId) {
-      throw new BadRequestException('잘못된 요청입니다');
-    }
-
-    const userWithCompany = await this.prisma.user.findUnique({
-      where: { id: body.userId },
-      include: { company: true },
-    });
-    if (!userWithCompany) {
-      throw new BadRequestException('해당하는 사용자가 존재하지 않습니다.');
-    }
-    if (!userWithCompany.company) {
-      throw new BadRequestException('연결된 회사가 존재하지 않습니다.');
-    }
-
-    if (body.password) {
-      const hashedPassword = await argon2.hash(body.password);
-
-      const currentData = await this.prisma.user.findUnique({
-        where: { id: body.userId },
-        select: { password: true, company: true },
-      });
-      if (!currentData) {
-        throw new UnauthorizedException('유저가 없습니다');
-      }
-
-      const isSamePassword = await argon2.verify(currentData.password, body.password);
-
-      if (isSamePassword) {
-        throw new BadRequestException('전과 동일한 비밀번호는 사용할 수 없습니다');
-      }
-
-      await this.prisma.user.update({
-        where: { id: body.userId },
-        data: { password: hashedPassword },
-        select: { id: true },
-      });
-    }
-
-    if (userWithCompany.company.name === body.company) {
-      return { message: '성공', company: { name: userWithCompany.company.name } };
-    }
-    const { name } = await this.prisma.company.update({
-      where: { id: userWithCompany.company.id },
-      data: { name: body.company },
-      select: { name: true },
-    });
-
-    return {
-      message: '성공',
-      company: { name },
-    };
   }
 }
