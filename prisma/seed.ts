@@ -252,16 +252,36 @@ const main = async (): Promise<void> => {
          */
 
         // 6. 장바구니 추가
-        await tx.cart.upsert({
-          where: { id: 'bhcxqfshp43wkskocodegc7x' },
-          update: {},
-          create: {
-            id: 'bhcxqfshp43wkskocodegc7x',
-            userId: getRequiredId(users[4], ERROR_MESSAGES.USER_ID_NOT_FOUND),
+        const cartIds = [
+          'v9fjcqn7b0o9hton15hwc4vr',
+          'wbkk8g76iplisoo0fpwuzt36',
+          'k24h83yvbqcg5eel1id0sclg',
+          'c9xccb9ckm13h99rebxojvzf',
+          'a0j6kkgxyxxu0ro7tad7ofxe',
+          'jfrrtr7ocra38vwc1l7y04sr',
+        ];
+        // 각 user 당 장바구니 하나씩 추가(없는 경우 추가, 변경된 경우 업데이트, 동일한 경우 skip)
+        await tx.cart.deleteMany();
+        await tx.cart.createMany({
+          data: users.map((user, index) => ({
+            id: cartIds[index],
+            userId: user.id,
             createdAt: new Date(),
             updatedAt: new Date(),
-          },
+          })),
+          skipDuplicates: true,
         });
+
+        // await tx.cart.upsert({
+        //   where: { id: 'bhcxqfshp43wkskocodegc7x' },
+        //   update: {},
+        //   create: {
+        //     id: 'bhcxqfshp43wkskocodegc7x',
+        //     userId: getRequiredId(users[4], ERROR_MESSAGES.USER_ID_NOT_FOUND),
+        //     createdAt: new Date(),
+        //     updatedAt: new Date(),
+        //   },
+        // });
 
         // 7. 주문 요청 추가
         const orderRequestIds = [
