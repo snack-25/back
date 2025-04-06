@@ -29,4 +29,18 @@ export interface GetCartItemsResponse {
   totalAmount: number;
   shippingFee: number;
   estimatedRemainingBudget: number | null;
+  originalBudget: number;
+}
+
+export interface SelectedCartSummary {
+  totalAmount: number;
+  shippingFee: number;
+  estimatedRemainingBudget: number;
+}
+
+export interface GetCartSummaryResponse {
+  totalAmount: number;
+  shippingFee: number;
+  estimatedRemainingBudget: number;
+  originalBudget: number;
 }

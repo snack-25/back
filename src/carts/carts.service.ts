@@ -1,6 +1,6 @@
 import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
-import { Cart, CartItem, GetCartItemsResponse } from './dto/cart.interface';
+import { Cart, CartItem, GetCartItemsResponse, GetCartSummaryResponse } from './dto/cart.interface';
 import { getShippingFeeByUserId } from '@src/shared/helpers/shipping.helper';
 import { getEstimatedRemainingBudgetByUserId } from '@src/shared/helpers/budget.helper';
 
@@ -65,37 +65,87 @@ export class CartsService {
       throw new ForbiddenException('잘못된 장바구니 접근입니다.');
     }
 
-    const totalAmount = cart.cartItems.reduce((acc, item) => {
-      return acc + item.quantity * item.product.price;
-    }, 0);
+    const totalAmount = cart.cartItems.reduce(
+      (acc, item) => acc + item.quantity * item.product.price,
+      0,
+    );
 
     let shippingFee = 0;
     try {
       shippingFee = await getShippingFeeByUserId(this.prisma, userId, totalAmount);
     } catch (error) {
-      if (error instanceof Error) {
-        this.logger.error(`배송비 계산 중 오류 발생: ${error.message}`, error.stack);
-      } else {
-        this.logger.error('배송비 계산 중 알 수 없는 오류 발생', error);
-      }
+      this.logger.error('배송비 계산 실패', error);
     }
 
-    let estimatedRemainingBudget: number | null = null;
+    let originalBudget = 0;
     try {
-      estimatedRemainingBudget = await getEstimatedRemainingBudgetByUserId(
-        this.prisma,
-        userId,
-        totalAmount + shippingFee,
-      );
+      const budgetInfo = await getEstimatedRemainingBudgetByUserId(this.prisma, userId, 0);
+      originalBudget = budgetInfo.originalBudget;
     } catch (error) {
-      this.logger.warn('예산 조회 실패 (장바구니 예상 금액)', error);
+      this.logger.warn('예산 조회 실패', error);
     }
 
     return {
       items: cart.cartItems,
       totalAmount,
       shippingFee,
+      estimatedRemainingBudget: null,
+      originalBudget,
+    };
+  }
+
+  public async getSummaryBySelectedItems(
+    userId: string,
+    cartId: string,
+    items: { productId: string; quantity: number }[],
+  ): Promise<GetCartSummaryResponse> {
+    const cart = await this.prisma.cart.findUnique({
+      where: { id: cartId },
+    });
+
+    if (!cart || cart.userId !== userId) {
+      throw new ForbiddenException('잘못된 장바구니 접근입니다.');
+    }
+
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: items.map(i => i.productId) } },
+    });
+
+    const productMap = new Map(products.map(p => [p.id, p]));
+
+    const totalAmount = items.reduce((acc, item) => {
+      const product = productMap.get(item.productId);
+      if (!product) return acc;
+      return acc + product.price * item.quantity;
+    }, 0);
+
+    let shippingFee = 0;
+    try {
+      shippingFee = await getShippingFeeByUserId(this.prisma, userId, totalAmount);
+    } catch (error) {
+      this.logger.error('선택된 항목 배송비 계산 실패', error);
+    }
+
+    let originalBudget = 0;
+    let estimatedRemainingBudget = 0;
+
+    try {
+      const budgetInfo = await getEstimatedRemainingBudgetByUserId(
+        this.prisma,
+        userId,
+        totalAmount + shippingFee,
+      );
+      originalBudget = budgetInfo.originalBudget;
+      estimatedRemainingBudget = budgetInfo.estimatedRemainingBudget;
+    } catch (error) {
+      this.logger.warn('예산 조회 실패 (선택된 상품)', error);
+    }
+
+    return {
+      totalAmount,
+      shippingFee,
       estimatedRemainingBudget,
+      originalBudget,
     };
   }
 

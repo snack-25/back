@@ -96,4 +96,25 @@ export class CartsController {
     const { sub: userId } = await this.authService.getUserFromCookie(req);
     return await this.cartsService.deleteCartItems(userId, cartId, deleteDto.itemIds);
   }
+
+  @Post(':cartId/summary')
+  @ApiOperation({ summary: '선택된 장바구니 상품 요약', description: '선택된 상품 기준 금액 계산' })
+  @ApiBody({
+    schema: {
+      example: {
+        items: [
+          { productId: 'product1', quantity: 2 },
+          { productId: 'product2', quantity: 1 },
+        ],
+      },
+    },
+  })
+  public async getCartSummaryBySelectedItems(
+    @Param('cartId') cartId: string,
+    @Body() body: { items: { productId: string; quantity: number }[] },
+    @Req() req: Request,
+  ) {
+    const { sub: userId } = await this.authService.getUserFromCookie(req);
+    return await this.cartsService.getSummaryBySelectedItems(userId, cartId, body.items);
+  }
 }

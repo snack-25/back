@@ -97,7 +97,12 @@ export class OrderRequestsController {
     const { page = 1, pageSize = 10, sort = OrderSort.LATEST } = query;
 
     if (user.role === UserRole.USER) {
-      return this.orderRequestsService.getUserOrderRequests(user.id, page, pageSize.toString(), sort);
+      return this.orderRequestsService.getUserOrderRequests(
+        user.id,
+        page,
+        pageSize.toString(),
+        sort,
+      );
     }
 
     if (user.role === UserRole.ADMIN || user.role === UserRole.SUPERADMIN) {
