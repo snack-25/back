@@ -4,7 +4,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  Patch,
   Post,
   Req,
   Res,
@@ -140,27 +139,6 @@ export class AuthController {
     await this.authService.logout(invalidateToken, res);
   }
 
-  @Patch('update/info')
-  public async updateData(
-    @Body() body: { password: string; company?: string },
-    @Req() req: Request,
-    @Res() res: Response,
-  ): Promise<void> {
-    const { sub: userId } = await this.authService.getUserFromCookie(req);
-
-    if (!userId) {
-      throw new UnauthorizedException('유효하지 않은 사용자');
-    }
-
-    const result = await this.authService.updateData({
-      userId,
-      password: body.password,
-      company: body.company,
-    });
-
-    res.status(200).json({ message: '프로필 변경에 성공하였습니다', data: result });
-  }
-
   private setAuthCookies(@Res() res: Response, token: TokenResponseDto): void {
     res.cookie('accessToken', token.accessToken, {
       httpOnly: true, // XSS 공격 방지
@@ -177,6 +155,21 @@ export class AuthController {
       maxAge: 60 * 1000 * 60 * 24 * 14, // 2w
       path: '/', // 모든 경로에서 접근 가능
     });
+  }
+
+  // refresh token을 이용한 access token 재발급
+  @Post('refresh')
+  private async refreshToken(@Req() req: Request, @Res() res: Response): Promise<void> {
+    const refreshToken = req.cookies['refreshToken'] as string;
+    if (!refreshToken) {
+      throw new UnauthorizedException('리프레시 토큰이 필요합니다.');
+    }
+    // refreshToken 검증 (DB 내 저장된 토큰과 비교)
+    const payload = await this.authService.verifyRefreshToken(refreshToken);
+    // refreshToken 검증 성공 시, 새로운 토큰 생성
+    const newTokens = await this.authService.generateToken(payload.sub);
+
+    res.status(200).json({ token: newTokens.accessToken });
   }
 
   // 아래와 같이 사용하려는 API Endpoint위에 @UseGuards(AuthGuard) 데코레이터를 추가하면
