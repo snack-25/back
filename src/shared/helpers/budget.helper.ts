@@ -72,7 +72,7 @@ export async function getEstimatedRemainingBudgetByUserId(
   prisma: PrismaService,
   userId: string,
   expectedTotalAmount: number,
-): Promise<number> {
+): Promise<{ originalBudget: number; estimatedRemainingBudget: number }> {
   const now = dayjs();
   const year = now.year();
   const month = now.month() + 1;
@@ -100,5 +100,8 @@ export async function getEstimatedRemainingBudgetByUserId(
     throw new NotFoundException('해당 월의 예산 정보를 찾을 수 없습니다.');
   }
 
-  return budget.currentAmount - expectedTotalAmount;
+  return {
+    originalBudget: budget.currentAmount,
+    estimatedRemainingBudget: budget.currentAmount - expectedTotalAmount,
+  };
 }

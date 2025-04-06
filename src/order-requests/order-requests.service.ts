@@ -342,7 +342,7 @@ export class OrderRequestsService {
         companyId: updatedOrderRequest.companyId,
         orderRequestItems: updatedOrderRequest.orderRequestItems.map(item => ({
           price: item.price,
-          quantity: item.quantity, 
+          quantity: item.quantity,
           product: {
             name: item.product?.name || '상품 정보 없음',
             imageUrl: item.product?.imageUrl || null,
