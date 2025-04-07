@@ -54,6 +54,7 @@ export class OrderRequestsService {
           select: {
             price: true,
             quantity: true,
+            notes: true, // 메모 추가
             product: {
               select: {
                 name: true,
@@ -77,7 +78,12 @@ export class OrderRequestsService {
       resolvedAt: order.resolvedAt,
       resolverMessage: order.notes,
       companyId: order.companyId,
-      orderRequestItems: order.orderRequestItems,
+      orderRequestItems: order.orderRequestItems.map(item => ({
+        price: item.price,
+        quantity: item.quantity,
+        requestMessage: item.notes, // ✅ 추가
+        product: item.product,
+      })),
     }));
   }
 
@@ -118,6 +124,7 @@ export class OrderRequestsService {
           select: {
             price: true,
             quantity: true,
+            notes: true, // 메모 추가
             product: {
               select: {
                 name: true,
@@ -141,7 +148,12 @@ export class OrderRequestsService {
       resolvedAt: order.resolvedAt,
       resolverMessage: order.notes,
       companyId: order.companyId,
-      orderRequestItems: order.orderRequestItems,
+      orderRequestItems: order.orderRequestItems.map(item => ({
+        price: item.price,
+        quantity: item.quantity,
+        requestMessage: item.notes || null, // ✅ 추가
+        product: item.product,
+      })),
     }));
   }
 
@@ -226,10 +238,10 @@ export class OrderRequestsService {
         orderRequestItems: orderRequest.orderRequestItems.map(item => ({
           price: item.price,
           quantity: item.quantity,
+          requestMessage: item.notes || null, // ✅ notes → requestMessage
           product: {
             name: item.product.name,
             imageUrl: item.product.imageUrl,
-            requestMessage: item.notes || null, // 주문 요청 시 입력한 메모
           },
         })),
       };
@@ -298,19 +310,19 @@ export class OrderRequestsService {
         where: { id: orderRequestId },
         select: { status: true },
       });
-
+  
       if (!orderRequest) {
         throw new BadRequestException('주문 요청을 찾을 수 없습니다.');
       }
-
-      // 2️⃣ 이미 승인되었거나 거절된 경우 예외 처리
+  
+      // 2️⃣ 이미 처리된 경우 예외
       if (
         orderRequest.status === OrderRequestStatus.APPROVED ||
         orderRequest.status === OrderRequestStatus.REJECTED
       ) {
         throw new BadRequestException('이미 처리된 주문 요청은 승인할 수 없습니다.');
       }
-
+  
       // 3️⃣ 주문 요청 승인 처리
       const updatedOrderRequest = await tx.orderRequest.update({
         where: { id: orderRequestId },
@@ -321,7 +333,8 @@ export class OrderRequestsService {
           resolvedAt: new Date(),
         },
         include: {
-          resolver: { select: { name: true } }, // 처리자 이름 조회
+          requester: { select: { name: true } },
+          resolver: { select: { name: true } },
           orderRequestItems: {
             include: {
               product: { select: { name: true, price: true, imageUrl: true } },
@@ -329,7 +342,8 @@ export class OrderRequestsService {
           },
         },
       });
-
+  
+      // 5️⃣ DTO로 응답 변환
       return {
         id: updatedOrderRequest.id,
         status: updatedOrderRequest.status,
@@ -343,6 +357,7 @@ export class OrderRequestsService {
         orderRequestItems: updatedOrderRequest.orderRequestItems.map(item => ({
           price: item.price,
           quantity: item.quantity,
+          requestMessage: item.notes || null, // ✅ notes → requestMessage
           product: {
             name: item.product?.name || '상품 정보 없음',
             imageUrl: item.product?.imageUrl || null,
@@ -351,6 +366,7 @@ export class OrderRequestsService {
       };
     });
   }
+  
 
   // ✅ 주문 요청 거절
   public async rejectOrderRequest(
@@ -363,19 +379,19 @@ export class OrderRequestsService {
         where: { id: orderRequestId },
         select: { status: true },
       });
-
+  
       if (!orderRequest) {
         throw new BadRequestException('주문 요청을 찾을 수 없습니다.');
       }
-
-      // 2️⃣ 이미 승인되었거나 거절된 경우 예외 처리
+  
+      // 2️⃣ 이미 처리된 경우 예외
       if (
         orderRequest.status === OrderRequestStatus.APPROVED ||
         orderRequest.status === OrderRequestStatus.REJECTED
       ) {
         throw new BadRequestException('이미 처리된 주문 요청은 거절할 수 없습니다.');
       }
-
+  
       // 3️⃣ 주문 요청 거절 처리
       const updatedOrderRequest = await tx.orderRequest.update({
         where: { id: orderRequestId },
@@ -386,7 +402,7 @@ export class OrderRequestsService {
           resolvedAt: new Date(),
         },
         include: {
-          resolver: { select: { name: true } }, // 처리자 이름 조회
+          resolver: { select: { name: true } },
           orderRequestItems: {
             include: {
               product: { select: { name: true, price: true, imageUrl: true } },
@@ -394,7 +410,8 @@ export class OrderRequestsService {
           },
         },
       });
-
+  
+      // 4️⃣ DTO에 맞게 응답 가공
       return {
         id: updatedOrderRequest.id,
         status: updatedOrderRequest.status,
@@ -408,6 +425,7 @@ export class OrderRequestsService {
         orderRequestItems: updatedOrderRequest.orderRequestItems.map(item => ({
           price: item.price,
           quantity: item.quantity,
+          requestMessage: item.notes || null,
           product: {
             name: item.product?.name || '상품 정보 없음',
             imageUrl: item.product?.imageUrl || null,
@@ -416,6 +434,7 @@ export class OrderRequestsService {
       };
     });
   }
+  
 
   // ✅ 주문 요청 ID로 상세 조회
   public async getOrderRequestById(orderRequestId: string): Promise<OrderRequest | null> {
