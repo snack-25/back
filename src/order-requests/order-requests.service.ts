@@ -318,7 +318,17 @@ export class OrderRequestsService {
       const orderRequest = await tx.orderRequest.findUnique({
         where: { id: orderRequestId },
         include: {
-          orderRequestItems: true,
+          orderRequestItems: {
+            include: {
+              product: {
+                select: {
+                  name: true,
+                  price: true,
+                  imageUrl: true,
+                },
+              },
+            },
+          },
         },
       });
   
@@ -334,7 +344,17 @@ export class OrderRequestsService {
       }
   
       // 💰 예산 차감
-      await deductCompanyBudgetByUserId(this.prisma, orderRequest.requesterId, orderRequest.totalAmount);
+      await deductCompanyBudgetByUserId(
+        this.prisma,
+        orderRequest.requesterId,
+        orderRequest.totalAmount,
+      );
+  
+      // 💬 요청자가 남긴 메시지들만 조합 (상품명 없이)
+      const userNotes = orderRequest.orderRequestItems
+        .filter(item => item.notes?.trim())
+        .map(item => item.notes?.trim())
+        .join('\n');
   
       // 2️⃣ Order 생성
       const createdOrder = await tx.order.create({
@@ -345,7 +365,7 @@ export class OrderRequestsService {
           requestedById: orderRequest.requesterId,
           totalAmount: orderRequest.totalAmount,
           adminNotes: dto.resolvedMessage || null,
-          notes: orderRequest.notes || null, // ✅ 요청자의 메시지를 그대로 Order.notes에 저장
+          notes: userNotes || null, // ✅ 요청 메시지만 저장
           orderItems: {
             create: orderRequest.orderRequestItems.map(item => ({
               productId: item.productId,
@@ -376,6 +396,7 @@ export class OrderRequestsService {
         },
       });
   
+      // 4️⃣ 응답 DTO로 반환
       return {
         id: updatedOrderRequest.id,
         status: updatedOrderRequest.status,
@@ -397,10 +418,8 @@ export class OrderRequestsService {
         })),
       };
     });
-  }
+  }  
   
-  
-
   // ✅ 주문 요청 거절
   public async rejectOrderRequest(
     orderRequestId: string,
