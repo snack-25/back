@@ -344,6 +344,7 @@ export class OrderRequestsService {
           requestedById: orderRequest.requesterId,
           totalAmount: orderRequest.totalAmount,
           adminNotes: dto.resolvedMessage || null,
+          notes: orderRequest.notes || null, // ✅ 요청자의 메시지를 그대로 Order.notes에 저장
           orderItems: {
             create: orderRequest.orderRequestItems.map(item => ({
               productId: item.productId,
