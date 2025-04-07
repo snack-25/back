@@ -56,7 +56,11 @@ export class OrdersService {
   }
 
   //관리자, 최고관리자 주문하기
-  public async createOrder(userId: string, orderData: OrderRequestDto): Promise<Order> {
+  public async createOrder(
+    userId: string,
+    role: string,
+    orderData: OrderRequestDto,
+  ): Promise<Order> {
     return await this.prisma.$transaction(async prisma => {
       const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -67,7 +71,7 @@ export class OrdersService {
         throw new Error('유효하지 않은 사용자 또는 소속된 회사 없음.');
       }
 
-      if (user.role !== 'ADMIN' && user.role !== 'SUPERADMIN') {
+      if (role !== 'ADMIN' && role !== 'SUPERADMIN') {
         throw new ForbiddenException('주문 권한이 없습니다.');
       }
 
