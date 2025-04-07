@@ -22,6 +22,7 @@ export interface OrderRequestDetailResponse {
 export interface OrderRequestItemDto {
   price: number;
   quantity: number;
+  requestMessage: string | null; // ✅ 추가
   product: {
     name: string;
     imageUrl: string | null;
