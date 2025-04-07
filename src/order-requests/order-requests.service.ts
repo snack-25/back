@@ -295,6 +295,7 @@ export class OrderRequestsService {
       resolverMessage: orderRequest.notes, // 처리 메시지
       requesterName: orderRequest.requester?.name || '알 수 없음', // 요청한 사람의 이름
       resolverName: orderRequest.resolver?.name || null, // 처리한 사람의 이름
+      totalAmount: orderRequest.totalAmount, // 총액
       items: orderRequest.orderRequestItems.map(item => ({
         productName: item.product?.name || '상품 정보 없음',
         categoryId: item.product?.category?.id || null, // 🔹 카테고리 ID 추가

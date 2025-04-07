@@ -8,6 +8,7 @@ export interface OrderRequestDetailResponse {
   resolverMessage: string | null;
   requesterName: string;
   resolverName: string | null;
+  totalAmount: number;
   items: {
     productName: string;
     categoryId: string | null;
