@@ -352,7 +352,7 @@ export class OrderRequestsService {
 
       // 💬 요청자가 남긴 메시지들만 조합 (상품명 없이)
       const firstNote =
-      orderRequest.orderRequestItems.find(item => item.notes?.trim())?.notes?.trim() || null;
+        orderRequest.orderRequestItems.find(item => item.notes?.trim())?.notes?.trim() || null;
 
       // 2️⃣ Order 생성
       const createdOrder = await tx.order.create({
