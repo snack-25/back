@@ -7,6 +7,7 @@ import { OrdersService } from './orders.service';
 import { Request } from 'express';
 import { AuthService } from '@src/auth/auth.service';
 import { ApiBearerAuth } from '@nestjs/swagger';
+import { GetUser } from '@src/shared/decorators/get-user.decorator';
 
 @ApiBearerAuth()
 @ApiTags('Orders')
@@ -52,9 +53,10 @@ export class OrdersController {
   public async adminPurchase(
     @Req() req: Request,
     @Body() orderData: OrderRequestDto,
+    @GetUser() user: { role: string },
   ): Promise<Order> {
     const { sub: userId } = await this.authService.getUserFromCookie(req);
-    return await this.ordersService.createOrder(userId, orderData);
+    return await this.ordersService.createOrder(userId, user.role, orderData);
   }
 
   @ApiOperation({

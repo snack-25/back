@@ -331,31 +331,31 @@ export class OrderRequestsService {
           },
         },
       });
-  
+
       if (!orderRequest) {
         throw new NotFoundException('주문 요청을 찾을 수 없습니다.');
       }
-  
+
       if (
         orderRequest.status === OrderRequestStatus.APPROVED ||
         orderRequest.status === OrderRequestStatus.REJECTED
       ) {
         throw new BadRequestException('이미 처리된 주문 요청입니다.');
       }
-  
+
       // 💰 예산 차감
       await deductCompanyBudgetByUserId(
         this.prisma,
         orderRequest.requesterId,
         orderRequest.totalAmount,
       );
-  
+
       // 💬 요청자가 남긴 메시지들만 조합 (상품명 없이)
       const userNotes = orderRequest.orderRequestItems
         .filter(item => item.notes?.trim())
         .map(item => item.notes?.trim())
         .join('\n');
-  
+
       // 2️⃣ Order 생성
       const createdOrder = await tx.order.create({
         data: {
@@ -375,7 +375,7 @@ export class OrderRequestsService {
           },
         },
       });
-  
+
       // 3️⃣ 주문 요청 상태 업데이트 + orderId 연결
       const updatedOrderRequest = await tx.orderRequest.update({
         where: { id: orderRequestId },
@@ -395,7 +395,7 @@ export class OrderRequestsService {
           },
         },
       });
-  
+
       // 4️⃣ 응답 DTO로 반환
       return {
         id: updatedOrderRequest.id,
@@ -418,8 +418,8 @@ export class OrderRequestsService {
         })),
       };
     });
-  }  
-  
+  }
+
   // ✅ 주문 요청 거절
   public async rejectOrderRequest(
     orderRequestId: string,
@@ -431,11 +431,11 @@ export class OrderRequestsService {
         where: { id: orderRequestId },
         select: { status: true },
       });
-  
+
       if (!orderRequest) {
         throw new BadRequestException('주문 요청을 찾을 수 없습니다.');
       }
-  
+
       // 2️⃣ 이미 처리된 경우 예외
       if (
         orderRequest.status === OrderRequestStatus.APPROVED ||
@@ -443,7 +443,7 @@ export class OrderRequestsService {
       ) {
         throw new BadRequestException('이미 처리된 주문 요청은 거절할 수 없습니다.');
       }
-  
+
       // 3️⃣ 주문 요청 거절 처리
       const updatedOrderRequest = await tx.orderRequest.update({
         where: { id: orderRequestId },
@@ -462,7 +462,7 @@ export class OrderRequestsService {
           },
         },
       });
-  
+
       // 4️⃣ DTO에 맞게 응답 가공
       return {
         id: updatedOrderRequest.id,
@@ -486,7 +486,6 @@ export class OrderRequestsService {
       };
     });
   }
-  
 
   // ✅ 주문 요청 ID로 상세 조회
   public async getOrderRequestById(orderRequestId: string): Promise<OrderRequest | null> {
