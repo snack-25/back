@@ -351,10 +351,8 @@ export class OrderRequestsService {
       );
 
       // 💬 요청자가 남긴 메시지들만 조합 (상품명 없이)
-      const userNotes = orderRequest.orderRequestItems
-        .filter(item => item.notes?.trim())
-        .map(item => item.notes?.trim())
-        .join('\n');
+      const firstNote =
+        orderRequest.orderRequestItems.find(item => item.notes?.trim())?.notes?.trim() || null;
 
       // 2️⃣ Order 생성
       const createdOrder = await tx.order.create({
@@ -365,7 +363,7 @@ export class OrderRequestsService {
           requestedById: orderRequest.requesterId,
           totalAmount: orderRequest.totalAmount,
           adminNotes: dto.resolvedMessage || null,
-          notes: userNotes || null, // ✅ 요청 메시지만 저장
+          notes: firstNote, // ✅ 첫 번째 요청 메시지만 저장
           orderItems: {
             create: orderRequest.orderRequestItems.map(item => ({
               productId: item.productId,
