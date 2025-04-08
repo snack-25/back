@@ -7,7 +7,6 @@ export class BudgetsService {
   public constructor(private readonly prisma: PrismaService) {}
 
   public async getinfo(dto: BudgetsRequestDto): Promise<BudgetsResponseDto | null> {
-    console.log('dto', dto);
     try {
       const info = await this.prisma.budget.findFirst({
         where: {
@@ -45,11 +44,9 @@ export class BudgetsService {
   public async update(dto: BudgetsRequestDto): Promise<BudgetsResponseDto> {
     try {
       // 특정 예산 레코드 조회
-      console.log('dto', dto);
-
       const MAX_AMOUNT = 500_000_000;
       if (dto.currentAmount > MAX_AMOUNT || dto.initialAmount > MAX_AMOUNT) {
-        throw new BadRequestException('금액이 5억을 초과하였습니다.');
+        throw new BadRequestException('금액이 5억을 초과하였습니다');
       }
 
       const existingBudget = await this.prisma.budget.findUnique({

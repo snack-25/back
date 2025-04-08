@@ -33,27 +33,27 @@ export class AuthController {
   })
   @ApiResponse({
     status: 201,
-    description: '회원가입이 완료되었습니다.',
+    description: '회원가입이 완료되었습니다',
   })
   @ApiResponse({
     status: 409,
-    description: '이미 사용 중인 이메일입니다.',
+    description: '이미 사용 중인 이메일입니다',
   })
   @ApiResponse({
     status: 500,
-    description: '회원가입을 진행하는 중 오류가 발생했습니다.',
+    description: '회원가입을 진행하는 중 오류가 발생했습니다',
   })
   @HttpCode(HttpStatus.CREATED)
   public async signup(@Body() dto: SignUpRequestDto, @Res() res: Response): Promise<void> {
     const result = await this.authService.signup(dto);
 
-    res.status(201).json({ message: '회원가입에 성공했습니다.', data: result });
+    res.status(201).json({ message: '회원가입에 성공했습니다', data: result });
   }
 
   @Post('signup/invitationcode')
   @ApiOperation({
     summary: '초대 토큰 정보 조회',
-    description: '초대 토큰을 통해 초대된 사용자의 정보를 조회합니다.',
+    description: '초대 토큰을 통해 초대된 사용자의 정보를 조회합니다',
   })
   @ApiResponse({ status: 200, description: '토큰 유저 정보 전달' })
   public async signupInfo(@Body() body: InvitationCodeDto): Promise<Invitation | null> {
@@ -63,11 +63,11 @@ export class AuthController {
   @Post('signup/invite/:token')
   @ApiOperation({
     summary: '초대 토큰으로 회원가입',
-    description: '초대 토큰을 통해 초대된 사용자로 회원가입을 진행합니다.',
+    description: '초대 토큰을 통해 초대된 사용자로 회원가입을 진행합니다',
   })
   @ApiResponse({ status: 200, description: '회원가입에 성공했습니다' })
-  @ApiResponse({ status: 400, description: '유효하지 않은 초대 토큰입니다.' })
-  @ApiResponse({ status: 500, description: '회원가입 처리 중 문제가 발생했습니다.' })
+  @ApiResponse({ status: 400, description: '유효하지 않은 초대 토큰입니다' })
+  @ApiResponse({ status: 500, description: '회원가입 처리 중 문제가 발생했습니다' })
   public async signupToken(
     @Param('token') token: string,
     @Body() body: { password: string },
@@ -77,7 +77,7 @@ export class AuthController {
     const user = await this.authService.getinfo({ token: req.params.token });
 
     if (!user) {
-      res.status(400).json({ message: '유효하지 않은 초대 토큰입니다.' });
+      res.status(400).json({ message: '유효하지 않은 초대 토큰입니다' });
     }
     const password = body.password;
 
@@ -87,7 +87,7 @@ export class AuthController {
     });
 
     if (!result) {
-      res.status(500).json({ message: '회원가입 처리 중 문제가 발생했습니다.' });
+      res.status(500).json({ message: '회원가입 처리 중 문제가 발생했습니다' });
       return;
     }
 
@@ -104,7 +104,7 @@ export class AuthController {
     const loginResult = await this.authService.login(dto);
 
     if (!loginResult) {
-      throw new Error('로그인 실패: 응답이 없습니다.');
+      throw new Error('로그인 실패: 응답이 없습니다');
     }
 
     const { token, user } = loginResult;
@@ -122,13 +122,13 @@ export class AuthController {
   @Post('logout')
   @ApiOperation({
     summary: '유저 로그아웃',
-    description: '현재 로그인된 사용자의 세션을 종료하고 인증 토큰을 무효화합니다.',
+    description: '현재 로그인된 사용자의 세션을 종료하고 인증 토큰을 무효화합니다',
   })
   public async logout(@Req() req: Request, @Res() res: Response): Promise<void> {
     const invalidateToken = req.cookies['refreshToken'] as string;
 
     if (!invalidateToken) {
-      res.status(400).json({ message: 'Refresh Token이 없습니다.' });
+      res.status(400).json({ message: 'Refresh Token이 없습니다' });
       return;
     }
 
@@ -160,16 +160,16 @@ export class AuthController {
   })
   @ApiResponse({
     status: 200,
-    description: '새로운 액세스 토큰이 발급되었습니다.',
+    description: '새로운 액세스 토큰이 발급되었습니다',
   })
   @ApiResponse({
     status: 401,
-    description: '리프레시 토큰이 없거나 유효하지 않습니다.',
+    description: '리프레시 토큰이 없거나 유효하지 않습니다',
   })
   private async refreshToken(@Req() req: Request, @Res() res: Response): Promise<void> {
     const refreshToken = req.cookies['refreshToken'] as string;
     if (!refreshToken) {
-      throw new UnauthorizedException('리프레시 토큰이 필요합니다.');
+      throw new UnauthorizedException('리프레시 토큰이 필요합니다');
     }
     // refreshToken 검증 (DB 내 저장된 토큰과 비교)
     const payload = await this.authService.verifyRefreshToken(refreshToken);
