@@ -100,11 +100,7 @@ export class AuthController {
     description:
       '모든 테스트용 계정(user1~5,admin1~2,superadmin1)의 비밀번호는 아이디(user1)과 동일합니다',
   })
-  public async login(
-    @Body() dto: SignInRequestDto,
-    @Req() req: Request,
-    @Res() res: Response,
-  ): Promise<void> {
+  public async login(@Body() dto: SignInRequestDto, @Res() res: Response): Promise<void> {
     const loginResult = await this.authService.login(dto);
 
     if (!loginResult) {
@@ -119,7 +115,7 @@ export class AuthController {
     // 응답 본문에 토큰 정보 포함 (클라이언트에서 필요할 수 있음)
     res.status(200).json({
       message: '로그인에 성공하였습니다',
-      data: user,
+      data: { user, token },
     });
   }
 
@@ -157,8 +153,19 @@ export class AuthController {
     });
   }
 
-  // refresh token을 이용한 access token 재발급
   @Post('refresh')
+  @ApiOperation({
+    summary: '토큰 재발급',
+    description: 'refresh token 을 이용한 access token 재발급',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '새로운 액세스 토큰이 발급되었습니다.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: '리프레시 토큰이 없거나 유효하지 않습니다.',
+  })
   private async refreshToken(@Req() req: Request, @Res() res: Response): Promise<void> {
     const refreshToken = req.cookies['refreshToken'] as string;
     if (!refreshToken) {
