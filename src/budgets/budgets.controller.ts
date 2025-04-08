@@ -1,4 +1,4 @@
-import { Body, Controller, Put, Post, Res } from '@nestjs/common';
+import { Body, Controller, Put, Post, Res, NotFoundException } from '@nestjs/common';
 import { Response } from 'express';
 import { BudgetsService } from './budgets.service';
 import { BudgetsRequestDto } from './dto/budgets.dto';
@@ -18,9 +18,7 @@ export class BudgetsController {
   @ApiResponse({ status: 200, description: '예산 조회에 성공했습니다' })
   @Post('/inquiry')
   public async inquiry(@Body() dto: BudgetsRequestDto, @Res() res: Response): Promise<void> {
-    console.log('e32444');
     const inquiry = await this.budgetsService.getinfo(dto);
-
     res.status(200).json({ data: inquiry, message: '예산 조회에 성공했습니다' });
   }
 
@@ -33,6 +31,9 @@ export class BudgetsController {
   @Put('update')
   public async update(@Body() dto: BudgetsRequestDto, @Res() res: Response): Promise<void> {
     const update = await this.budgetsService.update(dto);
+    if (!update) {
+      throw new NotFoundException('예산 정보를 찾을 수 없습니다.');
+    }
     res.status(200).json({ data: update, message: '예산 변경에 성공했습니다' });
   }
   //TODO: /budgets/{budgetId} (DELETE) 예산 정보 삭제

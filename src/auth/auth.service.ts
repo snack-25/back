@@ -465,7 +465,7 @@ export class AuthService {
     try {
       // DB에서 저장된 refreshToken을 검증하여 리프레시토큰이 없거나
       // 저장된 리프레시토큰이 비어있으면 예외 발생
-      console.log(refreshToken);
+
       // const storedRefreshToken = await this.prisma.user.findFirst({
       //   where: { refreshToken: refreshToken },
       // });
