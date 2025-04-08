@@ -1,27 +1,30 @@
 /* eslint-disable no-useless-escape */
 import {
-  Injectable,
   BadRequestException,
   ConflictException,
-  InternalServerErrorException,
   HttpStatus,
+  Injectable,
+  InternalServerErrorException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
-import { PrismaService } from '@src/shared/prisma/prisma.service';
+import { JwtService } from '@nestjs/jwt';
+import { User } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { CheckEmailRequestDto, CheckEmailResponseDto, CheckNameDto } from './dto/user.dto';
 import { CompaniesRequestDto } from '@src/companies/dto/companies.dto';
-import { UserResponseDto } from './dto/response-user.dto';
 import { NAME_REGEX, PASSWORD_REGEX } from '@src/shared/const/RegExp';
-import { Prisma, User } from '@prisma/client';
-interface GetUserListParams {
-  page: number;
-  limit: number;
-  search?: string;
-}
+import { PrismaService } from '@src/shared/prisma/prisma.service';
+import { UserResponseDto } from './dto/response-user.dto';
+import { CheckEmailRequestDto, CheckEmailResponseDto, CheckNameDto } from './dto/user.dto';
+import { ReulstDto } from '@src/auth/dto/auth.dto';
+import * as argon2 from 'argon2';
+
 @Injectable()
 export class UsersService {
-  public constructor(private prisma: PrismaService) {}
+  public constructor(
+    private prisma: PrismaService,
+    private jwtService: JwtService,
+  ) {}
 
   // ✅ 회원 목록 조회 서비스
   async getUserList(params: GetUserListParams) {
@@ -160,6 +163,25 @@ export class UsersService {
     return '사용 가능한 비밀번호입니다.';
   }
 
+  // 본인 정보 조회
+  public async getMe(userId: string): Promise<Pick<User, 'id' | 'email' | 'name' | 'role'>> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('사용자를 찾을 수 없습니다.');
+    }
+
+    return user;
+  }
+
   public async getUser(userId: string): Promise<UserResponseDto> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -179,6 +201,66 @@ export class UsersService {
       role: user.role,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
+    };
+  }
+
+  // 비밀번호 및 회사명 업데이트
+  public async updateData(body: {
+    userId: string;
+    password?: string;
+    company?: string;
+  }): Promise<ReulstDto> {
+    if (!body.userId) {
+      throw new BadRequestException('잘못된 요청입니다');
+    }
+
+    const userWithCompany = await this.prisma.user.findUnique({
+      where: { id: body.userId },
+      include: { company: true },
+    });
+    if (!userWithCompany) {
+      throw new BadRequestException('해당하는 사용자가 존재하지 않습니다.');
+    }
+    if (!userWithCompany.company) {
+      throw new BadRequestException('연결된 회사가 존재하지 않습니다.');
+    }
+
+    if (body.password) {
+      const hashedPassword = await argon2.hash(body.password);
+
+      const currentData = await this.prisma.user.findUnique({
+        where: { id: body.userId },
+        select: { password: true, company: true },
+      });
+      if (!currentData) {
+        throw new UnauthorizedException('유저가 없습니다');
+      }
+
+      const isSamePassword = await argon2.verify(currentData.password, body.password);
+
+      if (isSamePassword) {
+        throw new BadRequestException('전과 동일한 비밀번호는 사용할 수 없습니다');
+      }
+
+      await this.prisma.user.update({
+        where: { id: body.userId },
+        data: { password: hashedPassword },
+        select: { id: true },
+      });
+    }
+
+    if (userWithCompany.company.name === body.company) {
+      return { message: '성공', company: { name: userWithCompany.company.name } };
+    }
+    const { name } = await this.prisma.company.update({
+      where: { id: userWithCompany.company.id },
+      data: { name: body.company },
+      select: { name: true },
+    });
+
+    return {
+      message: '성공',
+      company: { name },
     };
   }
 }

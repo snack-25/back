@@ -3,11 +3,10 @@ import {
   Controller,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Req,
   Res,
-  Param,
-  Patch,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -47,7 +46,8 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   public async signup(@Body() dto: SignUpRequestDto, @Res() res: Response): Promise<void> {
     const result = await this.authService.signup(dto);
-    res.status(201).json({ msg: '회원가입에 성공했습니다.', data: result });
+
+    res.status(201).json({ message: '회원가입에 성공했습니다.', data: result });
   }
 
   @Post('signup/invitationcode')
@@ -77,7 +77,7 @@ export class AuthController {
     const user = await this.authService.getinfo({ token: req.params.token });
 
     if (!user) {
-      res.status(400).json({ ok: false, message: '유효하지 않은 초대 토큰입니다.' });
+      res.status(400).json({ message: '유효하지 않은 초대 토큰입니다.' });
     }
     const password = body.password;
 
@@ -87,11 +87,11 @@ export class AuthController {
     });
 
     if (!result) {
-      res.status(500).json({ ok: false, message: '회원가입 처리 중 문제가 발생했습니다.' });
+      res.status(500).json({ message: '회원가입 처리 중 문제가 발생했습니다.' });
       return;
     }
 
-    res.status(200).json({ ok: true, message: '회원가입에 성공했습니다' });
+    res.status(200).json({ message: '회원가입에 성공했습니다' });
   }
 
   @Post('login')
@@ -116,7 +116,11 @@ export class AuthController {
     // 쿠키 인증 설정
     this.setAuthCookies(res, token);
 
-    res.status(200).json({ msg: '로그인 성공', data: user });
+    // 응답 본문에 토큰 정보 포함 (클라이언트에서 필요할 수 있음)
+    res.status(200).json({
+      message: '로그인에 성공하였습니다',
+      data: user,
+    });
   }
 
   @Post('logout')
@@ -135,41 +139,37 @@ export class AuthController {
     await this.authService.logout(invalidateToken, res);
   }
 
-  @Patch('update/info')
-  public async updateData(
-    @Body() body: { password: string; company?: string },
-    @Req() req: Request,
-    @Res() res: Response,
-  ): Promise<void> {
-    const { sub: userId } = await this.authService.getUserFromCookie(req);
-
-    if (!userId) {
-      throw new UnauthorizedException('유효하지 않은 사용자');
-    }
-
-    const result = await this.authService.updateData({
-      userId,
-      password: body.password,
-      company: body.company,
-    });
-
-    res.status(200).json({ msg: '변경 성공', data: result, ok: true });
-  }
-
   private setAuthCookies(@Res() res: Response, token: TokenResponseDto): void {
     res.cookie('accessToken', token.accessToken, {
       httpOnly: true, // XSS 공격 방지
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict', // CORS 문제 방지
+      sameSite: 'lax', // CORS 문제 방지 (strict에서 lax로 변경)
       maxAge: 1000 * 60 * 60 * 24, // 24시간 (24시간 × 60분 × 60초 × 1000밀리초)
+      path: '/', // 모든 경로에서 접근 가능
     });
 
     res.cookie('refreshToken', token.refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'lax', // strict에서 lax로 변경
       maxAge: 60 * 1000 * 60 * 24 * 14, // 2w
+      path: '/', // 모든 경로에서 접근 가능
     });
+  }
+
+  // refresh token을 이용한 access token 재발급
+  @Post('refresh')
+  private async refreshToken(@Req() req: Request, @Res() res: Response): Promise<void> {
+    const refreshToken = req.cookies['refreshToken'] as string;
+    if (!refreshToken) {
+      throw new UnauthorizedException('리프레시 토큰이 필요합니다.');
+    }
+    // refreshToken 검증 (DB 내 저장된 토큰과 비교)
+    const payload = await this.authService.verifyRefreshToken(refreshToken);
+    // refreshToken 검증 성공 시, 새로운 토큰 생성
+    const newTokens = await this.authService.generateToken(payload.sub);
+
+    res.status(200).json({ token: newTokens.accessToken });
   }
 
   // 아래와 같이 사용하려는 API Endpoint위에 @UseGuards(AuthGuard) 데코레이터를 추가하면

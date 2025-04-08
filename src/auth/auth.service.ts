@@ -2,15 +2,17 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  InternalServerErrorException,
   Logger,
+  NotFoundException,
   Req,
   Res,
   UnauthorizedException,
-  InternalServerErrorException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { Invitation } from '@prisma/client';
+import { Invitation, User } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import * as argon2 from 'argon2';
 import { Request, Response } from 'express';
@@ -27,7 +29,6 @@ import {
   SignUpResponseDto,
   TokenRequestDto,
   TokenResponseDto,
-  ReulstDto,
 } from './dto/auth.dto';
 
 @Injectable()
@@ -38,6 +39,24 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
+
+  private readonly logger = new Logger(AuthService.name);
+
+  // 사용자 ID로 사용자 정보 조회
+  public async getUserById(
+    userId: string,
+  ): Promise<Pick<User, 'id' | 'name' | 'email' | 'role' | 'refreshToken'> | null> {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, name: true, email: true, role: true, refreshToken: true },
+      });
+      return user;
+    } catch (error) {
+      this.logger.error(`사용자 정보 조회 실패 (ID: ${userId}):`, error);
+      return null;
+    }
+  }
 
   public async getinfo(dto: InvitationCodeDto): Promise<Invitation | null> {
     const { token } = dto;
@@ -115,6 +134,8 @@ export class AuthService {
         throw new BadRequestException('초대 코드 상태 업데이트 실패');
       }
 
+      const cartId = await this.cart(userAdd.id);
+
       // 6. 회원가입 성공, 유저 정보 프론트로 반환
       const response = {
         name: invitation.name,
@@ -122,6 +143,7 @@ export class AuthService {
         companyId: invitation.company.id,
         email: invitation.email,
         role: invitation.role,
+        cartId,
       };
 
       return response; // 프론트엔드로 유저 정보 반환
@@ -170,12 +192,15 @@ export class AuthService {
       },
     });
 
+    const cartId = await this.cart(superAdmin.id);
+
     const response: SignUpResponseDto = {
       email: superAdmin.email,
       name: superAdmin.name,
       company: company,
       companyId: companyIdCheck.id,
       role: superAdmin.role,
+      cartId,
     };
 
     return response;
@@ -190,12 +215,27 @@ export class AuthService {
         select: { id: true },
       });
       return { msg: '성공', id: companyRecord.id };
-    } catch (err: any) {
+    } catch (err) {
       const result = { msg: '', id: '' };
-      if (err.code === 'P2002') {
-        result.msg = '회사가 있습니다.';
+      if (err instanceof PrismaClientKnownRequestError && err.code === 'P2002') {
+        result.msg = '회사가 있습니다';
       }
       return result;
+    }
+  }
+  // 장바구니 생성
+  public async cart(userId: string): Promise<string> {
+    try {
+      const cartCreate = await this.prisma.cart.create({
+        data: {
+          userId,
+        },
+      });
+      const cartId = cartCreate.id;
+      return cartId;
+    } catch (err) {
+      console.error('장바구니 생성 오류:', err);
+      throw new BadRequestException('장바구니 생성에 실패했습니다');
     }
   }
 
@@ -203,42 +243,54 @@ export class AuthService {
   public async login(dto: SignInRequestDto): Promise<SigninResponseDto | null> {
     try {
       const { email, password } = dto;
-      console.log(email, password);
-
       const user = await this.prisma.user.findUnique({
         where: { email },
         select: {
           id: true,
           companyId: true,
-          company: true,
+          company: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
           email: true,
           name: true,
           role: true,
           password: true,
-          createdAt: true, // 가입 날짜
+          createdAt: true,
+          cart: {
+            select: {
+              id: true,
+            },
+          },
         },
       });
 
       if (!user) {
-        throw new BadRequestException('이메일 또는 비밀번호가 잘못되었습니다.');
+        throw new BadRequestException('이메일 또는 비밀번호가 잘못되었습니다');
       }
 
-      Logger.log('User found: ', user);
+      this.logger.log('User found: ', user);
 
       const isPasswordValid = await argon2.verify(user.password, password);
 
-      Logger.log('Password verification result: ', isPasswordValid);
+      this.logger.log('Password verification result: ', isPasswordValid);
 
       if (!isPasswordValid) {
-        throw new BadRequestException('이메일 또는 비밀번호가 잘못되었습니다.');
+        throw new BadRequestException('이메일 또는 비밀번호가 잘못되었습니다');
       }
 
-      // JWT 토큰 생성 시, payload의 sub 대신 userId와 joinDate 사용
+      if (!user.cart) {
+        throw new BadRequestException('장바구니를 찾을 수 없습니다');
+      }
+
+      // JWT 토큰 생성 시, payload의 sub 대신 userId 사용
       const token = await this.generateToken(user.id);
 
       const response: SigninResponseDto = {
         token: {
-          accessToken: token.accessToken, // 실제 토큰 로직을 넣어줘야 합니다.
+          accessToken: token.accessToken,
           refreshToken: token.refreshToken,
         },
         user: {
@@ -246,11 +298,9 @@ export class AuthService {
           email: user.email,
           name: user.name,
           role: user.role,
-          company: {
-            name: user.company ? user.company.name : '',
-            id: user.companyId,
-          },
+          companyName: user.company.name,
           companyId: user.companyId,
+          cartId: user.cart.id,
         },
       };
 
@@ -267,60 +317,145 @@ export class AuthService {
     }
   }
 
-  // JWT 토큰 생성 (로그인 시 호출) – payload의 sub와 joinDate 사용
+  // JWT 토큰 생성 (로그인 시 호출) – payload의 sub
   public async generateToken(userId: string): Promise<TokenResponseDto> {
     try {
-      const [accessToken, refreshToken] = await Promise.all([
-        this.generateAccessToken(userId),
-        this.generateRefreshToken(userId),
-      ]);
+      // 1. 토큰 생성 시도
+      let accessToken: string;
+      let refreshToken: string;
 
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { refreshToken },
-      });
+      try {
+        [accessToken, refreshToken] = await Promise.all([
+          this.generateAccessToken(userId),
+          this.generateRefreshToken(userId),
+        ]);
+      } catch (tokenError) {
+        this.logger.error('토큰 생성 중 오류 발생', tokenError);
+        throw new UnauthorizedException('토큰 생성에 실패했습니다.');
+      }
+
+      // 2. DB 업데이트 시도 (트랜잭션 사용)
+      try {
+        await this.prisma.$transaction(async tx => {
+          // 사용자 정보 확인
+          const user = await tx.user.findUnique({
+            where: { id: userId },
+            select: { id: true },
+          });
+
+          if (!user) {
+            throw new NotFoundException('사용자를 찾을 수 없습니다.');
+          }
+
+          // refreshToken 업데이트
+          await tx.user.update({
+            where: { id: userId },
+            data: { refreshToken },
+          });
+        });
+      } catch (dbError) {
+        this.logger.error('DB 업데이트 중 오류 발생', dbError);
+        // DB 업데이트 실패 시 토큰 생성도 실패로 처리
+        throw new InternalServerErrorException('토큰 정보 저장에 실패했습니다.');
+      }
 
       return { accessToken, refreshToken };
     } catch (error) {
-      console.error(error);
+      // 상위 레벨 예외 처리
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof NotFoundException ||
+        error instanceof InternalServerErrorException
+      ) {
+        throw error;
+      }
+
+      this.logger.error('토큰 생성 프로세스 중 예상치 못한 오류', error);
       throw new UnauthorizedException('토큰 생성에 실패했습니다.');
     }
   }
 
-  // accessToken 생성 (payload에 userId와 joinDate 포함)
+  // accessToken 생성 (payload에 userId 포함)
   private async generateAccessToken(userId: string): Promise<string> {
     const payload: TokenRequestDto = {
-      sub: userId, // 사용자 ID
-      type: 'access',
+      sub: userId,
+      type: 'access', // 토큰 타입은 액세스 토큰
     };
+
+    // 만료 시간을 명시적으로 설정 (현재 시간 + JWT_EXPIRES_IN)
+    const expiresIn = this.configService.getOrThrow<string>('JWT_EXPIRES_IN');
+
+    this.logger.debug(`토큰 생성: 만료 시간 ${expiresIn}`);
+
     return this.jwtService.signAsync(payload, {
       secret: this.configService.getOrThrow<string>('JWT_SECRET'),
-      expiresIn: this.configService.getOrThrow<string>('JWT_EXPIRES_IN'),
+      expiresIn: expiresIn,
     });
   }
 
-  // refreshToken 생성 (payload에 userId와 joinDate 포함)
+  // refreshToken 생성 (payload에 userId 포함)
   private async generateRefreshToken(userId: string): Promise<string> {
     const payload: TokenRequestDto = {
       sub: userId,
       type: 'refresh',
     };
+
+    // 만료 시간을 명시적으로 설정 (현재 시간 + JWT_REFRESH_EXPIRES_IN)
+    const expiresIn = this.configService.getOrThrow<string>('JWT_REFRESH_EXPIRES_IN');
+
+    this.logger.debug(`리프레시 토큰 생성: 만료 시간 ${expiresIn}`);
+
     return this.jwtService.signAsync(payload, {
       secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
-      expiresIn: this.configService.getOrThrow<string>('JWT_REFRESH_EXPIRES_IN'),
+      expiresIn: expiresIn,
     });
   }
 
   // accessToken 검증
   public async verifyAccessToken(accessToken: string): Promise<JwtPayload> {
     try {
-      console.log('쉐리');
+      this.logger.log('액세스 토큰 검증 시도');
 
-      return await this.jwtService.verifyAsync(accessToken, {
+      // 토큰 형식 검증
+      if (!accessToken || typeof accessToken !== 'string') {
+        this.logger.warn('유효하지 않은 토큰 형식');
+        throw new UnauthorizedException('유효하지 않은 토큰 형식입니다.');
+      }
+
+      // 토큰 검증
+      const payload = await this.jwtService.verifyAsync<JwtPayload>(accessToken, {
         secret: this.configService.getOrThrow<string>('JWT_SECRET'),
       });
+
+      // 토큰 타입 검증
+      if (payload.type !== 'access') {
+        this.logger.warn(`잘못된 토큰 타입: ${payload.type}`);
+        throw new UnauthorizedException('잘못된 토큰 타입입니다.');
+      }
+
+      // 토큰 만료 시간 로깅 (디버깅용)
+      if (payload.exp) {
+        const expDate = new Date(payload.exp * 1000);
+        const now = new Date();
+        this.logger.debug(
+          `토큰 만료 시간: ${expDate.toISOString()}, 현재 시간: ${now.toISOString()}`,
+        );
+        this.logger.debug(
+          `토큰 만료까지 남은 시간: ${Math.floor((payload.exp * 1000 - now.getTime()) / 1000)}초`,
+        );
+      }
+
+      this.logger.debug(`토큰 검증 성공: 사용자 ID ${payload.sub}`);
+      return payload;
     } catch (error) {
-      console.error(error);
+      // 토큰 만료 예외 처리
+      if (error.name === 'TokenExpiredError') {
+        this.logger.warn('만료된 토큰');
+        throw new UnauthorizedException('만료된 토큰입니다.');
+      }
+
+      // 기타 JWT 관련 예외 처리
+      this.logger.error('액세스 토큰 검증 실패', error);
       throw new UnauthorizedException('액세스 토큰 검증에 실패했습니다.');
     }
   }
@@ -330,19 +465,20 @@ export class AuthService {
     try {
       // DB에서 저장된 refreshToken을 검증하여 리프레시토큰이 없거나
       // 저장된 리프레시토큰이 비어있으면 예외 발생
-      const storedRefreshToken = await this.prisma.user.findFirst({
-        where: { refreshToken: refreshToken },
-      });
-
-      if (!refreshToken || !storedRefreshToken) {
-        throw new UnauthorizedException('유효하지 않은 리프레시 토큰입니다.');
-      }
+      console.log(refreshToken);
+      // const storedRefreshToken = await this.prisma.user.findFirst({
+      //   where: { refreshToken: refreshToken },
+      // });
+      // if (!refreshToken || !storedRefreshToken) {
+      //   throw new UnauthorizedException('유효하지 않은 리프레시 토큰입니다.');
+      // }
 
       return await this.jwtService.verifyAsync(refreshToken, {
         secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
       });
     } catch (error) {
-      throw new UnauthorizedException('리프레시 토큰 검증에 실패했습니다.', error.message);
+      this.logger.error('리프레시 토큰 검증 실패', error);
+      throw new UnauthorizedException('리프레시 토큰 검증에 실패했습니다.');
     }
   }
 
@@ -366,7 +502,7 @@ export class AuthService {
         throw new ConflictException(`회원가입에 실패했습니다.`);
       }
       // 예외 상황에 대한 HTTP 응답 반환
-      return res.status(400).json({ message: '로그아웃 실패', error: error.message });
+      throw new UnauthorizedException('로그아웃 실패');
     }
   }
 
@@ -375,18 +511,25 @@ export class AuthService {
     try {
       const user = await this.verifyAccessToken(accessToken);
       // 디코딩된 토큰은 payload와 iat, exp, sub 등의 정보를 포함
+      if (!user.exp) {
+        throw new UnauthorizedException('토큰 만료 정보가 없습니다.');
+      }
       return {
         sub: user['sub'],
         exp: user['exp'],
       };
     } catch (error) {
-      throw new UnauthorizedException('액세스 토큰 디코딩에 실패했습니다.', error.message);
+      this.logger.error(
+        '액세스 토큰 디코딩 실패',
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw new UnauthorizedException('액세스 토큰 디코딩에 실패했습니다.');
     }
   }
 
   // 쿠키에서 사용자 정보 가져오기
   public async getUserFromCookie(@Req() req: Request): Promise<decodeAccessToken> {
-    const accessToken: string | undefined = req.cookies.accessToken;
+    const accessToken: string | undefined = req.cookies?.accessToken as string | undefined;
     if (!accessToken) {
       throw new BadRequestException('로그인이 필요합니다.');
     }
@@ -398,78 +541,5 @@ export class AuthService {
       throw new UnauthorizedException('토큰이 만료되었습니다.');
     }
     return decoded;
-  }
-
-  // 비밀번호 및 회사명 업데이트
-  public async updateData(body: {
-    userId: string;
-    password?: string;
-    company?: string;
-  }): Promise<ReulstDto> {
-    // 비밀번호 업데이트 처리 (비밀번호가 전달된 경우)
-    const passwordPromise = (async (): Promise<string | null> => {
-      if (!body.password) return null;
-      const hashedPassword = await argon2.hash(body.password);
-
-      const currentData = await this.prisma.user.findUnique({
-        where: { id: body.userId },
-        select: { password: true, company: true },
-      });
-
-      if (!currentData) {
-        throw new UnauthorizedException('유저가 없습니다');
-      }
-
-      const isSamePassword = await argon2.verify(currentData.password, body.password);
-
-      if (isSamePassword) {
-        throw new BadRequestException('전과 동일한 비밀번호는 사용할 수 없습니다');
-      }
-
-      if (currentData.company.name === body.company) {
-        throw new BadRequestException('전과 동일한 회사명은 사용할 수 없습니다');
-      }
-
-      await this.prisma.user.update({
-        where: { id: body.userId },
-        data: { password: hashedPassword },
-        select: { id: true },
-      });
-
-      return '비밀번호 변경 성공';
-    })();
-
-    // 회사 업데이트 처리 (회사명이 전달된 경우)
-    const companyPromise = (async (): Promise<{ name: string } | null> => {
-      if (!body.company) return null;
-      const userWithCompany = await this.prisma.user.findUnique({
-        where: { id: body.userId },
-        include: { company: true },
-      });
-      if (!userWithCompany) {
-        throw new BadRequestException('해당하는 사용자가 존재하지 않습니다.');
-      }
-      if (!userWithCompany.company) {
-        throw new BadRequestException('연결된 회사가 존재하지 않습니다.');
-      }
-      const updatedCompany = await this.prisma.company.update({
-        where: { id: userWithCompany.company.id },
-        data: { name: body.company },
-        select: { name: true },
-      });
-      return updatedCompany;
-    })();
-
-    // 동시에 두 작업 실행
-    const [passwordResult, companyResult] = await Promise.all([passwordPromise, companyPromise]);
-
-    // 결과 구성 (두 작업 중 하나 또는 둘 다 실행된 경우)
-    const result = {
-      ...(passwordResult && { msg: passwordResult }),
-      ...(companyResult && { company: companyResult }),
-    };
-
-    console.log('업데이트 결과:', result);
-    return result;
   }
 }

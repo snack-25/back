@@ -113,7 +113,7 @@ export class InvitationsService {
       const invitation = await this.prisma.$transaction(async tx => {
         // 테이블에 초대 정보 생성(id, email, name, token, role, expiresAt, companyId, inviterId)
         // 트랜잭션 없이 단순 초대 저장
-        const createdInvitation = await this.prisma.invitation.create({
+        const createdInvitation = await tx.invitation.create({
           data: {
             email: dto.email,
             name: dto.name,

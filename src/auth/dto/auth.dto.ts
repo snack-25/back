@@ -1,4 +1,5 @@
-import { OmitType, PickType, ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, OmitType, PickType } from '@nestjs/swagger';
+import { UserRole } from '@prisma/client';
 import { UserDto } from 'src/users/dto/user.dto';
 
 // 회원가입 요청 DTO
@@ -12,6 +13,7 @@ export class SignUpResponseDto extends PickType(UserDto, ['email', 'name']) {
   public company: string;
   public companyId: string;
   public role: string;
+  public cartId: string;
 }
 
 export class SignUpComponeyRequestDto extends PickType(SignUpRequestDto, ['company', 'bizno']) {}
@@ -37,9 +39,10 @@ export class SigninResponseDto {
     id: string;
     email: string;
     name: string;
-    company: { name: string; id: string };
+    companyName: string;
     role: string;
     companyId: string;
+    cartId: string;
   };
 }
 
@@ -65,9 +68,13 @@ export class TokenOptionsDto {
 //
 export class JwtPayload {
   public sub: string; // 사용자 ID
-  public email: string; // 사용자 이메일 (필요하다면)
-  public iat: number; // 토큰 발행 시간
-  public exp: number; // 토큰 만료 시간 (필요하면)
+  public name?: string; // 사용자 이름 (필요하면)
+  public email?: string; // 사용자 이메일 (필요하면)
+  public iat?: number; // 토큰 발행 시간
+  public exp?: number; // 토큰 만료 시간 (필요하면)
+  public type?: 'access' | 'refresh'; // 토큰 타입
+  public role?: UserRole; // 사용자 역할 (필요하면)
+  public refreshToken?: string; // 리프레시 토큰 (필요하면)
 }
 
 export class InvitationCodeDto {
@@ -77,7 +84,10 @@ export class InvitationSignupDto extends PickType(UserDto, ['password']) {
   public token: string;
 }
 
-export class decodeAccessToken extends PickType(JwtPayload, ['sub', 'exp']) {}
+export class decodeAccessToken {
+  public sub: string;
+  public exp: number;
+}
 
 //유저 정보 응답 dto
 export class ReulstDto {

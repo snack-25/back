@@ -5,8 +5,9 @@ import { CartsService } from './carts.service';
 import { CreateCartDto } from './dto/create-cart.dto';
 import { DeleteCartItemsDto, UpdateCartItemDto } from './dto/update-cart.dto';
 import { Request } from 'express';
-import { AuthService } from '@src/auth/auth.service'; // ✅ 추가
+import { AuthService } from '@src/auth/auth.service';
 import { ApiBearerAuth } from '@nestjs/swagger';
+import { GetCartItemsResponse } from './dto/cart.interface';
 
 @ApiBearerAuth()
 @ApiTags('Carts')
@@ -14,7 +15,7 @@ import { ApiBearerAuth } from '@nestjs/swagger';
 export class CartsController {
   public constructor(
     private readonly cartsService: CartsService,
-    private readonly authService: AuthService, // ✅ 추가
+    private readonly authService: AuthService,
   ) {}
 
   @ApiOperation({
@@ -27,30 +28,32 @@ export class CartsController {
   public async getCartItems(
     @Param('cartId') cartId: string,
     @Req() req: Request,
-  ): Promise<{
-    items: CartItem[];
-    totalAmount: number;
-    shippingFee: number;
-  }> {
+  ): Promise<GetCartItemsResponse> {
     const { sub: userId } = await this.authService.getUserFromCookie(req);
     return await this.cartsService.getCartItems(userId, cartId);
   }
 
+  @Post(':cartId/items')
   @ApiOperation({
     summary: '장바구니 상품 추가',
     description: '특정 장바구니에 상품을 추가합니다.',
   })
   @ApiParam({ name: 'cartId', required: true, description: '상품을 추가할 장바구니 ID' })
-  @ApiBody({ type: CreateCartDto, description: '추가할 상품의 ID' })
+  @ApiBody({ type: CreateCartDto, description: '추가할 상품의 ID와 수량 (기본값 1)' })
   @ApiResponse({ status: 201, description: '상품 추가 성공' })
-  @Post(':cartId/items')
   public async addToCart(
     @Param('cartId') cartId: string,
     @Body() createDto: CreateCartDto,
     @Req() req: Request,
   ): Promise<CartItem> {
     const { sub: userId } = await this.authService.getUserFromCookie(req);
-    return await this.cartsService.addToCart(userId, cartId, createDto.productId);
+
+    return await this.cartsService.addToCart(
+      userId,
+      cartId,
+      createDto.productId,
+      createDto.quantity ?? 1,
+    );
   }
 
   @ApiOperation({
@@ -92,5 +95,26 @@ export class CartsController {
   ): Promise<{ message: string }> {
     const { sub: userId } = await this.authService.getUserFromCookie(req);
     return await this.cartsService.deleteCartItems(userId, cartId, deleteDto.itemIds);
+  }
+
+  @Post(':cartId/summary')
+  @ApiOperation({ summary: '선택된 장바구니 상품 요약', description: '선택된 상품 기준 금액 계산' })
+  @ApiBody({
+    schema: {
+      example: {
+        items: [
+          { productId: 'product1', quantity: 2 },
+          { productId: 'product2', quantity: 1 },
+        ],
+      },
+    },
+  })
+  public async getCartSummaryBySelectedItems(
+    @Param('cartId') cartId: string,
+    @Body() body: { items: { productId: string; quantity: number }[] },
+    @Req() req: Request,
+  ) {
+    const { sub: userId } = await this.authService.getUserFromCookie(req);
+    return await this.cartsService.getSummaryBySelectedItems(userId, cartId, body.items);
   }
 }

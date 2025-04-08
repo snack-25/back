@@ -18,9 +18,10 @@ export class BudgetsController {
   @ApiResponse({ status: 200, description: '예산 조회에 성공했습니다' })
   @Post('/inquiry')
   public async inquiry(@Body() dto: BudgetsRequestDto, @Res() res: Response): Promise<void> {
+    console.log('e32444');
     const inquiry = await this.budgetsService.getinfo(dto);
 
-    res.status(200).json({ ok: true, data: inquiry, message: '예산 조회에 성공했습니다' });
+    res.status(200).json({ data: inquiry, message: '예산 조회에 성공했습니다' });
   }
 
   //TODO: /budgets/{budgetId} (PUT/PATCH) 예산 정보 수정
@@ -36,7 +37,7 @@ export class BudgetsController {
     @Res() res: Response,
   ): Promise<void> {
     const update = await this.budgetsService.update(dto);
-    res.status(200).json({ ok: true, data: update, message: '예산 변경에 성공했습니다' });
+    res.status(200).json({ data: update, message: '예산 변경에 성공했습니다' });
   }
 
   //TODO: /budgets/{budgetId} (DELETE) 예산 정보 삭제

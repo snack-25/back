@@ -12,17 +12,29 @@ import {
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { OrderRequestStatus, UserRole } from '@prisma/client';
-import type { Request } from 'express';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
-import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
-import { CreateOrderRequestDto } from './dto/create-order-request.dto';
-import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
-import { GetOrderRequestsDto, OrderSort } from './dto/getOrderRequest.dto';
-import { OrderRequestsService } from './order-requests.service';
-import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from '@src/auth/auth.service'; // AuthService 가져오기
 import { PrismaService } from '@src/shared/prisma/prisma.service'; // PrismaService 가져오기
+import { UserResponseDto } from '@src/users/dto/response-user.dto';
+import type { Request } from 'express';
+import { ApproveOrderRequestDto } from './dto/approve-order-request.dto';
+import { CreateOrderRequestDto } from './dto/create-order-request.dto';
+import { GetOrderRequestsDto, OrderSort } from './dto/getOrderRequest.dto';
+import {
+  OrderRequestDetailResponse,
+  OrderRequestResponseDto,
+} from './dto/order-request-detail-response.interface';
+import { RejectOrderRequestDto } from './dto/reject-order-request.dto';
+import { OrderRequestsService } from './order-requests.service';
 
 @ApiBearerAuth()
 @ApiTags('OrderRequests')
@@ -35,7 +47,7 @@ export class OrderRequestsController {
   ) {}
 
   // getUserFromCookie 메서드를 authService에서 가져와 사용
-  private async getUserFromCookie(@Req() req: Request) {
+  private async getUserFromCookie(@Req() req: Request): Promise<UserResponseDto> {
     const decoded = await this.authService.getUserFromCookie(req); // authService에서 유저 정보를 가져옵니다.
 
     // 유저 정보에서 ID를 가져와서 Prisma로 유저를 조회
@@ -76,8 +88,11 @@ export class OrderRequestsController {
     description: '정렬 기준 (latest: 최신순, lowPrice: 낮은 가격순, highPrice: 높은 가격순)',
   })
   @Get()
-  public async getOrderRequests(@Req() req: Request, @Query() query: GetOrderRequestsDto) {
-    const user = await this.getUserFromCookie(req); // 유저 정보를 가져옵니다.
+  public async getOrderRequests(
+    @Req() req: Request,
+    @Query() query: GetOrderRequestsDto,
+  ): Promise<OrderRequestResponseDto[]> {
+    const user = await this.getUserFromCookie(req);
 
     const { page = 1, pageSize = 10, sort = OrderSort.LATEST } = query;
 
@@ -107,7 +122,10 @@ export class OrderRequestsController {
   @ApiResponse({ status: 201, description: '주문 요청 생성 성공' })
   @ApiResponse({ status: 401, description: '인증되지 않은 사용자' })
   @Post()
-  public async createOrderRequest(@Req() req: Request, @Body() dto: CreateOrderRequestDto) {
+  public async createOrderRequest(
+    @Req() req: Request,
+    @Body() dto: CreateOrderRequestDto,
+  ): Promise<OrderRequestResponseDto> {
     const user = await this.getUserFromCookie(req); // 유저 정보를 가져옵니다.
 
     dto.requesterId = user.id;
@@ -127,7 +145,7 @@ export class OrderRequestsController {
   @Get(':orderRequestId')
   public async getOrderRequestDetail(
     @Param('orderRequestId') orderRequestId: string,
-  ): Promise<any> {
+  ): Promise<OrderRequestDetailResponse> {
     return this.orderRequestsService.getOrderRequestDetail(orderRequestId);
   }
 
@@ -142,7 +160,7 @@ export class OrderRequestsController {
     @Req() req: Request,
     @Param('orderRequestId') orderRequestId: string,
     @Body() dto: ApproveOrderRequestDto,
-  ) {
+  ): Promise<OrderRequestResponseDto> {
     const user = await this.getUserFromCookie(req); // 유저 정보를 가져옵니다.
 
     if (user.role === UserRole.USER) {
@@ -171,7 +189,7 @@ export class OrderRequestsController {
     @Req() req: Request,
     @Param('orderRequestId') orderRequestId: string,
     @Body() dto: RejectOrderRequestDto,
-  ) {
+  ): Promise<OrderRequestResponseDto> {
     const user = await this.getUserFromCookie(req); // 유저 정보를 가져옵니다.
 
     if (user.role === UserRole.USER) {
