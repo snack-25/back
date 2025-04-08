@@ -267,6 +267,7 @@ export class OrderRequestsService {
           include: {
             product: {
               select: {
+                id: true,
                 name: true,
                 price: true,
                 imageUrl: true, // 🔹 상품 이미지 URL 추가
@@ -297,6 +298,7 @@ export class OrderRequestsService {
       resolverName: orderRequest.resolver?.name || null, // 처리한 사람의 이름
       totalAmount: orderRequest.totalAmount, // 총액
       items: orderRequest.orderRequestItems.map(item => ({
+        productId: item.productId,
         productName: item.product?.name || '상품 정보 없음',
         categoryId: item.product?.category?.id || null, // 🔹 카테고리 ID 추가
         categoryName: item.product?.category?.name || '카테고리 정보 없음', // 🔹 카테고리 이름 추가
@@ -351,10 +353,8 @@ export class OrderRequestsService {
       );
 
       // 💬 요청자가 남긴 메시지들만 조합 (상품명 없이)
-      const userNotes = orderRequest.orderRequestItems
-        .filter(item => item.notes?.trim())
-        .map(item => item.notes?.trim())
-        .join('\n');
+      const firstNote =
+        orderRequest.orderRequestItems.find(item => item.notes?.trim())?.notes?.trim() || null;
 
       // 2️⃣ Order 생성
       const createdOrder = await tx.order.create({
@@ -365,7 +365,7 @@ export class OrderRequestsService {
           requestedById: orderRequest.requesterId,
           totalAmount: orderRequest.totalAmount,
           adminNotes: dto.resolvedMessage || null,
-          notes: userNotes || null, // ✅ 요청 메시지만 저장
+          notes: firstNote, // ✅ 첫 번째 요청 메시지만 저장
           orderItems: {
             create: orderRequest.orderRequestItems.map(item => ({
               productId: item.productId,
