@@ -4,6 +4,7 @@ import {
   Patch,
   Body,
   Param,
+  Query,
   Req,
   Res,
   UnauthorizedException,
