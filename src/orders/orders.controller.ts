@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBody, ApiParam } from '@nestjs/swagger';
 import { OrderRequestDto } from './dto/create-order.dto';
 import { Order } from '@prisma/client';
 import { OrderQueryDto } from './dto/update-order.dto';
@@ -60,6 +60,11 @@ export class OrdersController {
     return await this.ordersService.createOrder(userId, user.role, orderData);
   }
 
+  @ApiOperation({
+    summary: '주문 상세 조회',
+    description: '특정 주문의 상세 정보를 조회합니다.',
+  })
+  @ApiParam({ name: 'orderId', description: '조회할 주문의 ID' })
   @ApiResponse({ status: 200, description: '주문 상세 조회 성공' })
   @Get(':orderId')
   public async getOrderDetail(
