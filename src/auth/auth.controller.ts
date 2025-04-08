@@ -100,11 +100,7 @@ export class AuthController {
     description:
       '모든 테스트용 계정(user1~5,admin1~2,superadmin1)의 비밀번호는 아이디(user1)과 동일합니다',
   })
-  public async login(
-    @Body() dto: SignInRequestDto,
-    @Req() req: Request,
-    @Res() res: Response,
-  ): Promise<void> {
+  public async login(@Body() dto: SignInRequestDto, @Res() res: Response): Promise<void> {
     const loginResult = await this.authService.login(dto);
 
     if (!loginResult) {
@@ -119,7 +115,7 @@ export class AuthController {
     // 응답 본문에 토큰 정보 포함 (클라이언트에서 필요할 수 있음)
     res.status(200).json({
       message: '로그인에 성공하였습니다',
-      data: user,
+      data: { user, token },
     });
   }
 
