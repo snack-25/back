@@ -8,6 +8,31 @@ export class ProductResponseDto {
   public id: string;
 
   @ApiProperty({
+    description: '생성 일시',
+    example: '2023-11-01T13:45:30.000Z',
+  })
+  public createdAt: Date;
+
+  @ApiProperty({
+    description: '수정 일시',
+    example: '2023-11-02T08:20:15.000Z',
+  })
+  public updatedAt: Date;
+
+  @ApiProperty({
+    description: '생성자 ID',
+    example: 'joa74jchflu84qdi1qjunn96',
+  })
+  public createdById: string;
+
+  @ApiProperty({
+    description: '수정자 ID',
+    example: 'y53rvrch7cvtx3re3a9054e1',
+    required: false,
+  })
+  public updatedById?: string;
+
+  @ApiProperty({
     description: '상품명',
     example: '캐모마일 티백 20개입',
   })

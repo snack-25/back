@@ -1,7 +1,7 @@
 import { Injectable, Logger, NestMiddleware, UnauthorizedException } from '@nestjs/common';
 import { NextFunction, Request, Response } from 'express';
-import { AuthService } from '../../auth/auth.service';
-import { JwtPayload } from '../../auth/dto/auth.dto';
+import { AuthService } from '@src/auth/auth.service';
+import { JwtPayload } from '@src/auth/dto/auth.dto';
 
 // Request 타입을 확장하여 authService 속성과 user 속성을 추가
 export interface RequestWithAuth extends Request {
