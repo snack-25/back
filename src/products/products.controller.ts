@@ -157,8 +157,8 @@ export class ProductsController {
   @ApiParam({ name: 'id', description: '상품 ID', example: 'ikhfu0ii0jt0e4ok8chaulpt' })
   @ApiResponse({ status: 200, description: '상품 삭제 성공' })
   @ApiResponse({ status: 404, description: '상품을 찾을 수 없습니다.' })
-  @Delete(':id')
   @Role(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Delete(':id')
   public remove(@Param('id') id: string, @GetUser() user: UserDto): Promise<string> {
     return this.productsService.deleteProduct(id, user);
   }

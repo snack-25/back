@@ -250,7 +250,7 @@ export class ProductsService {
         return `상품 ${id} 삭제 성공`;
       } catch (e) {
         this.logger.error(e);
-        throw new InternalServerErrorException();
+        throw new InternalServerErrorException('상품 삭제 중 서버 오류가 발생했습니다.');
       }
     } else {
       throw new UnauthorizedException('최고관리자 또는 본인이 등록한 상품만 삭제할 수 있습니다. ');
