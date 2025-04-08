@@ -10,6 +10,7 @@ export interface OrderRequestDetailResponse {
   resolverName: string | null;
   totalAmount: number;
   items: {
+    productId: string;
     productName: string;
     categoryId: string | null;
     categoryName: string;

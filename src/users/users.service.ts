@@ -226,6 +226,8 @@ export class UsersService {
     }
 
     if (body.password) {
+      this.validatePassword(body.password);
+
       const hashedPassword = await argon2.hash(body.password);
 
       const currentData = await this.prisma.user.findUnique({

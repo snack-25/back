@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBody, ApiParam } from '@nestjs/swagger';
 import { OrderRequestDto } from './dto/create-order.dto';
 import { Order } from '@prisma/client';
 import { OrderQueryDto } from './dto/update-order.dto';
@@ -8,6 +8,7 @@ import { Request } from 'express';
 import { AuthService } from '@src/auth/auth.service';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { GetUser } from '@src/shared/decorators/get-user.decorator';
+import { OrderDetailResponse } from './dto/orders.insterface';
 
 @ApiBearerAuth()
 @ApiTags('Orders')
@@ -61,15 +62,15 @@ export class OrdersController {
 
   @ApiOperation({
     summary: '주문 상세 조회',
-    description: '주문 ID를 기반으로 주문 상세 정보를 조회합니다.',
+    description: '특정 주문의 상세 정보를 조회합니다.',
   })
-  @ApiParam({ name: 'orderId', required: true, description: '조회할 주문의 ID' })
+  @ApiParam({ name: 'orderId', description: '조회할 주문의 ID' })
   @ApiResponse({ status: 200, description: '주문 상세 조회 성공' })
   @Get(':orderId')
   public async getOrderDetail(
     @Req() req: Request,
     @Param('orderId') orderId: string,
-  ): Promise<{ order: Order; totalItems: number }> {
+  ): Promise<OrderDetailResponse> {
     const { sub: userId } = await this.authService.getUserFromCookie(req);
     return await this.ordersService.getOrderDetail(userId, orderId);
   }

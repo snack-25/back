@@ -7,6 +7,7 @@ import { ProductsService } from '@src/products/products.service';
 import { CartsService } from '@src/carts/carts.service';
 import { getShippingFeeByUserId } from '@src/shared/helpers/shipping.helper';
 import { deductCompanyBudgetByUserId } from '@src/shared/helpers/budget.helper';
+import { OrderDetailResponse } from './dto/orders.insterface';
 
 @Injectable()
 export class OrdersService {
@@ -139,17 +140,18 @@ export class OrdersService {
   }
 
   //상품 상세조회
-  public async getOrderDetail(
-    userId: string,
-    orderId: string,
-  ): Promise<{ order: Order; totalItems: number }> {
+  public async getOrderDetail(userId: string, orderId: string): Promise<OrderDetailResponse> {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
-        createdBy: { select: { name: true } },
-        requestedBy: { select: { name: true } },
         orderItems: {
-          include: { product: true },
+          include: {
+            product: {
+              include: {
+                category: true,
+              },
+            },
+          },
         },
       },
     });
@@ -162,8 +164,28 @@ export class OrdersService {
       throw new ForbiddenException('이 주문을 조회할 권한이 없습니다.');
     }
 
-    const totalItems = order.orderItems.length;
-
-    return { order, totalItems };
+    return {
+      id: order.id,
+      orderNumber: order.orderNumber,
+      status: order.status as OrderDetailResponse['status'],
+      totalAmount: order.totalAmount,
+      shippingMethod: order.shippingMethod as string,
+      adminNotes: order.adminNotes,
+      notes: order.notes,
+      createdAt: order.createdAt.toISOString(),
+      updatedAt: order.updatedAt.toISOString(),
+      deliveredAt: order.deliveredAt?.toISOString() || null,
+      shippedAt: order.shippedAt?.toISOString() || null,
+      trackingNumber: order.trackingNumber,
+      orderItems: order.orderItems.map(item => ({
+        productId: item.productId,
+        productName: item.product.name,
+        imageUrl: item.product.imageUrl,
+        price: item.price,
+        quantity: item.quantity,
+        categoryId: item.product.category?.id || null,
+        categoryName: item.product.category?.name || null,
+      })),
+    };
   }
 }
