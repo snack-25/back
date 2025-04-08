@@ -39,12 +39,10 @@ import { Role, RoleGuard } from '@src/auth/role.guard';
 @ApiBearerAuth()
 @Controller('products')
 @UseGuards(RoleGuard)
-@Role(UserRole.ADMIN, UserRole.SUPERADMIN)
 @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 export class ProductsController {
   public constructor(private readonly productsService: ProductsService) {}
 
-  @Post()
   @UseInterceptors(
     FileInterceptor('imageUrl', {
       limits: { fileSize: FILE_SIZE_LIMIT },
@@ -54,6 +52,8 @@ export class ProductsController {
   @ApiConsumes('multipart/form-data')
   @ApiBody({ type: CreateProductDto })
   @ApiResponse({ status: 200, description: '상품 생성 성공', type: ProductResponseDto })
+  @Role(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Post()
   public async create(
     @Body() createProductDto: CreateProductDto,
     @GetUser() user: UserDto,
@@ -62,6 +62,7 @@ export class ProductsController {
     return this.productsService.createProduct(user, createProductDto, file);
   }
 
+  @Role(UserRole.ADMIN, UserRole.SUPERADMIN)
   @ApiOperation({ summary: '내가 등록한 상품' })
   @Get('my-products')
   public async getMyProducts(@GetUser() user: UserDto): Promise<Product[]> {
@@ -137,6 +138,7 @@ export class ProductsController {
     return this.productsService.findOneProduct(id);
   }
 
+  @Role(UserRole.ADMIN, UserRole.SUPERADMIN)
   @Patch(':id')
   @ApiOperation({ summary: '상품 수정' })
   @ApiParam({ name: 'id', description: '상품 ID', example: 'ikhfu0ii0jt0e4ok8chaulpt' })
@@ -151,11 +153,12 @@ export class ProductsController {
     return this.productsService.updateProduct(user, id, updateProductDto);
   }
 
-  @Delete(':id')
   @ApiOperation({ summary: '상품 삭제' })
   @ApiParam({ name: 'id', description: '상품 ID', example: 'ikhfu0ii0jt0e4ok8chaulpt' })
   @ApiResponse({ status: 200, description: '상품 삭제 성공' })
   @ApiResponse({ status: 404, description: '상품을 찾을 수 없습니다.' })
+  @Delete(':id')
+  @Role(UserRole.ADMIN, UserRole.SUPERADMIN)
   public remove(@Param('id') id: string, @GetUser() user: UserDto): Promise<string> {
     return this.productsService.deleteProduct(id, user);
   }
