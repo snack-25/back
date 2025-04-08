@@ -297,6 +297,7 @@ export class OrderRequestsService {
       resolverName: orderRequest.resolver?.name || null, // 처리한 사람의 이름
       totalAmount: orderRequest.totalAmount, // 총액
       items: orderRequest.orderRequestItems.map(item => ({
+        productId: item.productId,
         productName: item.product?.name || '상품 정보 없음',
         categoryId: item.product?.category?.id || null, // 🔹 카테고리 ID 추가
         categoryName: item.product?.category?.name || '카테고리 정보 없음', // 🔹 카테고리 이름 추가
