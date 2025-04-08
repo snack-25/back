@@ -19,6 +19,7 @@ import { createId } from '@paralleldrive/cuid2';
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { ALLOWED_MIME_TYPES, FILE_SIZE_LIMIT } from './const';
 import { UserDto } from '@src/users/dto/user.dto';
+import { UserRole } from '@src/users/enums/role.enum';
 
 @Injectable()
 export class ProductsService {
@@ -151,7 +152,7 @@ export class ProductsService {
   public async createProduct(
     user: UserDto,
     createProductDto: CreateProductDto,
-    file: any,
+    file: Express.Multer.File | undefined,
   ): Promise<ProductResponseDto> {
     const isFileExist = !!file; // 업로드한 파일이 있는지 확인
     let isImgUploaded = false; // 이미지가 s3 버킷에 업로드 성공했는지 확인
@@ -194,7 +195,6 @@ export class ProductsService {
       }
     }
 
-    // DB에 상품 생성
     try {
       const product = await this.prismaService.$transaction(async tx => {
         return tx.product.create({
@@ -232,7 +232,7 @@ export class ProductsService {
       throw new NotFoundException(`상품 ${id}을 찾을 수 없습니다.`);
     }
 
-    if (user.role === 'SUPERADMIN' || product.createdById === user.id) {
+    if (user.role === UserRole.SUPERADMIN || product.createdById === user.id) {
       try {
         if (product.imageUrl) {
           await this.s3Client.send(
@@ -273,7 +273,7 @@ export class ProductsService {
       throw new NotFoundException('존재하지 않는 상품입니다');
     }
 
-    if (user.role === 'SUPERADMIN' || target.createdById === user.id) {
+    if (user.role === UserRole.SUPERADMIN || target.createdById === user.id) {
       const product = await this.prismaService.$transaction(async tx => {
         return tx.product.update({
           where: { id },
@@ -302,7 +302,7 @@ export class ProductsService {
     return new Map(products.map(p => [p.id, p.price]));
   }
 
-  public async getProductsByUserId(userId: string) {
+  public async getProductsByUserId(userId: string): Promise<Product[]> {
     return await this.prismaService.product.findMany({
       where: {
         createdById: userId,
