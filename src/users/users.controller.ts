@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { UserResponseDto } from './dto/response-user.dto';
@@ -8,7 +8,18 @@ import { UserResponseDto } from './dto/response-user.dto';
 export class UsersController {
   public constructor(private readonly usersService: UsersService) {}
 
-  // TODO: /users (GET) 회원 목록 조회
+  // /users (GET) 회원 목록 조회
+  @Get()
+  public async getUsers(
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '10',
+    @Query('search') search: string = '',
+  ) {
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+    return this.usersService.getUserList({ page: pageNumber, limit: limitNumber, search });
+  }
+
   // TODO: /users?search=김스낵 (GET) 회원 검색
   // TODO: /users/{userId} (GET) 유저 정보 조회
   @Get(':userId')

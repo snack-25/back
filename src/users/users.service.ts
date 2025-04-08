@@ -13,11 +13,51 @@ import { CheckEmailRequestDto, CheckEmailResponseDto, CheckNameDto } from './dto
 import { CompaniesRequestDto } from '@src/companies/dto/companies.dto';
 import { UserResponseDto } from './dto/response-user.dto';
 import { NAME_REGEX, PASSWORD_REGEX } from '@src/shared/const/RegExp';
-import { User } from '@prisma/client';
-
+import { Prisma, User } from '@prisma/client';
+interface GetUserListParams {
+  page: number;
+  limit: number;
+  search?: string;
+}
 @Injectable()
 export class UsersService {
   public constructor(private prisma: PrismaService) {}
+
+  // ✅ 회원 목록 조회 서비스
+  async getUserList(params: GetUserListParams) {
+    const { page, limit, search } = params;
+
+    const where = search
+      ? {
+          name: {
+            contains: search,
+            // mode: 'insensitive', // 대소문자 구분 없음
+            mode: Prisma.QueryMode.insensitive, // ✅ 타입 안전하게 설정
+          },
+        }
+      : {};
+
+    const [totalCount, users] = await this.prisma.$transaction([
+      this.prisma.user.count({ where }),
+      this.prisma.user.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+        },
+      }),
+    ]);
+
+    return {
+      totalCount,
+      users,
+    };
+  }
 
   // 기업조회
   public async checkCompany(companiesRequestDto: CompaniesRequestDto): Promise<boolean> {
