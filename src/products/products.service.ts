@@ -312,6 +312,8 @@ export class ProductsService {
 
   private toResponseDto(product: Product): ProductResponseDto {
     return {
+      createdAt: product.createdAt,
+      createdById: product.createdById,
       id: product.id,
       name: product.name,
       price: product.price,
