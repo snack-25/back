@@ -267,6 +267,7 @@ export class OrderRequestsService {
           include: {
             product: {
               select: {
+                id: true,
                 name: true,
                 price: true,
                 imageUrl: true, // 🔹 상품 이미지 URL 추가
