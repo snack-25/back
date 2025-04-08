@@ -7,6 +7,7 @@ import {
   Req,
   Res,
   UnauthorizedException,
+  Post,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { User } from '@prisma/client';
@@ -26,6 +27,14 @@ export class UsersController {
   ) {}
 
   // TODO: /users (GET) 회원 목록 조회
+  @Post('userlist')
+  @ApiResponse({ status: 200, description: '회사에 따른 유저 정보 전달' })
+  public async getUsers(@Body() body: { companyId: string }, @Res() res: Response): Promise<void> {
+    console.log('body', body);
+    const userlist = await this.usersService.getUsers(body);
+    console.log('userlist', userlist);
+    res.status(200).json({ message: '모든 유저의 정보 조회에 성공하였습니다', data: userlist });
+  }
   // TODO: /users?search=김스낵 (GET) 회원 검색
   // TODO: /users/me (GET) 유저 정보 조회(본인 정보 조회)
   @Get('me')

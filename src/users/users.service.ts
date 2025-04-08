@@ -229,4 +229,37 @@ export class UsersService {
       company: { name },
     };
   }
+
+  // 기업에 있는 유저들 정보 가져오기
+  public async getUsers(body: { companyId: string }): Promise<any> {
+    const { companyId } = body;
+
+    console.log('✅ Received companyId:', companyId);
+
+    const usersResult = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      select: {
+        users: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    console.log('🔍 Raw usersResult:', usersResult);
+
+    if (!usersResult) {
+      return [];
+    }
+
+    const filteredUsers = usersResult.users.filter(user => user.role !== 'SUPERADMIN');
+
+    console.log('✅ Filtered Users:', filteredUsers);
+
+    return filteredUsers;
+  }
 }
