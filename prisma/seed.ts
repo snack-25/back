@@ -282,6 +282,9 @@ const main = async (): Promise<void> => {
             }),
           ),
         );
+        Logger.log(
+          `🛒 장바구니에 ${seedingUsers.length}개의 데이터 추가 완료 (참고: 전체 장바구니 갯수는 ${await tx.cart.count()}개)`,
+        );
 
         // 7. 주문 요청 추가
         const orderRequestIds = [
