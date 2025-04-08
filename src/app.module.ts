@@ -14,8 +14,8 @@ import { ProductsModule } from './products/products.module';
 // import { AwsS3Module } from './shared/aws/s3.module';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import { AuthMiddleware } from './shared/middleware/auth.middleware';
-import { PrismaModule } from './shared/prisma/prisma.module';
+import { AuthMiddleware } from '@shared/middleware/auth.middleware';
+import { PrismaModule } from '@shared/prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { WishlistsModule } from './wishlists/wishlists.module';
 

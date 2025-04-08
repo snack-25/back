@@ -1,9 +1,10 @@
 import {
   BadRequestException,
   Injectable,
-  NotFoundException,
-  Logger,
   InternalServerErrorException,
+  Logger,
+  NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Prisma, Product } from '@prisma/client';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
@@ -15,8 +16,10 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { OrderStatus } from '@src/orders/enums/order-status.enum';
 import { extname } from 'path';
 import { createId } from '@paralleldrive/cuid2';
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { FILE_SIZE_LIMIT, ALLOWED_MIME_TYPES } from './const';
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { ALLOWED_MIME_TYPES, FILE_SIZE_LIMIT } from './const';
+import { UserDto } from '@src/users/dto/user.dto';
+import { UserRole } from '@src/users/enums/role.enum';
 
 @Injectable()
 export class ProductsService {
@@ -147,8 +150,9 @@ export class ProductsService {
   }
 
   public async createProduct(
+    user: UserDto,
     createProductDto: CreateProductDto,
-    file: any,
+    file: Express.Multer.File | undefined,
   ): Promise<ProductResponseDto> {
     const isFileExist = !!file; // 업로드한 파일이 있는지 확인
     let isImgUploaded = false; // 이미지가 s3 버킷에 업로드 성공했는지 확인
@@ -191,11 +195,11 @@ export class ProductsService {
       }
     }
 
-    // DB에 상품 생성
     try {
       const product = await this.prismaService.$transaction(async tx => {
         return tx.product.create({
           data: {
+            createdById: user.id,
             name: createProductDto.name,
             description: createProductDto.description,
             categoryId: createProductDto.categoryId,
@@ -219,57 +223,74 @@ export class ProductsService {
     }
   }
 
-  public async deleteProduct(id: string): Promise<string> {
-    try {
-      const product = await this.prismaService.product.findUnique({
-        where: { id },
-      });
+  public async deleteProduct(id: string, user: UserDto): Promise<string> {
+    const product = await this.prismaService.product.findUnique({
+      where: { id },
+    });
 
-      if (!product) {
-        throw new NotFoundException(`상품 ${id}을 찾을 수 없습니다.`);
-      }
-
-      if (product.imageUrl) {
-        await this.s3Client.send(
-          new DeleteObjectCommand({
-            Bucket: process.env.AWS_S3_BUCKET_NAME,
-            Key: `products/${product.imageUrl.split('/').pop()}`,
-          }),
-        );
-      }
-      await this.prismaService.$transaction(async tx => {
-        await tx.product.delete({
-          where: { id },
-        });
-      });
-
-      return `상품 ${id}를 성공적으로 삭제했습니다.`;
-    } catch (e) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
-        throw new NotFoundException(`상품 ${id}을 찾을 수 없습니다.`);
-      }
-      throw e;
+    if (!product) {
+      throw new NotFoundException(`상품 ${id}을 찾을 수 없습니다.`);
     }
+
+    if (user.role === UserRole.SUPERADMIN || product.createdById === user.id) {
+      try {
+        if (product.imageUrl) {
+          await this.s3Client.send(
+            new DeleteObjectCommand({
+              Bucket: process.env.AWS_S3_BUCKET_NAME,
+              Key: `products/${product.imageUrl.split('/').pop()}`,
+            }),
+          );
+        }
+
+        await this.prismaService.$transaction(async tx => {
+          await tx.product.delete({
+            where: { id },
+          });
+        });
+        return `상품 ${id}를 성공적으로 삭제했습니다.`;
+      } catch (e) {
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
+          throw new NotFoundException(`상품 ${id}을 찾을 수 없습니다.`);
+        }
+        throw e;
+      }
+    }
+
+    throw new UnauthorizedException('최고관리자 또는 본인이 등록한 상품만 삭제할 수 있습니다. ');
   }
 
   public async updateProduct(
+    user: UserDto,
     id: string,
     updateProductDto: UpdateProductDto,
   ): Promise<ProductResponseDto> {
-    // TODO: 이미지 업데이트 로직 추가(s3에서 기존 이미지 삭제처리 필요) 2025-04-01 12:39
-    const product = await this.prismaService.$transaction(async tx => {
-      return tx.product.update({
-        where: { id },
-        data: {
-          name: updateProductDto.name,
-          price: updateProductDto.price,
-          description: updateProductDto.description,
-          // imageUrl: updateProductDto.imageUrl,
-          categoryId: updateProductDto.categoryId,
-        },
-      });
+    const target = await this.prismaService.product.findUnique({
+      where: { id },
     });
-    return this.toResponseDto(product);
+
+    if (!target) {
+      throw new NotFoundException('존재하지 않는 상품입니다');
+    }
+
+    if (user.role === UserRole.SUPERADMIN || target.createdById === user.id) {
+      const product = await this.prismaService.$transaction(async tx => {
+        return tx.product.update({
+          where: { id },
+          data: {
+            name: updateProductDto.name,
+            price: updateProductDto.price,
+            description: updateProductDto.description,
+            // imageUrl: updateProductDto.imageUrl,
+            categoryId: updateProductDto.categoryId,
+            updatedById: user.id,
+          },
+        });
+      });
+      return this.toResponseDto(product);
+    }
+
+    throw new UnauthorizedException('최고관리자 또는 본인이 등록한 상품만 수정 가능합니다.');
   }
 
   public async getProductPricesByIds(productIds: string[]): Promise<Map<string, number>> {
@@ -281,8 +302,18 @@ export class ProductsService {
     return new Map(products.map(p => [p.id, p.price]));
   }
 
+  public async getProductsByUserId(userId: string): Promise<Product[]> {
+    return await this.prismaService.product.findMany({
+      where: {
+        createdById: userId,
+      },
+    });
+  }
+
   private toResponseDto(product: Product): ProductResponseDto {
     return {
+      createdAt: product.createdAt,
+      createdById: product.createdById,
       id: product.id,
       name: product.name,
       price: product.price,

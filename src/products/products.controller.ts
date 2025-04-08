@@ -9,18 +9,20 @@ import {
   Post,
   Query,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import {
+  ApiBearerAuth,
   ApiBody,
+  ApiConsumes,
   ApiOperation,
   ApiParam,
   ApiQuery,
   ApiResponse,
-  ApiConsumes,
 } from '@nestjs/swagger';
 import { ProductResponseDto } from './dto/product.response.dto';
 import { PaginatedProductsResponseDto } from './dto/paginated-products.dto';
@@ -29,10 +31,15 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { SortOption } from './enums/sort-options.enum';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FILE_SIZE_LIMIT } from './const';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { GetUser } from '@shared/decorators/get-user.decorator';
+import { UserDto } from '@src/users/dto/user.dto';
+import { Product, UserRole } from '@prisma/client';
+import { Role, RoleGuard } from '@src/auth/role.guard';
 
 @ApiBearerAuth()
 @Controller('products')
+@UseGuards(RoleGuard)
+@Role(UserRole.ADMIN, UserRole.SUPERADMIN)
 @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 export class ProductsController {
   public constructor(private readonly productsService: ProductsService) {}
@@ -47,12 +54,18 @@ export class ProductsController {
   @ApiConsumes('multipart/form-data')
   @ApiBody({ type: CreateProductDto })
   @ApiResponse({ status: 200, description: '상품 생성 성공', type: ProductResponseDto })
-  @ApiResponse({ status: 400, description: '상품 생성 실패' })
   public async create(
     @Body() createProductDto: CreateProductDto,
-    @UploadedFile() file: any,
+    @GetUser() user: UserDto,
+    @UploadedFile() file?: Express.Multer.File,
   ): Promise<ProductResponseDto> {
-    return this.productsService.createProduct(createProductDto, file);
+    return this.productsService.createProduct(user, createProductDto, file);
+  }
+
+  @ApiOperation({ summary: '내가 등록한 상품' })
+  @Get('my-products')
+  public async getMyProducts(@GetUser() user: UserDto): Promise<Product[]> {
+    return this.productsService.getProductsByUserId(user.id);
   }
 
   @Get()
@@ -106,15 +119,12 @@ export class ProductsController {
   })
   @ApiResponse({ status: 200, description: '상품 목록', type: PaginatedProductsResponseDto })
   public findAll(
-    @Query('page', ParseIntPipe) page: number = 1,
+    @Query('page', ParseIntPipe) page: number,
     @Query('limit', ParseIntPipe) limit: number = 8,
     @Query('search') search: string = '',
     @Query('categoryId') categoryId: string = '',
     @Query('sort') sort: SortOption = SortOption.CREATED_AT_DESC,
   ): Promise<PaginatedProductsResponseDto> {
-    if (categoryId) {
-      categoryId = decodeURIComponent(categoryId);
-    }
     return this.productsService.findAllProducts({ page, limit, search, categoryId, sort });
   }
 
@@ -135,9 +145,10 @@ export class ProductsController {
   @ApiResponse({ status: 404, description: '상품을 찾을 수 없습니다.' })
   public update(
     @Param('id') id: string,
+    @GetUser() user: UserDto,
     @Body() updateProductDto: UpdateProductDto,
   ): Promise<ProductResponseDto> {
-    return this.productsService.updateProduct(id, updateProductDto);
+    return this.productsService.updateProduct(user, id, updateProductDto);
   }
 
   @Delete(':id')
@@ -145,7 +156,7 @@ export class ProductsController {
   @ApiParam({ name: 'id', description: '상품 ID', example: 'ikhfu0ii0jt0e4ok8chaulpt' })
   @ApiResponse({ status: 200, description: '상품 삭제 성공' })
   @ApiResponse({ status: 404, description: '상품을 찾을 수 없습니다.' })
-  public remove(@Param('id') id: string): Promise<string> {
-    return this.productsService.deleteProduct(id);
+  public remove(@Param('id') id: string, @GetUser() user: UserDto): Promise<string> {
+    return this.productsService.deleteProduct(id, user);
   }
 }
