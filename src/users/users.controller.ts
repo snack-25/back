@@ -48,7 +48,7 @@ export class UsersController {
   @Patch('update/info')
   @ApiResponse({ status: 200, description: '유저 정보 수정' })
   public async updateData(
-    @Body() body: { password: string; company?: string },
+    @Body() body: { password?: string; company?: string },
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
