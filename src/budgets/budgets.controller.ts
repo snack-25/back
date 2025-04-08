@@ -10,7 +10,6 @@ export class BudgetsController {
   public constructor(private readonly budgetsService: BudgetsService) {}
 
   // //TODO: /budgets/{budgetId} (GET) 예산 정보 조회(이번 달 예산, 매달 시작 예산)
-
   @ApiOperation({
     summary: '예산 조회',
     description: '예산 조회',

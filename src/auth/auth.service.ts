@@ -94,14 +94,14 @@ export class AuthService {
 
       // 2. 초대 코드가 유효하지 않으면 예외 처리
       if (!invitation) {
-        throw new BadRequestException('초대 코드가 유효하지 않습니다.');
+        throw new BadRequestException('초대 코드가 유효하지 않습니다');
       }
 
       const existingUser = await this.prisma.user.findUnique({
         where: { email: invitation.email },
       });
       if (existingUser) {
-        throw new BadRequestException('이미 가입된 이메일입니다.');
+        throw new BadRequestException('이미 가입된 이메일입니다');
       }
 
       // 3. 비밀번호 해싱
@@ -131,7 +131,7 @@ export class AuthService {
       });
 
       if (!updateInvitation) {
-        throw new BadRequestException('초대 코드 상태 업데이트 실패');
+        throw new BadRequestException('초대 코드 상태 업데이트 실패했습니다');
       }
 
       const cartId = await this.cart(userAdd.id);
@@ -313,7 +313,7 @@ export class AuthService {
         throw err; // NestJS에서 자동으로 400 응답 반환
       }
 
-      throw new InternalServerErrorException('서버 오류가 발생했습니다.');
+      throw new InternalServerErrorException('서버 오류가 발생했습니다');
     }
   }
 
@@ -331,7 +331,7 @@ export class AuthService {
         ]);
       } catch (tokenError) {
         this.logger.error('토큰 생성 중 오류 발생', tokenError);
-        throw new UnauthorizedException('토큰 생성에 실패했습니다.');
+        throw new UnauthorizedException('토큰 생성에 실패했습니다');
       }
 
       // 2. DB 업데이트 시도 (트랜잭션 사용)
@@ -344,7 +344,7 @@ export class AuthService {
           });
 
           if (!user) {
-            throw new NotFoundException('사용자를 찾을 수 없습니다.');
+            throw new NotFoundException('사용자를 찾을 수 없습니다');
           }
 
           // refreshToken 업데이트
@@ -356,7 +356,7 @@ export class AuthService {
       } catch (dbError) {
         this.logger.error('DB 업데이트 중 오류 발생', dbError);
         // DB 업데이트 실패 시 토큰 생성도 실패로 처리
-        throw new InternalServerErrorException('토큰 정보 저장에 실패했습니다.');
+        throw new InternalServerErrorException('토큰 정보 저장에 실패했습니다');
       }
 
       return { accessToken, refreshToken };
@@ -371,7 +371,7 @@ export class AuthService {
       }
 
       this.logger.error('토큰 생성 프로세스 중 예상치 못한 오류', error);
-      throw new UnauthorizedException('토큰 생성에 실패했습니다.');
+      throw new UnauthorizedException('토큰 생성에 실패했습니다');
     }
   }
 
@@ -419,7 +419,7 @@ export class AuthService {
       // 토큰 형식 검증
       if (!accessToken || typeof accessToken !== 'string') {
         this.logger.warn('유효하지 않은 토큰 형식');
-        throw new UnauthorizedException('유효하지 않은 토큰 형식입니다.');
+        throw new UnauthorizedException('유효하지 않은 토큰 형식입니다');
       }
 
       // 토큰 검증
@@ -430,7 +430,7 @@ export class AuthService {
       // 토큰 타입 검증
       if (payload.type !== 'access') {
         this.logger.warn(`잘못된 토큰 타입: ${payload.type}`);
-        throw new UnauthorizedException('잘못된 토큰 타입입니다.');
+        throw new UnauthorizedException('잘못된 토큰 타입입니다');
       }
 
       // 토큰 만료 시간 로깅 (디버깅용)
@@ -451,12 +451,12 @@ export class AuthService {
       // 토큰 만료 예외 처리
       if (error.name === 'TokenExpiredError') {
         this.logger.warn('만료된 토큰');
-        throw new UnauthorizedException('만료된 토큰입니다.');
+        throw new UnauthorizedException('만료된 토큰입니다');
       }
 
       // 기타 JWT 관련 예외 처리
       this.logger.error('액세스 토큰 검증 실패', error);
-      throw new UnauthorizedException('액세스 토큰 검증에 실패했습니다.');
+      throw new UnauthorizedException('액세스 토큰 검증에 실패했습니다');
     }
   }
 
@@ -478,7 +478,7 @@ export class AuthService {
       });
     } catch (error) {
       this.logger.error('리프레시 토큰 검증 실패', error);
-      throw new UnauthorizedException('리프레시 토큰 검증에 실패했습니다.');
+      throw new UnauthorizedException('리프레시 토큰 검증에 실패했습니다');
     }
   }
 
@@ -499,7 +499,7 @@ export class AuthService {
       return res.json({ message: '로그아웃 성공' });
     } catch (error) {
       if (error instanceof ConflictException) {
-        throw new ConflictException(`회원가입에 실패했습니다.`);
+        throw new ConflictException(`회원가입에 실패했습니다`);
       }
       // 예외 상황에 대한 HTTP 응답 반환
       throw new UnauthorizedException('로그아웃 실패');
@@ -512,7 +512,7 @@ export class AuthService {
       const user = await this.verifyAccessToken(accessToken);
       // 디코딩된 토큰은 payload와 iat, exp, sub 등의 정보를 포함
       if (!user.exp) {
-        throw new UnauthorizedException('토큰 만료 정보가 없습니다.');
+        throw new UnauthorizedException('토큰 만료 정보가 없습니다');
       }
       return {
         sub: user['sub'],
@@ -523,7 +523,7 @@ export class AuthService {
         '액세스 토큰 디코딩 실패',
         error instanceof Error ? error.stack : String(error),
       );
-      throw new UnauthorizedException('액세스 토큰 디코딩에 실패했습니다.');
+      throw new UnauthorizedException('액세스 토큰 디코딩에 실패했습니다');
     }
   }
 
@@ -531,14 +531,14 @@ export class AuthService {
   public async getUserFromCookie(@Req() req: Request): Promise<decodeAccessToken> {
     const accessToken: string | undefined = req.cookies?.accessToken as string | undefined;
     if (!accessToken) {
-      throw new BadRequestException('로그인이 필요합니다.');
+      throw new BadRequestException('로그인이 필요합니다');
     }
     if (typeof accessToken !== 'string') {
-      throw new BadRequestException('유효하지 않은 토큰 형식입니다.');
+      throw new BadRequestException('유효하지 않은 토큰 형식입니다');
     }
     const decoded = await this.decodeAccessToken(accessToken);
     if (decoded.exp * 1000 < Date.now()) {
-      throw new UnauthorizedException('토큰이 만료되었습니다.');
+      throw new UnauthorizedException('토큰이 만료되었습니다');
     }
     return decoded;
   }
