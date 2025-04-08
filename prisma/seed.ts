@@ -260,28 +260,31 @@ const main = async (): Promise<void> => {
           'a0j6kkgxyxxu0ro7tad7ofxe',
           'jfrrtr7ocra38vwc1l7y04sr',
         ];
-        // 각 user 당 장바구니 하나씩 추가(없는 경우 추가, 변경된 경우 업데이트, 동일한 경우 skip)
-        await tx.cart.deleteMany();
-        await tx.cart.createMany({
-          data: users.map((user, index) => ({
-            id: cartIds[index],
-            userId: user.id,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          })),
-          skipDuplicates: true,
-        });
 
-        // await tx.cart.upsert({
-        //   where: { id: 'bhcxqfshp43wkskocodegc7x' },
-        //   update: {},
-        //   create: {
-        //     id: 'bhcxqfshp43wkskocodegc7x',
-        //     userId: getRequiredId(users[4], ERROR_MESSAGES.USER_ID_NOT_FOUND),
-        //     createdAt: new Date(),
-        //     updatedAt: new Date(),
-        //   },
-        // });
+        // 시딩용 사용자들만 별도로 처리
+        const seedingUsers = users.slice(0, cartIds.length);
+
+        // 각 user 당 장바구니 하나씩 추가(없는 경우 추가, 변경된 경우 업데이트, 동일한 경우 skip)
+        await Promise.all(
+          seedingUsers.map((user, index) =>
+            tx.cart.upsert({
+              where: { id: cartIds[index] },
+              update: {
+                userId: user.id,
+                updatedAt: new Date(),
+              },
+              create: {
+                id: cartIds[index],
+                userId: user.id,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            }),
+          ),
+        );
+        Logger.log(
+          `🛒 장바구니에 ${seedingUsers.length}개의 데이터 추가 완료 (참고: 전체 장바구니 갯수는 ${await tx.cart.count()}개)`,
+        );
 
         // 7. 주문 요청 추가
         const orderRequestIds = [
