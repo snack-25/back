@@ -107,7 +107,7 @@ export class UsersService {
 
     // 사업자 등록번호가 이미 존재하면 오류 발생
     if (existing) {
-      throw new BadRequestException('이미 존재하는 회사입니다.');
+      throw new BadRequestException('이미 존재하는 회사입니다');
     }
 
     // 사업자 등록번호가 없으면 DTO 그대로 반환
@@ -123,11 +123,11 @@ export class UsersService {
       CheckNameDto.name.length < 2 ||
       CheckNameDto.name.length > 50
     ) {
-      throw new BadRequestException('이름은 최소 2자, 최대 50자여야 합니다.');
+      throw new BadRequestException('이름은 최소 2자, 최대 50자여야 합니다');
     }
     // 영어 대소문자, 숫자, 한글만 허용 (특수문자 및 띄어쓰기는 허용하지 않음)
     if (!NAME_REGEX.test(CheckNameDto.name)) {
-      throw new BadRequestException('이름에 특수문자나 띄어쓰기를 사용할 수 없습니다.');
+      throw new BadRequestException('이름에 특수문자나 띄어쓰기를 사용할 수 없습니다');
     }
     // 유효성 검사를 통과하면 입력받은 객체를 그대로 Promise로 감싸서 반환
     return Promise.resolve(CheckNameDto);
@@ -147,11 +147,11 @@ export class UsersService {
       /^(?<localPart>(?<dotString>[0-9a-z!#$%&'*+\-\/=?^_`\{|\}~\u{80}-\u{10FFFF}]+(\.[0-9a-z!#$%&'*+\-\/=?^_`\{|\}~\u{80}-\u{10FFFF}]+)*)|(?<quotedString>"([\x20-\x21\x23-\x5B\x5D-\x7E\u{80}-\u{10FFFF}]|\\[\x20-\x7E])*"))(?<!.{64,})@(?<domainOrAddressLiteral>(?<addressLiteral>\[((?<IPv4>\d{1,3}(\.\d{1,3}){3})|(?<IPv6Full>IPv6:[0-9a-f]{1,4}(:[0-9a-f]{1,4}){7})|(?<IPv6Comp>IPv6:([0-9a-f]{1,4}(:[0-9a-f]{1,4}){0,5})?::([0-9a-f]{1,4}(:[0-9a-f]{1,4}){0,5})?)|(?<IPv6v4Full>IPv6:[0-9a-f]{1,4}(:[0-9a-f]{1,4}){5}:\d{1,3}(\.\d{1,3}){3})|(?<IPv6v4Comp>IPv6:([0-9a-f]{1,4}(:[0-9a-f]{1,4}){0,3})?::([0-9a-f]{1,4}(:[0-9a-f]{1,4}){0,3}:)?\d{1,3}(\.\d{1,3}){3})|(?<generalAddressLiteral>[a-z0-9\-]*[[a-z0-9]:[\x21-\x5A\x5E-\x7E]+))\])|(?<Domain>(?!.{256,})(([0-9a-z\u{80}-\u{10FFFF}]([0-9a-z\-\u{80}-\u{10FFFF}]*[0-9a-z\u{80}-\u{10FFFF}])?))(\.([0-9a-z\u{80}-\u{10FFFF}]([0-9a-z\-\u{80}-\u{10FFFF}]*[0-9a-z\u{80}-\u{10FFFF}])?))*))$/iu;
 
     if (typeof checkEmailRequestDto.email !== 'string') {
-      throw new BadRequestException('이메일은 문자열이어야 합니다.');
+      throw new BadRequestException('이메일은 문자열이어야 합니다');
     }
 
     if (!emailRegex.test(checkEmailRequestDto.email)) {
-      throw new BadRequestException('유효하지 않은 이메일 형식입니다.');
+      throw new BadRequestException('유효하지 않은 이메일 형식입니다');
     }
 
     try {
@@ -159,7 +159,7 @@ export class UsersService {
         where: { email: checkEmailRequestDto.email },
       });
       if (emailExists) {
-        throw new ConflictException('이미 사용 중인 이메일입니다.');
+        throw new ConflictException('이미 사용 중인 이메일입니다');
       }
       return {
         message: '사용 가능한 이메일입니다.',
@@ -168,32 +168,32 @@ export class UsersService {
     } catch (error) {
       // Prisma 관련 에러 처리
       if (error instanceof PrismaClientKnownRequestError) {
-        throw new InternalServerErrorException('데이터베이스 조회 중 오류가 발생했습니다.');
+        throw new InternalServerErrorException('데이터베이스 조회 중 오류가 발생했습니다');
       }
       // ConflictException은 그대로 전달
       if (error instanceof ConflictException) {
         throw error;
       }
       // 기타 예상치 못한 에러
-      throw new InternalServerErrorException('이메일 확인 중 오류가 발생했습니다.');
+      throw new InternalServerErrorException('이메일 확인 중 오류가 발생했습니다');
     }
   }
 
   //비밀번호 확인
   public validatePassword(password: string): string {
     if (password.length < 8) {
-      throw new BadRequestException('비밀번호는 최소 8자 이상이어야 합니다.');
+      throw new BadRequestException('비밀번호는 최소 8자 이상이어야 합니다');
     }
 
     if (password.length > 128) {
-      throw new BadRequestException('비밀번호는 최대 128자 이하여야 합니다.');
+      throw new BadRequestException('비밀번호는 최대 128자 이하여야 합니다');
     }
 
     if (!PASSWORD_REGEX.test(password)) {
-      throw new BadRequestException('비밀번호는 영문 대소문자, 숫자, 특수문자를 포함해야 합니다.');
+      throw new BadRequestException('비밀번호는 영문 대소문자, 숫자, 특수문자를 포함해야 합니다');
     }
 
-    return '사용 가능한 비밀번호입니다.';
+    return '사용 가능한 비밀번호입니다';
   }
 
   // 본인 정보 조회
@@ -209,7 +209,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('사용자를 찾을 수 없습니다.');
+      throw new NotFoundException('사용자를 찾을 수 없습니다');
     }
 
     return user;
@@ -220,7 +220,7 @@ export class UsersService {
       where: { id: userId },
     });
     if (!user) {
-      throw new NotFoundException('사용자 ID를 찾을 수 없습니다.');
+      throw new NotFoundException('사용자 ID를 찾을 수 없습니다');
     }
     return this.toResponseDto(user);
   }
@@ -252,10 +252,10 @@ export class UsersService {
       include: { company: true },
     });
     if (!userWithCompany) {
-      throw new BadRequestException('해당하는 사용자가 존재하지 않습니다.');
+      throw new BadRequestException('해당하는 사용자가 존재하지 않습니다');
     }
     if (!userWithCompany.company) {
-      throw new BadRequestException('연결된 회사가 존재하지 않습니다.');
+      throw new BadRequestException('연결된 회사가 존재하지 않습니다');
     }
 
     if (body.password) {

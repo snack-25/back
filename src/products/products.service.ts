@@ -243,21 +243,18 @@ export class ProductsService {
           );
         }
 
-        await this.prismaService.$transaction(async tx => {
-          await tx.product.delete({
-            where: { id },
-          });
+        await this.prismaService.product.delete({
+          where: { id },
         });
-        return `상품 ${id}를 성공적으로 삭제했습니다.`;
-      } catch (e) {
-        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
-          throw new NotFoundException(`상품 ${id}을 찾을 수 없습니다.`);
-        }
-        throw e;
-      }
-    }
 
-    throw new UnauthorizedException('최고관리자 또는 본인이 등록한 상품만 삭제할 수 있습니다. ');
+        return `상품 ${id} 삭제 성공`;
+      } catch (e) {
+        this.logger.error(e);
+        throw new InternalServerErrorException('상품 삭제 중 서버 오류가 발생했습니다.');
+      }
+    } else {
+      throw new UnauthorizedException('최고관리자 또는 본인이 등록한 상품만 삭제할 수 있습니다. ');
+    }
   }
 
   public async updateProduct(
