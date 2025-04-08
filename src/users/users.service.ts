@@ -9,7 +9,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { User, Prisma } from '@prisma/client';
+import { User, UserRole, Prisma } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { CompaniesRequestDto } from '@src/companies/dto/companies.dto';
 import { NAME_REGEX, PASSWORD_REGEX } from '@src/shared/const/RegExp';
@@ -19,7 +19,7 @@ import { CheckEmailRequestDto, CheckEmailResponseDto, CheckNameDto } from './dto
 import { ReulstDto } from '@src/auth/dto/auth.dto';
 import * as argon2 from 'argon2';
 import { GetUserListParams, GetUserListResponse } from './dto/get-user-list-params.dto';
-
+import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 @Injectable()
 export class UsersService {
   public constructor(
@@ -60,6 +60,39 @@ export class UsersService {
       totalCount,
       users,
     };
+  }
+  // ✅ 권한 변경 로직
+  public async updateUserRole(userId: string, dto: UpdateUserRoleDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('사용자를 찾을 수 없습니다.');
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        role: { set: dto.role as UserRole },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      },
+    });
+  }
+
+  public async deleteUser(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      throw new NotFoundException('사용자를 찾을 수 없습니다.');
+    }
+
+    await this.prisma.user.delete({ where: { id: userId } });
   }
 
   // 기업조회

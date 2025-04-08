@@ -1,4 +1,5 @@
 import {
+  Delete,
   Controller,
   Get,
   Patch,
@@ -8,6 +9,7 @@ import {
   Req,
   Res,
   UnauthorizedException,
+  ForbiddenException,
 } from '@nestjs/common';
 
 import { ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -18,6 +20,7 @@ import { UserResponseDto } from './dto/response-user.dto';
 import { GetMeResponseDto } from './dto/user.dto';
 import { UsersService } from './users.service';
 import { AuthService } from '@src/auth/auth.service';
+import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 
 @ApiBearerAuth()
 @Controller('users')
@@ -87,5 +90,34 @@ export class UsersController {
   //   @Res() res: Response,
   // ): Promise<void> {}
 
+  @Patch(':userId/role')
+  @ApiOperation({ summary: '유저 권한 수정' })
+  @ApiResponse({ status: 200, description: '유저 권한이 성공적으로 변경되었습니다.' })
+  async updateRole(@Param('userId') userId: string, @Body() dto: UpdateUserRoleDto) {
+    return this.usersService.updateUserRole(userId, dto);
+  }
+
   // TODO: /users/{userId} (DELETE) 유저 정보 삭제(회원 탈퇴, 본인의 회원 탈퇴 또는 최고관리자가 탈퇴 처리)
+
+  @Delete(':id')
+  @ApiOperation({ summary: '[최고관리자] 특정 유저 계정 탈퇴' })
+  @ApiResponse({ status: 200, description: '유저 탈퇴 성공' })
+  public async deleteUser(
+    @Param('id') userId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const requester = req.user as User;
+
+    // ✅ 최고관리자만 탈퇴 가능
+    if (requester.role !== 'SUPERADMIN') {
+      throw new UnauthorizedException('최고관리자만 탈퇴할 수 있습니다.');
+    }
+
+    // 🧨 유저 삭제 서비스 호출
+    await this.usersService.deleteUser(userId);
+
+    // 🟢 성공 응답
+    res.status(200).json({ message: '유저 탈퇴 완료' });
+  }
 }
