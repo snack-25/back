@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import { BudgetsRequestDto, BudgetsResponseDto } from './dto/budgets.dto';
 
@@ -46,6 +46,12 @@ export class BudgetsService {
     try {
       // 특정 예산 레코드 조회
       console.log('dto', dto);
+
+      const MAX_AMOUNT = 500_000_000;
+      if (dto.currentAmount > MAX_AMOUNT || dto.initialAmount > MAX_AMOUNT) {
+        throw new BadRequestException('금액이 5억을 초과하였습니다.');
+      }
+
       const existingBudget = await this.prisma.budget.findUnique({
         where: {
           companyId_year_month: {
@@ -100,7 +106,7 @@ export class BudgetsService {
       };
     } catch (err) {
       console.error('예산 처리 중 에러 발생', err);
-      throw new Error('예산 처리 중 오류 발생');
+      throw err; // 덮어씌우지 않고 원래 에러 그대로 전달
     }
   }
 }

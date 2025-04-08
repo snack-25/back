@@ -31,14 +31,9 @@ export class BudgetsController {
   })
   @ApiResponse({ status: 200, description: '예산 정보 수정에 성공했습니다' })
   @Put('update')
-  public async update(
-    @Body() dto: BudgetsRequestDto,
-    // @Req() req: Request,
-    @Res() res: Response,
-  ): Promise<void> {
+  public async update(@Body() dto: BudgetsRequestDto, @Res() res: Response): Promise<void> {
     const update = await this.budgetsService.update(dto);
     res.status(200).json({ data: update, message: '예산 변경에 성공했습니다' });
   }
-
   //TODO: /budgets/{budgetId} (DELETE) 예산 정보 삭제
 }
