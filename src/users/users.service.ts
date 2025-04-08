@@ -9,7 +9,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { User } from '@prisma/client';
+import { User, Prisma } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { CompaniesRequestDto } from '@src/companies/dto/companies.dto';
 import { NAME_REGEX, PASSWORD_REGEX } from '@src/shared/const/RegExp';
@@ -18,6 +18,7 @@ import { UserResponseDto } from './dto/response-user.dto';
 import { CheckEmailRequestDto, CheckEmailResponseDto, CheckNameDto } from './dto/user.dto';
 import { ReulstDto } from '@src/auth/dto/auth.dto';
 import * as argon2 from 'argon2';
+import { GetUserListParams, GetUserListResponse } from './dto/get-user-list-params.dto';
 
 @Injectable()
 export class UsersService {
@@ -27,21 +28,20 @@ export class UsersService {
   ) {}
 
   // ✅ 회원 목록 조회 서비스
-  async getUserList(params: GetUserListParams) {
+  async getUserList(params: GetUserListParams): Promise<GetUserListResponse> {
     const { page, limit, search } = params;
 
     const where = search
       ? {
           name: {
             contains: search,
-            // mode: 'insensitive', // 대소문자 구분 없음
-            mode: Prisma.QueryMode.insensitive, // ✅ 타입 안전하게 설정
+            mode: Prisma.QueryMode.insensitive, // 대소문자 구분 없이 검색
           },
         }
       : {};
 
     const [totalCount, users] = await this.prisma.$transaction([
-      this.prisma.user.count({ where }),
+      this.prisma.user.count({ where }), // 총 사용자 수
       this.prisma.user.findMany({
         where,
         skip: (page - 1) * limit,
