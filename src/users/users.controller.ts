@@ -1,13 +1,16 @@
 import {
+  Delete,
   Controller,
   Get,
   Patch,
   Body,
   Param,
+  Query,
   Req,
   Res,
   UnauthorizedException,
 } from '@nestjs/common';
+
 import { ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { User } from '@prisma/client';
 import { Request, Response } from 'express';
@@ -16,6 +19,7 @@ import { UserResponseDto } from './dto/response-user.dto';
 import { GetMeResponseDto } from './dto/user.dto';
 import { UsersService } from './users.service';
 import { AuthService } from '@src/auth/auth.service';
+import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 
 @ApiBearerAuth()
 @Controller('users')
@@ -25,7 +29,18 @@ export class UsersController {
     private readonly authService: AuthService,
   ) {}
 
-  // TODO: /users (GET) 회원 목록 조회
+  // /users (GET) 회원 목록 조회
+  @Get()
+  public async getUsers(
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '10',
+    @Query('search') search: string = '',
+  ) {
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+    return this.usersService.getUserList({ page: pageNumber, limit: limitNumber, search });
+  }
+
   // TODO: /users?search=김스낵 (GET) 회원 검색
   // TODO: /users/me (GET) 유저 정보 조회(본인 정보 조회)
   @Get('me')
@@ -74,5 +89,20 @@ export class UsersController {
   //   @Res() res: Response,
   // ): Promise<void> {}
 
+  @Patch(':userId/role')
+  @ApiOperation({ summary: '유저 권한 수정' })
+  @ApiResponse({ status: 200, description: '유저 권한이 성공적으로 변경되었습니다.' })
+  async updateRole(@Param('userId') userId: string, @Body() dto: UpdateUserRoleDto) {
+    return this.usersService.updateUserRole(userId, dto);
+  }
+
   // TODO: /users/{userId} (DELETE) 유저 정보 삭제(회원 탈퇴, 본인의 회원 탈퇴 또는 최고관리자가 탈퇴 처리)
+
+  @Delete(':id')
+  @ApiOperation({ summary: '유저 탈퇴' })
+  @ApiResponse({ status: 200, description: '유저 탈퇴 성공' })
+  public async deleteUser(@Param('id') userId: string): Promise<{ message: string }> {
+    await this.usersService.deleteUser(userId);
+    return { message: '유저 탈퇴 완료' };
+  }
 }
