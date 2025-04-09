@@ -34,16 +34,25 @@ export class OrdersService {
       createdAt: sort === 'latest' ? 'asc' : 'desc',
     } as const;
 
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { companyId: true },
+    });
+
+    if (!user || !user.companyId) {
+      throw new NotFoundException('유저 또는 소속된 회사를 찾을 수 없습니다.');
+    }
+
     const totalOrders = await this.prisma.order.count({
       where: {
-        OR: [{ createdById: userId }, { requestedById: userId }],
+        companyId: user.companyId,
         ...(query.status && { status: query.status }),
       },
     });
 
     const orders = await this.prisma.order.findMany({
       where: {
-        OR: [{ createdById: userId }, { requestedById: userId }],
+        companyId: user.companyId,
         ...(query.status && { status: query.status }),
       },
       orderBy,
@@ -164,6 +173,15 @@ export class OrdersService {
 
   //상품 상세조회
   public async getOrderDetail(userId: string, orderId: string): Promise<OrderDetailResponse> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { companyId: true },
+    });
+
+    if (!user || !user.companyId) {
+      throw new NotFoundException('유저 또는 소속 회사를 찾을 수 없습니다.');
+    }
+
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
@@ -183,7 +201,7 @@ export class OrdersService {
       throw new NotFoundException('해당 주문을 찾을 수 없습니다.');
     }
 
-    if (order.requestedById !== userId) {
+    if (order.companyId !== user.companyId) {
       throw new ForbiddenException('이 주문을 조회할 권한이 없습니다.');
     }
 
