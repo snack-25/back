@@ -1,13 +1,14 @@
 import { ForbiddenException, Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import { OrderRequestDto } from './dto/create-order.dto';
-import { Order } from '@prisma/client';
+import { Order, Prisma } from '@prisma/client';
 import { OrderQueryDto } from './dto/update-order.dto';
 import { ProductsService } from '@src/products/products.service';
 import { CartsService } from '@src/carts/carts.service';
 import { getShippingFeeByUserId } from '@src/shared/helpers/shipping.helper';
 import { deductCompanyBudgetByUserId } from '@src/shared/helpers/budget.helper';
 import { OrderDetailResponse } from './dto/orders.insterface';
+import { getOrderBy } from '@src/shared/utils/order-requestsSort.util';
 
 @Injectable()
 export class OrdersService {
@@ -30,16 +31,7 @@ export class OrdersService {
     const skip = (page - 1) * pageSize;
     const take = pageSize;
 
-    const orderBy =
-      sort === 'latest'
-        ? { createdAt: 'desc' }
-        : sort === 'oldest'
-          ? { createdAt: 'asc' }
-          : sort === 'highPrice'
-            ? { totalAmount: 'desc' }
-            : sort === 'lowPrice'
-              ? { totalAmount: 'asc' }
-              : { createdAt: 'desc' };
+    const orderBy = getOrderBy(sort) as Prisma.OrderOrderByWithRelationInput;
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
