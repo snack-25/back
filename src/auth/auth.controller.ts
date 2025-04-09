@@ -10,7 +10,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { type Invitation } from '@prisma/client';
+// import { type Invitation } from '@prisma/client';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import {
