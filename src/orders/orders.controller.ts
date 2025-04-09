@@ -25,8 +25,8 @@ export class OrdersController {
   @ApiQuery({
     name: 'sort',
     required: false,
-    enum: ['latest', 'oldest'],
-    description: '정렬 기준 (최신순, 오래된순)',
+    enum: ['latest', 'oldest', 'highPrice', 'lowPrice'],
+    description: '정렬 기준',
   })
   @ApiResponse({ status: 200, description: '주문 목록 조회 성공' })
   @Get()
