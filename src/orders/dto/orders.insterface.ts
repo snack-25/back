@@ -11,7 +11,7 @@ export interface OrderDetailItem {
 export interface OrderDetailResponse {
   id: string;
   orderNumber: string;
-  status: 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'PROCESSING';
   totalAmount: number;
   shippingMethod: string;
   adminNotes: string | null;
@@ -21,5 +21,21 @@ export interface OrderDetailResponse {
   deliveredAt: string | null;
   shippedAt: string | null;
   trackingNumber: string | null;
-  orderItems: OrderDetailItem[];
+  requestedBy: {
+    id: string;
+    name: string;
+  };
+  updatedBy: {
+    id: string;
+    name: string;
+  };
+  orderItems: {
+    productId: string;
+    productName: string;
+    imageUrl: string;
+    price: number;
+    quantity: number;
+    categoryId: string | null;
+    categoryName: string | null;
+  }[];
 }
