@@ -61,41 +61,12 @@ export class ProductsController {
   ): Promise<ProductResponseDto> {
     return this.productsService.createProduct(user, createProductDto, file);
   }
+
   @ApiOperation({ summary: '내가 등록한 상품' })
-  @ApiQuery({
-    name: 'page',
-    description: '페이지 번호',
-    type: Number,
-    required: true,
-  })
-  @ApiQuery({
-    name: 'limit',
-    description: '페이지당 상품 수',
-    type: Number,
-    required: false,
-    default: 8,
-  })
-  @ApiQuery({
-    name: 'sort',
-    description: '정렬 순서 (기본-최신순)',
-    enum: SortOption,
-    required: false,
-    default: SortOption.CREATED_AT_DESC,
-  })
   @Role(UserRole.ADMIN, UserRole.SUPERADMIN)
   @Get('my-products')
-  public async getMyProducts(
-    @Query('page', ParseIntPipe) page: number,
-    @Query('limit', ParseIntPipe) limit: number = 8,
-    @Query('sort') sort: SortOption = SortOption.CREATED_AT_DESC,
-    @GetUser() user: UserDto,
-  ): Promise<PaginatedProductsResponseDto> {
-    return this.productsService.getProductsByUserId({
-      page,
-      limit,
-      sort,
-      userId: user.id,
-    });
+  public async getMyProducts(@GetUser() user: UserDto): Promise<any> {
+    return this.productsService.getProductsByUserId(user.id);
   }
 
   @Get()
