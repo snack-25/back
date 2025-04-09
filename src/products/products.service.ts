@@ -9,7 +9,7 @@ import {
 import { Prisma, Product } from '@prisma/client';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import { ProductResponseDto } from './dto/product.response.dto';
-import { ProductQueryDto } from './dto/product.query.dto';
+import { MyProductQueryDto, ProductQueryDto } from './dto/product.query.dto';
 import { PaginatedProductsResponseDto } from './dto/paginated-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -51,6 +51,49 @@ export class ProductsService {
       );
     }
     return `https://${bucketName}.s3.${region}.amazonaws.com/products/${filename}`;
+  }
+
+  public async getProductsByUserId({ page, limit, sort, userId }: MyProductQueryDto): Promise<{
+    items: any;
+    total: any;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  }> {
+    const splitSort = sort.split(':');
+
+    if (splitSort.length !== 2) {
+      throw new BadRequestException('Invalid sort format');
+    }
+    const [field, order] = splitSort;
+    const where = {
+      createdById: userId,
+    };
+
+    const total = await this.prismaService.product.count({ where });
+
+    const totalPages = Math.ceil(total / limit);
+
+    const products = await this.prismaService.product.findMany({
+      where,
+      orderBy: {
+        [field]: order as 'asc' | 'desc',
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return {
+      items: products,
+      total,
+      page,
+      limit,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
+    };
   }
 
   public async findAllProducts({
@@ -297,14 +340,6 @@ export class ProductsService {
     });
 
     return new Map(products.map(p => [p.id, p.price]));
-  }
-
-  public async getProductsByUserId(userId: string): Promise<Product[]> {
-    return await this.prismaService.product.findMany({
-      where: {
-        createdById: userId,
-      },
-    });
   }
 
   private toResponseDto(product: Product): ProductResponseDto {
