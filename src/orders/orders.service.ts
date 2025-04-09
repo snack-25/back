@@ -49,6 +49,29 @@ export class OrdersService {
       orderBy,
       skip,
       take,
+      include: {
+        orderItems: {
+          include: {
+            product: {
+              include: {
+                category: true,
+              },
+            },
+          },
+        },
+        requestedBy: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        updatedBy: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
     });
 
     const totalPages = Math.ceil(totalOrders / pageSize);
