@@ -9,7 +9,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { User } from '@prisma/client';
+import { User, UserRole, Prisma } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { CompaniesRequestDto } from '@src/companies/dto/companies.dto';
 import { NAME_REGEX, PASSWORD_REGEX } from '@src/shared/const/RegExp';
@@ -18,13 +18,97 @@ import { UserResponseDto } from './dto/response-user.dto';
 import { CheckEmailRequestDto, CheckEmailResponseDto, CheckNameDto } from './dto/user.dto';
 import { ReulstDto } from '@src/auth/dto/auth.dto';
 import * as argon2 from 'argon2';
-
+import { GetUserListParams, GetUserListResponse } from './dto/get-user-list-params.dto';
+import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 @Injectable()
 export class UsersService {
   public constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
   ) {}
+
+  // ✅ 회원 목록 조회 서비스
+  async getUserList(params: GetUserListParams): Promise<GetUserListResponse> {
+    const { page, limit, search } = params;
+
+    const where = search
+      ? {
+          name: {
+            contains: search,
+            mode: Prisma.QueryMode.insensitive, // 대소문자 구분 없이 검색
+          },
+        }
+      : {};
+
+    const [totalCount, users] = await this.prisma.$transaction([
+      this.prisma.user.count({ where }), // 총 사용자 수
+      this.prisma.user.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+        },
+      }),
+    ]);
+
+    return {
+      totalCount,
+      users,
+    };
+  }
+  // ✅ 권한 변경 로직
+  public async updateUserRole(userId: string, dto: UpdateUserRoleDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('사용자를 찾을 수 없습니다.');
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        role: { set: dto.role as UserRole },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      },
+    });
+  }
+
+  public async deleteUser(userId: string): Promise<void> {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      // ❌ 사용자가 없으면 예외 발생
+      if (!user) {
+        throw new NotFoundException('사용자를 찾을 수 없습니다.');
+      }
+
+      // ✅ 삭제 실행
+      await this.prisma.user.delete({
+        where: { id: userId },
+      });
+    } catch (error) {
+      // ✅ Prisma 클라이언트 오류 또는 기타 에러 처리
+      console.error('❌ 사용자 삭제 중 오류 발생:', error);
+
+      // 이미 위에서 NotFoundException을 처리했으므로,
+      // 그 외의 Prisma 에러는 500 처리
+      throw new InternalServerErrorException('사용자 삭제에 실패했습니다.');
+    }
+  }
 
   // 기업조회
   public async checkCompany(companiesRequestDto: CompaniesRequestDto): Promise<boolean> {
