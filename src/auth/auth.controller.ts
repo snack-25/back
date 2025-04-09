@@ -56,8 +56,9 @@ export class AuthController {
     description: '초대 토큰을 통해 초대된 사용자의 정보를 조회합니다',
   })
   @ApiResponse({ status: 200, description: '토큰 유저 정보 전달' })
-  public async signupInfo(@Body() body: InvitationCodeDto): Promise<Invitation | null> {
-    return await this.authService.getinfo(body);
+  public async signupInfo(@Body() body: InvitationCodeDto, @Res() res: Response): Promise<void> {
+    const result = await this.authService.getinfo(body);
+    res.status(200).json({ message: '초대에 성공하였습니다', data: result });
   }
 
   @Post('signup/invite/:token')

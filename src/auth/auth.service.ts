@@ -58,18 +58,24 @@ export class AuthService {
     }
   }
 
-  public async getinfo(dto: InvitationCodeDto): Promise<Invitation | null> {
+  public async getinfo(dto: InvitationCodeDto): Promise<any> {
     const { token } = dto;
     try {
       const invitation = await this.prisma.invitation.findUnique({
-        where: {
-          token,
+        where: { token },
+        include: {
+          company: true, // ✅ 회사 정보 조인
         },
       });
-      return invitation;
+
+      if (!invitation) return null;
+
+      return {
+        ...invitation,
+        companyName: invitation.company?.name || '', // ✅ 회사명 함께 전달
+      };
     } catch (err) {
-      new BadRequestException('초대 코드가 유효하지 않습니다' + err);
-      return null;
+      throw new BadRequestException('초대 코드가 유효하지 않습니다: ' + err);
     }
   }
 
