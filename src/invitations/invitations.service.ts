@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 import {
   BadRequestException,
+  ConflictException,
   HttpStatus,
   Injectable,
   InternalServerErrorException,
@@ -103,6 +104,26 @@ export class InvitationsService {
       if (dto.role === UserRole.SUPERADMIN) {
         throw new UnauthorizedException('최고관리자는 초대할 수 없습니다.');
       }
+      // 이미 초대한 이메일인지 확인 (초대 상태가 PENDING이고, 아직 가입되지 않은 경우)
+      const existing = await this.prisma.invitation.findFirst({
+        where: {
+          email: dto.email,
+          status: 'PENDING',
+        },
+      });
+
+      if (existing) {
+        throw new ConflictException('이미 초대된 이메일입니다. 기존 초대를 확인해주세요.');
+      }
+
+      // 이미 가입된 유저인지 확인
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: dto.email },
+      });
+
+      if (existingUser) {
+        throw new ConflictException('이미 가입된 이메일입니다.');
+      }
 
       // 초대 토큰 생성
       const { token } = this.generateToken();
@@ -148,6 +169,17 @@ export class InvitationsService {
       };
     } catch (error) {
       console.error(`초대 생성 에러: ${error}`);
+
+      // ConflictException, BadRequestException 등은 그대로 다시 던지기
+      if (
+        error instanceof ConflictException ||
+        error instanceof BadRequestException ||
+        error instanceof UnauthorizedException
+      ) {
+        throw error;
+      }
+
+      // 나머지는 내부 서버 에러로 처리
       throw new InternalServerErrorException(`초대 생성에 실패했습니다.`);
     }
   }

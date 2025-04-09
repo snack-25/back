@@ -89,6 +89,7 @@ export class AuthService {
           email: true,
           name: true,
           role: true,
+          expiresAt: true,
           company: {
             select: {
               id: true,
@@ -101,6 +102,12 @@ export class AuthService {
       // 2. 초대 코드가 유효하지 않으면 예외 처리
       if (!invitation) {
         throw new BadRequestException('초대 코드가 유효하지 않습니다');
+      }
+
+      // 초대 토큰 만료 여부 확인
+      const now = new Date();
+      if (invitation.expiresAt < now) {
+        throw new BadRequestException('초대 토큰이 만료되었습니다.');
       }
 
       const existingUser = await this.prisma.user.findUnique({
