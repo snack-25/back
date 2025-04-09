@@ -194,6 +194,18 @@ export class OrdersService {
             },
           },
         },
+        requestedBy: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        updatedBy: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 
@@ -218,14 +230,22 @@ export class OrdersService {
       deliveredAt: order.deliveredAt?.toISOString() || null,
       shippedAt: order.shippedAt?.toISOString() || null,
       trackingNumber: order.trackingNumber,
+      requestedBy: {
+        id: order.requestedBy?.id ?? '',
+        name: order.requestedBy?.name ?? '',
+      },
+      updatedBy: {
+        id: order.updatedBy?.id ?? '',
+        name: order.updatedBy?.name ?? '',
+      },
       orderItems: order.orderItems.map(item => ({
         productId: item.productId,
-        productName: item.product.name,
-        imageUrl: item.product.imageUrl,
+        productName: item.product?.name ?? '상품 없음',
+        imageUrl: item.product?.imageUrl ?? '',
         price: item.price,
         quantity: item.quantity,
-        categoryId: item.product.category?.id || null,
-        categoryName: item.product.category?.name || null,
+        categoryId: item.product?.category?.id ?? null,
+        categoryName: item.product?.category?.name ?? null,
       })),
     };
   }
