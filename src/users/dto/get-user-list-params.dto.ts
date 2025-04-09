@@ -15,5 +15,6 @@ export type GetUserListResponse = {
     name: string;
     email: string;
     role: string;
+    companyId: string; // ✅ 프론트에서 회사 필터링을 위해 필요!
   }[];
 };
