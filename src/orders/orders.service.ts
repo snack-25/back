@@ -30,9 +30,16 @@ export class OrdersService {
     const skip = (page - 1) * pageSize;
     const take = pageSize;
 
-    const orderBy = {
-      createdAt: sort === 'latest' ? 'asc' : 'desc',
-    } as const;
+    const orderBy =
+      sort === 'latest'
+        ? { createdAt: 'desc' }
+        : sort === 'oldest'
+          ? { createdAt: 'asc' }
+          : sort === 'highPrice'
+            ? { totalAmount: 'desc' }
+            : sort === 'lowPrice'
+              ? { totalAmount: 'asc' }
+              : { createdAt: 'desc' };
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
