@@ -111,6 +111,7 @@ export class AuthService {
       }
 
       // 3. 비밀번호 해싱
+      this.usersService.validatePassword(password);
       const hashedPassword: string = await argon2.hash(password);
 
       // 4. 유저 생성
@@ -155,8 +156,7 @@ export class AuthService {
       return response; // 프론트엔드로 유저 정보 반환
     } catch (err) {
       console.error(err);
-      console.error('회원가입 실패');
-      return null;
+      throw err; // <- 이렇게 하면 NestJS가 프론트에 400 에러와 메시지를 전달합니다
     }
   }
 
