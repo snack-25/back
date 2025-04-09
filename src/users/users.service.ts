@@ -28,20 +28,23 @@ export class UsersService {
   ) {}
 
   // ✅ 회원 목록 조회 서비스
-  async getUserList(params: GetUserListParams): Promise<GetUserListResponse> {
-    const { page, limit, search } = params;
+  async getUserList(
+    params: GetUserListParams & { companyId: string },
+  ): Promise<GetUserListResponse> {
+    const { page, limit, search, companyId } = params;
 
-    const where = search
-      ? {
-          name: {
-            contains: search,
-            mode: Prisma.QueryMode.insensitive, // 대소문자 구분 없이 검색
-          },
-        }
-      : {};
+    const where = {
+      companyId, // ✅ 필수: 같은 회사 소속만
+      ...(search && {
+        name: {
+          contains: search,
+          mode: Prisma.QueryMode.insensitive,
+        },
+      }),
+    };
 
     const [totalCount, users] = await this.prisma.$transaction([
-      this.prisma.user.count({ where }), // 총 사용자 수
+      this.prisma.user.count({ where }),
       this.prisma.user.findMany({
         where,
         skip: (page - 1) * limit,
@@ -52,6 +55,7 @@ export class UsersService {
           name: true,
           email: true,
           role: true,
+          companyId: true, // ✅ 프론트에서 필요하므로 꼭 포함
         },
       }),
     ]);
@@ -61,6 +65,7 @@ export class UsersService {
       users,
     };
   }
+
   // ✅ 권한 변경 로직
   public async updateUserRole(userId: string, dto: UpdateUserRoleDto) {
     const user = await this.prisma.user.findUnique({

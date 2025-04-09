@@ -36,10 +36,17 @@ export class UsersController {
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '10',
     @Query('search') search: string = '',
+    @GetUser() user: User, // ✅ 현재 로그인한 유저 주입
   ) {
     const pageNumber = parseInt(page, 10);
     const limitNumber = parseInt(limit, 10);
-    return this.usersService.getUserList({ page: pageNumber, limit: limitNumber, search });
+
+    return this.usersService.getUserList({
+      page: pageNumber,
+      limit: limitNumber,
+      search,
+      companyId: user.companyId, // ✅ 로그인한 유저의 회사 ID 전달
+    });
   }
 
   // TODO: /users?search=김스낵 (GET) 회원 검색
