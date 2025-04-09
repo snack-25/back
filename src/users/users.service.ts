@@ -86,13 +86,28 @@ export class UsersService {
   }
 
   public async deleteUser(userId: string): Promise<void> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
 
-    if (!user) {
-      throw new NotFoundException('사용자를 찾을 수 없습니다.');
+      // ❌ 사용자가 없으면 예외 발생
+      if (!user) {
+        throw new NotFoundException('사용자를 찾을 수 없습니다.');
+      }
+
+      // ✅ 삭제 실행
+      await this.prisma.user.delete({
+        where: { id: userId },
+      });
+    } catch (error) {
+      // ✅ Prisma 클라이언트 오류 또는 기타 에러 처리
+      console.error('❌ 사용자 삭제 중 오류 발생:', error);
+
+      // 이미 위에서 NotFoundException을 처리했으므로,
+      // 그 외의 Prisma 에러는 500 처리
+      throw new InternalServerErrorException('사용자 삭제에 실패했습니다.');
     }
-
-    await this.prisma.user.delete({ where: { id: userId } });
   }
 
   // 기업조회
