@@ -1,8 +1,32 @@
 # SNACK25
 
-## Getting Started
+## 프로젝트 소개
 
 - 스낵25는 원스톱 간식 구매 관리 솔루션입니다.
+- 🗓️ 프로젝트 기간 : 2025. 2.18. ~ 4.11.
+
+## 팀원 구성
+
+| 이름 | 역할 | Github |
+|------|------|---------|
+| 강수정 | FullStack | [@xcjnzvc](https://github.com/xcjnzvc) |
+| 김두봉 | FullStack | [@devkdb](https://github.com/devkdb) |
+| 김지연 | FullStack | [@dani784601](https://github.com/dani784601) |
+| 박수환 | FullStack | [@soohwanpak](https://github.com/soohwanpak) |
+| 배호근 | FullStack | [@BaeHG](https://github.com/BaeHG) |
+| 이현우 | FullStack | [@gealot](https://github.com/gealot) |
+| 임예지 | FullStack | [@Bluemoon105](https://github.com/Bluemoon105) |
+| 정해찬 | FullStack | [@just-codingbaby](https://github.com/just-codingbaby) |
+| 하신혜 | FullStack | [@aventurine26](https://github.com/aventurine26) |
+
+## 기술 스택(백엔드)
+
+- NestJS 11
+- Typescript
+- PostgreSQL 17
+- Prisma ORM
+- Swagger
+- Argon2
 
 ## Requirements
 
