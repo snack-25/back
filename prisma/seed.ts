@@ -1,6 +1,7 @@
 import { BadRequestException, Logger } from '@nestjs/common';
 import type {
   Budget,
+  Cart,
   Category,
   Company,
   CompanyAddress,
@@ -13,6 +14,7 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { createHash } from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { loadJsonFile } from './loadJsonFile';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 const ERROR_MESSAGES = {
@@ -23,33 +25,14 @@ const ERROR_MESSAGES = {
 
 const prisma = new PrismaClient();
 
-const companies = JSON.parse(
-  fs.readFileSync(path.join(__dirname, 'const/companies.json'), 'utf-8'),
-) as Company[];
-
-const companyAddresses = JSON.parse(
-  fs.readFileSync(path.join(__dirname, 'const/company-addresses.json'), 'utf-8'),
-) as CompanyAddress[];
-
-const categories = JSON.parse(
-  fs.readFileSync(path.join(__dirname, 'const/categories.json'), 'utf-8'),
-) as Category[];
-
-const subCategories: Category[] = JSON.parse(
-  fs.readFileSync(path.join(__dirname, 'const/sub-categories.json'), 'utf-8'),
-) as Category[];
-
-const users = JSON.parse(
-  fs.readFileSync(path.join(__dirname, 'const/users.json'), 'utf-8'),
-) as User[];
-
-const products = JSON.parse(
-  fs.readFileSync(path.join(__dirname, 'const/products.json'), 'utf-8'),
-) as Product[];
-
-const budgets = JSON.parse(
-  fs.readFileSync(path.join(__dirname, 'const/budgets.json'), 'utf-8'),
-) as Budget[];
+const companies = loadJsonFile<Company[]>('companies.json');
+const companyAddresses = loadJsonFile<CompanyAddress[]>('company-addresses.json');
+const categories = loadJsonFile<Category[]>('categories.json');
+const subCategories = loadJsonFile<Category[]>('sub-categories.json');
+const users = loadJsonFile<User[]>('users.json');
+const products = loadJsonFile<Product[]>('products.json');
+const budgets = loadJsonFile<Budget[]>('budgets.json');
+const carts = loadJsonFile<Cart[]>('carts.json');
 
 const getRequiredId = <T extends { id: string }>(
   entity: T | undefined,
@@ -209,7 +192,6 @@ const main = async (): Promise<void> => {
           skipDuplicates: true,
         });
 
-        // 2. Category 데이터 추가
         const parentCategories: Category[] = categories.map(category => ({
           ...category,
           companyId: testCompany.id,
@@ -221,12 +203,14 @@ const main = async (): Promise<void> => {
           data: parentCategories,
           skipDuplicates: true,
         });
+        Logger.log(`📁 상위 카테고리 ${parentCategories.length}개의 데이터 추가 완료`);
 
-        // 3. SubCategory 데이터 추가
         const subCategoriesWithCompany: Category[] = subCategories.map(category => ({
           ...category,
           companyId: testCompany.id,
         }));
+        Logger.log(`📂 하위 카테고리 ${subCategoriesWithCompany.length}개의 데이터 추가 완료`);
+
         if (subCategories.length === 0) {
           throw new BadRequestException('SubCategories not found');
         }
@@ -235,56 +219,26 @@ const main = async (): Promise<void> => {
           skipDuplicates: true,
         });
 
-        // 4. User 데이터 추가
         await tx.user.createMany({
           data: users,
           skipDuplicates: true,
         });
+        Logger.log(`👤 사용자 ${users.length}개의 데이터 추가 완료`);
 
-        // 5. Product 데이터 추가
         await tx.product.createMany({
           data: products,
           skipDuplicates: true,
         });
+        Logger.log(`📦 제품 ${products.length}개의 데이터 추가 완료`);
 
-        /**
-         * 기존 데이터
-         */
+        await tx.cart.createMany({
+          data: carts,
+          skipDuplicates: true,
+        });
 
-        // 6. 장바구니 추가
-        const cartIds = [
-          'v9fjcqn7b0o9hton15hwc4vr',
-          'wbkk8g76iplisoo0fpwuzt36',
-          'k24h83yvbqcg5eel1id0sclg',
-          'c9xccb9ckm13h99rebxojvzf',
-          'a0j6kkgxyxxu0ro7tad7ofxe',
-          'jfrrtr7ocra38vwc1l7y04sr',
-        ];
+        Logger.log(`🛒 유저 정보가 추가된 장바구니 ${carts.length}개의 데이터 추가 완료`);
 
-        // 시딩용 사용자들만 별도로 처리
-        const seedingUsers = users.slice(0, cartIds.length);
-
-        // 각 user 당 장바구니 하나씩 추가(없는 경우 추가, 변경된 경우 업데이트, 동일한 경우 skip)
-        await Promise.all(
-          seedingUsers.map((user, index) =>
-            tx.cart.upsert({
-              where: { id: cartIds[index] },
-              update: {
-                userId: user.id,
-                updatedAt: new Date(),
-              },
-              create: {
-                id: cartIds[index],
-                userId: user.id,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              },
-            }),
-          ),
-        );
-        Logger.log(
-          `🛒 장바구니에 ${seedingUsers.length}개의 데이터 추가 완료 (참고: 전체 장바구니 갯수는 ${await tx.cart.count()}개)`,
-        );
+        // 변경 전 코드
 
         // 7. 주문 요청 추가
         const orderRequestIds = [
