@@ -64,4 +64,7 @@ export class ProductResponseDto {
     description: '총 판매 수량',
   })
   public totalSold: number;
+
+  @ApiProperty({ description: '삭제 여부' })
+  public isDeleted: boolean;
 }
