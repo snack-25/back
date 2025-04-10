@@ -105,6 +105,17 @@ export class UsersService {
       await this.prisma.user.delete({
         where: { id: userId },
       });
+
+      // 관련 초대 상태 변경 (조건: 동일한 이메일 + PENDING 상태)
+      await this.prisma.invitation.updateMany({
+        where: {
+          email: user.email,
+          status: 'PENDING', // 아직 가입 안한 상태. 사용 안 된 초대만 만료 처리 한다.
+        },
+        data: {
+          status: 'EXPIRED',
+        },
+      });
     } catch (error) {
       // ✅ Prisma 클라이언트 오류 또는 기타 에러 처리
       console.error('❌ 사용자 삭제 중 오류 발생:', error);

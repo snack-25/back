@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -70,11 +71,34 @@ export class AuthService {
 
       if (!invitation) return null;
 
+      // ✅ 초대 만료 체크 추가
+      if (invitation.expiresAt < new Date()) {
+        console.warn('[초대 만료]', {
+          email: invitation.email,
+          token: invitation.token,
+          expiresAt: invitation.expiresAt.toISOString(),
+          now: new Date().toISOString(),
+        });
+        throw new UnauthorizedException('초대 토큰이 만료되었습니다.');
+      }
+
+      if (invitation.status === 'ACCEPTED') {
+        console.warn('[초대 재사용 시도]', {
+          email: invitation.email,
+          token: invitation.token,
+          status: invitation.status,
+        });
+        throw new UnauthorizedException('이미 사용된 초대 링크입니다.');
+      }
+
       return {
         ...invitation,
         companyName: invitation.company?.name || '', // ✅ 회사명 함께 전달
       };
     } catch (err) {
+      if (err instanceof HttpException) {
+        throw err;
+      }
       throw new BadRequestException('초대 코드가 유효하지 않습니다: ' + err);
     }
   }
@@ -89,6 +113,7 @@ export class AuthService {
           email: true,
           name: true,
           role: true,
+          status: true,
           expiresAt: true,
           company: {
             select: {
@@ -99,9 +124,13 @@ export class AuthService {
         },
       });
 
-      // 2. 초대 코드가 유효하지 않으면 예외 처리
+      // 초대 코드가 유효하지 않으면 예외 처리
       if (!invitation) {
         throw new BadRequestException('초대 코드가 유효하지 않습니다');
+      }
+
+      if (invitation.status === 'ACCEPTED') {
+        throw new UnauthorizedException('이미 사용된 초대 링크입니다.');
       }
 
       // 초대 토큰 만료 여부 확인
@@ -109,6 +138,10 @@ export class AuthService {
       if (invitation.expiresAt < now) {
         throw new BadRequestException('초대 토큰이 만료되었습니다.');
       }
+
+      // if (dto.email !== invitation.email) {
+      //   throw new BadRequestException('초대된 이메일과 일치하지 않습니다.');
+      // }
 
       const existingUser = await this.prisma.user.findUnique({
         where: { email: invitation.email },
