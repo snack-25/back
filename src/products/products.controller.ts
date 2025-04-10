@@ -33,7 +33,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { FILE_SIZE_LIMIT } from './const';
 import { GetUser } from '@shared/decorators/get-user.decorator';
 import { UserDto } from '@src/users/dto/user.dto';
-import { Product, UserRole } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 import { Role, RoleGuard } from '@src/auth/role.guard';
 
 @ApiBearerAuth()
@@ -62,10 +62,10 @@ export class ProductsController {
     return this.productsService.createProduct(user, createProductDto, file);
   }
 
-  @Role(UserRole.ADMIN, UserRole.SUPERADMIN)
   @ApiOperation({ summary: '내가 등록한 상품' })
+  @Role(UserRole.ADMIN, UserRole.SUPERADMIN)
   @Get('my-products')
-  public async getMyProducts(@GetUser() user: UserDto): Promise<Product[]> {
+  public async getMyProducts(@GetUser() user: UserDto): Promise<any> {
     return this.productsService.getProductsByUserId(user.id);
   }
 

@@ -53,6 +53,26 @@ export class ProductsService {
     return `https://${bucketName}.s3.${region}.amazonaws.com/products/${filename}`;
   }
 
+  public async getProductsByUserId(userId: string) {
+    const where = {
+      createdById: userId,
+    };
+
+    // const total = await this.prismaService.product.count({ where });
+
+    // const totalPages = Math.ceil(total / limit);
+
+    const products = await this.prismaService.product.findMany({
+      where,
+    });
+
+    return {
+      items: products,
+      // total,
+      // totalPages,
+    };
+  }
+
   public async findAllProducts({
     page,
     limit,
@@ -297,14 +317,6 @@ export class ProductsService {
     });
 
     return new Map(products.map(p => [p.id, p.price]));
-  }
-
-  public async getProductsByUserId(userId: string): Promise<Product[]> {
-    return await this.prismaService.product.findMany({
-      where: {
-        createdById: userId,
-      },
-    });
   }
 
   private toResponseDto(product: Product): ProductResponseDto {
