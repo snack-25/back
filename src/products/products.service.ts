@@ -53,9 +53,13 @@ export class ProductsService {
     return `https://${bucketName}.s3.${region}.amazonaws.com/products/${filename}`;
   }
 
+  private COMPANY_ID = 'qsch6ljzbigconazqak4jsrr';
+
   public async getProductsByUserId(userId: string) {
     const where = {
       createdById: userId,
+      companyId: this.COMPANY_ID,
+      isDeleted: false,
     };
 
     // const total = await this.prismaService.product.count({ where });
@@ -92,6 +96,8 @@ export class ProductsService {
         },
       }),
       ...(categoryId && { categoryId }),
+      ...{ isDeleted: false },
+      ...{ companyId: this.COMPANY_ID },
     };
 
     const total = await this.prismaService.product.count({ where });
@@ -220,6 +226,7 @@ export class ProductsService {
         return tx.product.create({
           data: {
             createdById: user.id,
+            isDeleted: false,
             name: createProductDto.name,
             description: createProductDto.description,
             categoryId: createProductDto.categoryId,
@@ -245,7 +252,7 @@ export class ProductsService {
 
   public async deleteProduct(id: string, user: UserDto): Promise<string> {
     const product = await this.prismaService.product.findUnique({
-      where: { id },
+      where: { id, isDeleted: false },
     });
 
     if (!product) {
@@ -254,17 +261,22 @@ export class ProductsService {
 
     if (user.role === UserRole.SUPERADMIN || product.createdById === user.id) {
       try {
-        if (product.imageUrl) {
-          await this.s3Client.send(
-            new DeleteObjectCommand({
-              Bucket: process.env.AWS_S3_BUCKET_NAME,
-              Key: `products/${product.imageUrl.split('/').pop()}`,
-            }),
-          );
-        }
+        // if (product.imageUrl) {
+        //   await this.s3Client.send(
+        //     new DeleteObjectCommand({
+        //       Bucket: process.env.AWS_S3_BUCKET_NAME,
+        //       Key: `products/${product.imageUrl.split('/').pop()}`,
+        //     }),
+        //   );
+        // }
 
-        await this.prismaService.product.delete({
-          where: { id },
+        await this.prismaService.product.update({
+          where: { id, isDeleted: false },
+          data: {
+            isDeleted: true,
+            updatedAt: new Date(),
+            updatedById: user.id,
+          },
         });
 
         return `상품 ${id} 삭제 성공`;
@@ -283,7 +295,7 @@ export class ProductsService {
     updateProductDto: UpdateProductDto,
   ): Promise<ProductResponseDto> {
     const target = await this.prismaService.product.findUnique({
-      where: { id },
+      where: { id, isDeleted: false },
     });
 
     if (!target) {
@@ -293,7 +305,7 @@ export class ProductsService {
     if (user.role === UserRole.SUPERADMIN || target.createdById === user.id) {
       const product = await this.prismaService.$transaction(async tx => {
         return tx.product.update({
-          where: { id },
+          where: { id, isDeleted: false },
           data: {
             name: updateProductDto.name,
             price: updateProductDto.price,
@@ -312,7 +324,7 @@ export class ProductsService {
 
   public async getProductPricesByIds(productIds: string[]): Promise<Map<string, number>> {
     const products = await this.prismaService.product.findMany({
-      where: { id: { in: productIds } },
+      where: { id: { in: productIds }, isDeleted: false },
       select: { id: true, price: true },
     });
 
