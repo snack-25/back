@@ -23,6 +23,8 @@ model Product {
   description String? @db.Text
   /// 상품 이미지 URL
   imageUrl    String? @db.Text
+  /// 삭제 여부
+  isDeleted Boolean? @default(false)
   /// [발전과제] 재고 수량
   /// stockQuantity Int @default(0)
   /// [발전과제] 상품 재고 상태 (활성, 비활성, 품절 등)
