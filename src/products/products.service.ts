@@ -53,12 +53,9 @@ export class ProductsService {
     return `https://${bucketName}.s3.${region}.amazonaws.com/products/${filename}`;
   }
 
-  private COMPANY_ID = 'qsch6ljzbigconazqak4jsrr';
-
   public async getProductsByUserId(userId: string) {
     const where = {
       createdById: userId,
-      companyId: this.COMPANY_ID,
       isDeleted: false,
     };
 
@@ -97,7 +94,6 @@ export class ProductsService {
       }),
       ...(categoryId && { categoryId }),
       ...{ isDeleted: false },
-      ...{ companyId: this.COMPANY_ID },
     };
 
     const total = await this.prismaService.product.count({ where });
@@ -279,7 +275,7 @@ export class ProductsService {
           },
         });
 
-        return `상품 ${id} 삭제 성공`;
+        return `상품 ${product.name} ${id} 삭제 성공`;
       } catch (e) {
         this.logger.error(e);
         throw new InternalServerErrorException('상품 삭제 중 서버 오류가 발생했습니다.');
@@ -313,6 +309,7 @@ export class ProductsService {
             // imageUrl: updateProductDto.imageUrl,
             categoryId: updateProductDto.categoryId,
             updatedById: user.id,
+            updatedAt: new Date(),
           },
         });
       });
@@ -342,6 +339,7 @@ export class ProductsService {
       categoryId: product.categoryId,
       imageUrl: product.imageUrl ?? '',
       totalSold: 0,
+      isDeleted: product.isDeleted ?? false,
     };
   }
 }
