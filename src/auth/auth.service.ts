@@ -260,6 +260,54 @@ export class AuthService {
         data: { name: company, bizno },
         select: { id: true },
       });
+      const randomPostalArea = () => {
+        // 1부터 63까지의 랜덤한 숫자 생성
+        const randomNum = Math.floor(Math.random() * 63) + 1;
+
+        // 숫자를 문자열로 변환하고 한 자리 수인 경우 앞에 '0'을 붙인다
+        return randomNum < 10 ? '0' + randomNum : String(randomNum);
+      };
+      const randomPostalCode = () => {
+        // 0부터 999까지의 랜덤한 숫자 생성
+        const randomNum = Math.floor(Math.random() * 1000);
+
+        // 숫자를 문자열로 변환하고 필요한 만큼 앞에 '0'을 붙임
+        if (randomNum < 10) {
+          return '00' + randomNum;
+        } else if (randomNum < 100) {
+          return '0' + randomNum;
+        } else {
+          return String(randomNum);
+        }
+      };
+      const postalCode = `${randomPostalArea()}${randomPostalCode()}`;
+      const addressList = [
+        '서울특별시',
+        '부산광역시',
+        '대구광역시',
+        '인천광역시',
+        '광주광역시',
+        '대전광역시',
+        '울산광역시',
+        '세종특별자치시',
+        '경기도',
+        '강원도',
+        '충청북도',
+        '충청남도',
+        '전라북도',
+        '전라남도',
+        '경상북도',
+        '경상남도',
+        '제주특별자치도',
+      ];
+      // 회사 주소 생성
+      await this.prisma.companyAddress.create({
+        data: {
+          companyId: companyRecord.id,
+          postalCode: postalCode,
+          address: addressList[Math.floor(Math.random() * addressList.length)],
+        },
+      });
       return { msg: '성공', id: companyRecord.id };
     } catch (err) {
       const result = { msg: '', id: '' };
