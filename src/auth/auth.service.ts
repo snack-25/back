@@ -260,6 +260,7 @@ export class AuthService {
         '경상남도',
         '제주특별자치도',
       ];
+      // 회사 주소 생성
       await this.prisma.companyAddress.create({
         data: {
           companyId: companyRecord.id,
