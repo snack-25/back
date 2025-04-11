@@ -43,6 +43,8 @@ export class UsersService {
       }),
     };
 
+    //console.log('🔥 유저 리스트 조회 조건:', where);
+
     const [totalCount, users] = await this.prisma.$transaction([
       this.prisma.user.count({ where }),
       this.prisma.user.findMany({
@@ -59,6 +61,12 @@ export class UsersService {
         },
       }),
     ]);
+
+    // console.log('✅ 필터링된 사용자 수:', totalCount);
+    // console.log(
+    //   '👤 사용자 목록:',
+    //   users.map(u => u.email),
+    // );
 
     return {
       totalCount,

@@ -48,8 +48,11 @@ export class SigninResponseDto {
 
 // 토큰 생성 요청 DTO
 export class TokenRequestDto {
-  public sub: string;
-  public type: 'access' | 'refresh';
+  public sub: string; // 사용자 ID (JWT 표준 필드)
+  public email?: string; // 이메일 (선택)
+  public role?: UserRole; // 역할 (예: USER, ADMIN)
+  public companyId?: string; // ✅ 회사 ID
+  public type: 'access' | 'refresh'; // access 또는 refresh 토큰 구분
 }
 
 // 토큰 생성 응답 DTO

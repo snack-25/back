@@ -300,8 +300,8 @@ export class InvitationsService {
   public mailTemplate(name: string, token: Token): string {
     const url = process.env.FRONTEND_HOST;
 
-    // const fullLink = `${url}/auth/signup?token=${token}`;
-    // console.log('\x1b[36m[초대 링크]', fullLink, '\x1b[0m');
+    const fullLink = `${url}/auth/signup?token=${token}`;
+    console.log('\x1b[36m[초대 링크]', fullLink, '\x1b[0m');
 
     return `
     <h1>초대 메일</h1>

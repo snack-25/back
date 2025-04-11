@@ -5,9 +5,12 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 
 // JWT payload의 타입을 정의
 interface JwtPayload {
-  sub: string; // 사용자 ID (주로 'sub'에 저장)
-  email: string; // 사용자 이메일
-  iat: number; // 토큰 발행 시간 (Unix timestamp)
+  sub: string;
+  email: string;
+  role: string;
+  companyId: string;
+  type: 'access' | 'refresh';
+  iat: number;
 }
 
 // `cookies` 속성을 명시적으로 정의
@@ -32,8 +35,18 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt-access') {
   }
 
   // validate 메서드에서 반환 타입 명시
-  public validate(payload: JwtPayload): { email: string; expires: number } {
+  public validate(payload: JwtPayload): { email: string; expires: number; companyId: string } {
     // payload에서 email과 iat(발행 시간)을 반환
-    return { email: payload.email, expires: payload.iat };
+    const result = {
+      email: payload.email,
+      expires: payload.iat,
+      companyId: payload.companyId,
+    };
+
+    // ✅ 로그 찍기
+    // console.log('🔑 [JwtStrategy] 토큰 payload 정보:', payload);
+    // console.log('📦 [JwtStrategy] validate() 리턴값:', result);
+
+    return result;
   }
 }

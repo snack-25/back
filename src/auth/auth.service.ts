@@ -46,11 +46,18 @@ export class AuthService {
   // 사용자 ID로 사용자 정보 조회
   public async getUserById(
     userId: string,
-  ): Promise<Pick<User, 'id' | 'name' | 'email' | 'role' | 'refreshToken'> | null> {
+  ): Promise<Pick<User, 'id' | 'name' | 'email' | 'role' | 'refreshToken' | 'companyId'> | null> {
     try {
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
-        select: { id: true, name: true, email: true, role: true, refreshToken: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          refreshToken: true,
+          companyId: true, // ✅ 필수!
+        },
       });
       return user;
     } catch (error) {
@@ -471,9 +478,28 @@ export class AuthService {
 
   // accessToken 생성 (payload에 userId 포함)
   private async generateAccessToken(userId: string): Promise<string> {
+    // Step 1: 유저 정보 조회 (companyId 포함)
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        companyId: true, // ✅ 핵심: companyId 추가
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('사용자를 찾을 수 없습니다');
+    }
+
+    // Step 2: 토큰 payload 구성
     const payload: TokenRequestDto = {
-      sub: userId,
-      type: 'access', // 토큰 타입은 액세스 토큰
+      sub: user.id, // JWT 표준 subject (userId)
+      email: user.email,
+      role: user.role,
+      companyId: user.companyId, // ✅ 핵심: payload에 companyId 포함
+      type: 'access',
     };
 
     // 만료 시간을 명시적으로 설정 (현재 시간 + JWT_EXPIRES_IN)
@@ -481,9 +507,10 @@ export class AuthService {
 
     this.logger.debug(`토큰 생성: 만료 시간 ${expiresIn}`);
 
+    // Step 3: accessToken 발급
     return this.jwtService.signAsync(payload, {
       secret: this.configService.getOrThrow<string>('JWT_SECRET'),
-      expiresIn: expiresIn,
+      expiresIn: this.configService.getOrThrow<string>('JWT_EXPIRES_IN'),
     });
   }
 
