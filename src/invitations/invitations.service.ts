@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 import {
   BadRequestException,
+  ConflictException,
   HttpStatus,
   Injectable,
   InternalServerErrorException,
@@ -12,7 +13,7 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaService } from '@src/shared/prisma/prisma.service';
 import { DateUtil } from '@src/shared/utils/date.util';
 import * as crypto from 'crypto';
-import { addHours } from 'date-fns';
+import { addHours, addSeconds } from 'date-fns';
 import nodemailer from 'nodemailer';
 import {
   GenerateTokenResponseDto,
@@ -103,14 +104,45 @@ export class InvitationsService {
       if (dto.role === UserRole.SUPERADMIN) {
         throw new UnauthorizedException('최고관리자는 초대할 수 없습니다.');
       }
+      // 이미 초대한 이메일인지 확인 (초대 상태가 PENDING이고, 아직 가입되지 않은 경우)
+      // 회원가입 이후 삭제되지 않고, 상태(status)가 'ACCEPTED'로 변경 됨.
+      const existing = await this.prisma.invitation.findFirst({
+        where: {
+          email: dto.email,
+          status: 'PENDING',
+        },
+      });
+
+      if (existing) {
+        throw new ConflictException('이미 초대된 이메일입니다. 기존 초대를 확인해주세요.');
+      }
+
+      // 이미 가입된 유저인지 확인
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: dto.email },
+      });
+
+      if (existingUser) {
+        throw new ConflictException('이미 가입된 이메일입니다.');
+      }
 
       // 초대 토큰 생성
       const { token } = this.generateToken();
       // 초대 토큰 만료 시간 설정(토큰 생성 24시간 후)
       const expiresAt = addHours(new Date(), 24);
 
+      // 테스트용 (5초 후 만료)
+      // const expiresAt = addSeconds(new Date(), 5);
+      // console.log(
+      //   '\x1b[33m[초대 생성] 만료 시간:',
+      //   expiresAt.toISOString(),
+      //   '| 로컬 시간:',
+      //   expiresAt.toLocaleString(),
+      //   '\x1b[0m',
+      // );
+
       // 초대 생성 후 이메일 발송 처리되도록 트랜잭션 처리
-      // const invitation = await this.prisma.$transaction(async tx => {
+      // const invitation = await this.pris```ma.$transaction(async tx => {
       //   // 테이블에 초대 정보 생성(id, email, name, token, role, expiresAt, companyId, inviterId)
 
       //   const createdInvitation = await tx.invitation.create({
@@ -148,6 +180,17 @@ export class InvitationsService {
       };
     } catch (error) {
       console.error(`초대 생성 에러: ${error}`);
+
+      // ConflictException, BadRequestException 등은 그대로 다시 던지기
+      if (
+        error instanceof ConflictException ||
+        error instanceof BadRequestException ||
+        error instanceof UnauthorizedException
+      ) {
+        throw error;
+      }
+
+      // 나머지는 내부 서버 에러로 처리
       throw new InternalServerErrorException(`초대 생성에 실패했습니다.`);
     }
   }
@@ -191,40 +234,50 @@ export class InvitationsService {
   }
 
   //TODO: 초대 조회하기
-  public async getInvitation(token: Token): Promise<Invitation | Error> {
+  public async getInvitation(token: Token): Promise<Invitation> {
     try {
-      const invitation = await this.verifyToken(token);
-      // 초대 정보가 없으면 에러 발생
-      if (invitation instanceof Error) {
-        throw new InternalServerErrorException(`초대 조회에 실패했습니다.`);
-      }
-      console.log(`\x1b[32m초대 조회: ${JSON.stringify(invitation)}\x1b[0m`);
-      return invitation;
+      console.log('[Service] getInvitation 진입:', token);
+
+      return await this.verifyToken(token);
     } catch (error) {
       console.error(`초대 조회 에러: ${error}`);
-      throw new InternalServerErrorException(`초대 조회에 실패했습니다.`);
+
+      // ✅ 받은 에러를 그대로 던져서 HTTP status 유지
+      if (error instanceof UnauthorizedException || error instanceof NotFoundException) {
+        throw error;
+      }
+
+      // 그 외의 예외는 500 에러로 던지기
+      throw new InternalServerErrorException('초대 조회에 실패했습니다.');
     }
   }
 
   //TODO: 초대 토큰 만료 시간 검증
   public isTokenExpired(invitation: Invitation): boolean {
+    console.log('[Service] isTokenExpired:', invitation.expiresAt, '| 현재시간:', new Date());
     const now = new Date();
     const isExpired = now > invitation.expiresAt;
     console.log(`토큰 만료여부: ${isExpired ? '만료' : '유효'}`);
+    console.log('[Service] isExpired 판별 결과:', isExpired);
     return isExpired;
   }
 
   //TODO: 초대 토큰 검증(만료 시간 확인 포함)
-  public async verifyToken(token: Token): Promise<Invitation | Error> {
+  public async verifyToken(token: Token): Promise<Invitation> {
     try {
+      console.log('[Service] verifyToken 진입:', token);
+
       const invitation = await this.getInvitationByToken(token);
       if (!invitation) {
         throw new BadRequestException('초대 토큰이 없습니다.');
       }
+
       const isExpired = this.isTokenExpired(invitation);
       if (isExpired) {
+        console.log('[Service] 만료됨 → UnauthorizedException 던짐');
         throw new UnauthorizedException('초대 토큰이 만료되었습니다.');
       }
+
       return invitation;
     } catch (error) {
       console.error(`토큰 검증 에러: ${error}`);
@@ -246,6 +299,10 @@ export class InvitationsService {
   //TODO: 초대 메일 템플릿
   public mailTemplate(name: string, token: Token): string {
     const url = process.env.FRONTEND_HOST;
+
+    // const fullLink = `${url}/auth/signup?token=${token}`;
+    // console.log('\x1b[36m[초대 링크]', fullLink, '\x1b[0m');
+
     return `
     <h1>초대 메일</h1>
     <p>안녕하세요. ${name}님 초대합니다.</p>

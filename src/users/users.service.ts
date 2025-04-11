@@ -43,6 +43,8 @@ export class UsersService {
       }),
     };
 
+    //console.log('🔥 유저 리스트 조회 조건:', where);
+
     const [totalCount, users] = await this.prisma.$transaction([
       this.prisma.user.count({ where }),
       this.prisma.user.findMany({
@@ -59,6 +61,12 @@ export class UsersService {
         },
       }),
     ]);
+
+    // console.log('✅ 필터링된 사용자 수:', totalCount);
+    // console.log(
+    //   '👤 사용자 목록:',
+    //   users.map(u => u.email),
+    // );
 
     return {
       totalCount,
@@ -104,6 +112,17 @@ export class UsersService {
       // ✅ 삭제 실행
       await this.prisma.user.delete({
         where: { id: userId },
+      });
+
+      // 관련 초대 상태 변경 (조건: 동일한 이메일 + PENDING 상태)
+      await this.prisma.invitation.updateMany({
+        where: {
+          email: user.email,
+          status: 'PENDING', // 아직 가입 안한 상태. 사용 안 된 초대만 만료 처리 한다.
+        },
+        data: {
+          status: 'EXPIRED',
+        },
       });
     } catch (error) {
       // ✅ Prisma 클라이언트 오류 또는 기타 에러 처리
