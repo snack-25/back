@@ -4,6 +4,7 @@
 
 - 스낵25는 원스톱 간식 구매 관리 솔루션입니다.
 - 🗓️ 프로젝트 기간 : 2025. 2.18. ~ 4.11.
+- 시연영상 및 발표자료(Google Drive) : https://drive.google.com/drive/folders/1H0uMnhrVAW3DFmNITOS5FjszYhhOXASs
 
 ## 팀원 구성
 
