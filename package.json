@@ -21,7 +21,7 @@
     "lint:fix": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "dev": "cross-env NODE_ENV=local nest start --watch --env-file .env.local",
     "build": "nest build",
-    "start": "cross-env NODE_ENV=production nest start --env-file .env.production",
+    "start": "cross-env NODE_ENV=production nest start",
     "start:dev": "cross-env NODE_ENV=local nest start --watch --env-file .env.local",
     "start:debug": "cross-env NODE_ENV=local nest start --debug --watch --env-file .env.local",
     "start:prod": "cross-env NODE_ENV=production node dist/main --env-file .env.production",

@@ -162,6 +162,16 @@ const main = async (): Promise<void> => {
         // 아래 다른 테이블 입력을 위해 테스트 기업 선택
         const testCompany: Company = companies[0];
 
+        // const loginEmail = 'mandely@naver.com'; // ← 네가 로그인에 쓸 이메일
+        // const loginUser = users.find(u => u.email === loginEmail);
+        // if (!loginUser?.companyId) {
+        //   throw new BadRequestException('로그인 유저의 companyId를 찾을 수 없습니다.');
+        // }
+        // const testCompany = companies.find(c => c.id === loginUser.companyId);
+        // if (!testCompany) {
+        //   throw new BadRequestException('로그인 유저 회사가 companies.json에 없습니다.');
+        // }
+
         // 1-1. 기업 생성
         await tx.company.createMany({
           data: companies,
